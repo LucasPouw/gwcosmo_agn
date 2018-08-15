@@ -17,7 +17,7 @@ GWCosmo is ....
 .. toctree::
    :maxdepth: 1
 
-   Git repository <http://git.ligo.org/emfollow/gwcelery>
+   Git repository <http://git.ligo.org/cbc-cosmo/gwcosmo>
    changes
    license
 
