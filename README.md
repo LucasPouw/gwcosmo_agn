@@ -1,3 +1,3 @@
 # gwcosmo
 
-A package to estimate cosmological parameterss using gravitational-wave observations
+A package to estimate cosmological parameters using gravitational-wave observations
