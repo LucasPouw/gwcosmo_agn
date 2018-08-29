@@ -1,6 +1,8 @@
 *~
 *.egg-info
 *.pyc
+*.dat
+*.txt
 __pycache__
 .eggs
 .cache

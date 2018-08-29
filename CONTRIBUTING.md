@@ -1,4 +1,4 @@
 # Contributing
 
-Contributors may familiarize themselves with Celery itself by going through the
-[First Steps with Celery](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html) tutorial.
+Contributors may familiarize themselves with GWCosmo itself by going through the
+[First Steps with GWCosmo](https://www.lsc-group.phys.uwm.edu/ligovirgo/cbcnote/Cosmology/gwcosmo/outline) tutorial.

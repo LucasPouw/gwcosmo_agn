@@ -21,6 +21,8 @@ setup(name='gwcosmo',
       license='GNU',
       packages=['gwcosmo', 'gwcosmo.likelihood', 'gwcosmo.prior'],
       package_dir={'gwcosmo': 'gwcosmo'},
+      package_data={'gwcosmo.likelihood': ['posterior_samples/*'],
+                    'gwcosmo.prior': ['catalog_data/*']},
       install_requires=[
           'numpy>=1.9',
           'matplotlib>=2.0',
