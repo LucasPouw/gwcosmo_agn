@@ -1,3 +1,10 @@
+"""
+To use Schechter functions:
+
+smf = SchectherMagFunction(Mstar, alpha, phistar).evaluate
+
+(C) Walter Del Pozzo (2014)
+"""
 #from pylab import *
 import sys
 from numpy import *
