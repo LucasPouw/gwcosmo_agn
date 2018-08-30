@@ -1,29 +1,12 @@
 """
-To use Schechter functions:
-
-smf = SchectherMagFunction(Mstar, alpha, phistar).evaluate
+Module with Schechter magnitude function:
 
 (C) Walter Del Pozzo (2014)
 """
-#from pylab import *
-import sys
 from numpy import *
-try:
-  from lal import *
-except ImportError:
-  sys.stderr.write('populate_posteriors.py: Could not import swig bindings for lal. Not all functionalities will be supported.\n')
-  pass
-from scipy.special import gammainc
-from scipy.integrate import quad,dblquad
-from scipy.stats import norm
+from scipy.integrate import quad
 
-def detection_probability(threshold,abs_mag):
-    if threshold<abs_mag:
-        return 1
-    else:
-        return 0
-
-class SchectherMagFunction(object):
+class SchechterMagFunctionInternal(object):
     def __init__(self,Mstar,alpha,phistar):
         self.Mstar=Mstar
         self.phistar=phistar
@@ -37,38 +20,24 @@ class SchectherMagFunction(object):
     def pdf(self,m):
         return self.evaluate(m)/self.norm
 
-class SelectionFunction(object):
-    def __init__(self,threshold):
-        self.threshold = threshold
-    def evaluate(self,m):
-        if m<self.threshold: return 1
-        else: return 0
+def SchechterMagFunction(H0=70.,Mstar_obs=-20.457,alpha=-1.07,phistar=1.):
+    """
+    Returns a Schechter magnitude function fort a given set of parameters
+    
+    Parameters
+    ----------
+    H0 : Hubble parameter in km/s/Mpc (default=70.)
+    Mstar_obs : observed characteristic magnitude used to define Mstar = Mstar_obs + 5.*np.log10(H0/100.) (default=-20.457)
+    alpha : observed characteristic slope (default=-1.07)
+    phistar : density (can be set to unity)
 
-def AbsoluteMagnitude(app_m,dl):
-    return app_m - 5.0*log10(dl)-25.0
+    Example usage
+    -------------
 
-class ProbabilityOfObserving(object):
-    def __init__(self,Mstar,alpha,phistar,threshold,omega):
-        self.Mstar=Mstar
-        self.phistar=phistar
-        self.alpha=alpha
-        self.omega = omega
-        self.threshold = threshold
-        self.LuminosityFunction = SchectherMagFunction(self.Mstar,self.alpha,self.phistar)
-        self.SelectionFunction = SelectionFunction(self.threshold)
-        self.VolumeDistribution=UniformComovingVolumeDistribution
-        self.norm = None
-    def evaluate(self,z,m):
-        dl = LuminosityDistance(self.omega,z)
-        SF = self.SelectionFunction.evaluate(m)
-        if SF==0:
-            return -inf
-        return log(self.LuminosityFunction.evaluate(AbsoluteMagnitude(m,dl)))+log(self.VolumeDistribution(self.omega,z,-1))
+    smf = SchectherMagFunction(H0=70., Mstar_obs=-20.457, alpha=-1.07)
+    (integral, error) = scipy.integrate.quad(smf, Mmin, Mmax)
+    """
+    Mstar = Mstar_obs + 5.*np.log10(H0/100.)
+    smf = SchectherMagFunctionInternal(Mstar, alpha, phistar)
+    return smf.evaluate
 
-
-"""
-    typical values for the r band (http://arxiv.org/abs/0806.4930)
-"""
-Mstar = -20.73 + 5.*log10(0.7)
-alpha = -1.23
-phistar = 0.009 * (0.7*0.7*0.7) #Mpc^3
