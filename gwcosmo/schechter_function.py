@@ -34,10 +34,10 @@ def SchechterMagFunction(H0=70.,Mstar_obs=-20.457,alpha=-1.07,phistar=1.):
     Example usage
     -------------
 
-    smf = SchectherMagFunction(H0=70., Mstar_obs=-20.457, alpha=-1.07)
+    smf = SchechterMagFunction(H0=70., Mstar_obs=-20.457, alpha=-1.07)
     (integral, error) = scipy.integrate.quad(smf, Mmin, Mmax)
     """
     Mstar = Mstar_obs + 5.*np.log10(H0/100.)
-    smf = SchectherMagFunctionInternal(Mstar, alpha, phistar)
+    smf = SchechterMagFunctionInternal(Mstar, alpha, phistar)
     return smf.evaluate
 
