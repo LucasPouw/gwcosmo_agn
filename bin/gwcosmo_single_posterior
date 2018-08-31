@@ -116,6 +116,95 @@ options_string = opts.method
 
 hzero = np.linspace(min_h0, max_h0, bins_h0)
 
+
+
+def px_H0G(hzero,galaxy_catalogue,posterior_samples):
+    """
+    The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+    
+    Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
+    Creates a likelihood using the samples/skymap.
+    Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
+    Sums over these values.
+    Returns an array of values corresponding to different values of H0.
+    """
+    return 1
+
+
+
+def pD_H0G(hzero,galaxy_catalogue):
+    """
+    The normalising factor for px_H0G.
+    
+    Takes an array of H0 values and a galaxy catalogue.
+    Evaluates detection probability at the location of every galaxy in the catalogue.
+    Sums over these values.
+    Returns an array of values corresponding to different values of H0.
+    """  
+    return 1
+
+
+
+def pG_H0D(hzero,mth):
+    """
+    The probability that the host galaxy is in the catalogue given detection and H0.
+    
+    Takes an array of H0 values, and the apparent magnitude threshold of the galaxy catalogue.
+    Integrates p(M|H0)*p(z)*p(D|dL(z,H0)) over z and M, incorporating mth into limits.  Should be internally normalised.
+    Returns an array of probabilities corresponding to different H0s.
+    """
+    return 1
+
+
+
+def pnG_H0D(hzero,pG_H0D):
+    """
+    The probability that a galaxy is not in the catalogue given detection and H0
+    
+    Returns the complement of pG_H0D.
+    """
+    return 1
+
+   
+    
+def px_H0nG(hzero,mth,posterior_samples):
+    """
+    The likelihood of the GW data given not in the catalogue and H0
+    
+    Takes an array of H0 values, an apparent magnitude threshold, and posterior samples/skymap for 1 event.
+    Creates a likelihood using the samples/skymap: p(x|dL,Omega).
+    Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
+    Returns an array of values corresponding to different values of H0.
+    """
+    return 1
+
+
+
+def pD_H0nG(hzero,mth):
+    """
+    Normalising factor for px_H0nG
+    
+    Takes an array of H0 values and an apparent magnitude threshold.
+    Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
+    Returns an array of values corresponding to different values of H0.
+    """  
+    return 1
+
+
+
+def pH0_D(hzero,prior_choice):
+    """
+    The prior probability of H0 given a detection
+    
+    Takes an array of H0 values and a choice of prior.
+    Integrates p(D|dL(z,H0))*p(z) over z
+    Returns an array of values corresponding to different values of H0.
+    """
+    return 1
+
+
+
+
 def main():
     "Compute P(H0)"
 
