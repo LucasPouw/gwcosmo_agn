@@ -10,9 +10,7 @@ import os
 import sys
 from optparse import Option, OptionParser
 '''
-
- Number of luminosity distance bins, 
-Galaxy catalog, Galaxy weighting, Completeness, Option of counterpart/pencil beam/statistical method, Counterpart RA (optional), 
+ Counterpart RA (optional), 
 Counterpart DEC (optional), Peculiar velocity, Option of using sky map fits file/skypost.obj/PE posterior samples for distance posterior,
  Network antenna power pattern, maximal detectable redshift, Previous H0 posterior as a function of H0 bin (optional)
 '''
@@ -21,13 +19,13 @@ parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-m", "--method", metavar="METHOD", default=None,
+        Option("-m", "--method", metavar="METHOD", default='counterpart',
             help="METHOD: Select counterpart/statistical/pencil_beam method (required)"),
-        Option("-a", "--min_h0", metavar="MINH0", default='10.0',
+        Option("-u", "--min_h0", metavar="MINH0", default='10.0',
             help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-b", "--max_h0", metavar="MAXH0", default='220.0',
+        Option("-v", "--max_h0", metavar="MAXH0", default='220.0',
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-c", "--bins_h0", metavar="BINSH0", default='210.0',
+        Option("-x", "--bins_h0", metavar="BINSH0", default='210.0',
             help="BINSH0: Set number of H0 Posterior bins"),
         Option("-d", "--min_dist", metavar="MINDIST", default='0.1',
             help="MINDIST: Set minimum value of luminosity distance"),
@@ -35,14 +33,28 @@ parser = OptionParser(
             help="MAXDIST: Set maximum value of luminosity distance"),
         Option("-f", "--bins_dist", metavar="BINSDIST", default='1000',
             help="BINSDIST: Set number of luminosity distance bins"),
-        Option("-g", "--galaxycatalog", metavar="FILE", default=None,
-            help="Galaxy Catalog FILE in format (.xml)"),
-        Option("-p", "--posteriorsamples", metavar="FILE", default=None,
-            help="LALinference Posterior Samples FILE in format (.dat or hdf5)"),
-        Option("-r", "--counterpartra", metavar="RA", default=None,
-            help="RA of counterpart"),
-        Option("-o", "--counterpartdec", metavar="DEC", default=None,
-            help="DEC of counterpart")
+        Option("-g", "--galaxy_catalog", metavar="CATALOG", default=None,
+            help="CATALOG: Galaxy catalog file in hdf5 format"),
+        Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default=None,
+            help="WEIGHTING: Set galaxy catalog weighting"),
+        Option("-c", "--completion", metavar="COMPLETENESS", default=None,
+            help="COMPLETENESS: Set galaxy catalog completion function."),
+        Option("-r", "--counterpart_ra", metavar="RA", default=None,
+            help="RA: Right ascension of counterpart"),
+        Option("-o", "--counterpart_dec", metavar="DEC", default=None,
+            help="DEC: Declination of counterpart"),
+        Option("-j", "--counterpart_vel", metavar="VELOCITY", default=None,
+            help="VELOCITY: Peculiar velocity of counterpart"),
+        Option("-i", "--skymap_fits", metavar="SKYMAP", default=None,
+            help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
+        Option("-s", "--posterior_samples", metavar="SAMPLES", default=None,
+            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5)"),
+        Option("-z", "--z_max", metavar="ZMAX", default=None,
+            help="ZMAX: Maximal detectable redshift"),
+        Option("-a", "--antenna", metavar="ANTENNA", default=None,
+            help="ANTENNA: Network antenna power pattern"),
+        Option("-p", "--posterior", metavar="POSTERIOR", default=None,
+            help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
     ])
 opts, args = parser.parse_args()
 
