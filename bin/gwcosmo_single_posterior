@@ -9,11 +9,13 @@ __author__ = "Ignacio Magana Hernandez <ignacio.magana@ligo.org>"
 import os
 import sys
 from optparse import Option, OptionParser
-'''
- Counterpart RA (optional), 
-Counterpart DEC (optional), Peculiar velocity, Option of using sky map fits file/skypost.obj/PE posterior samples for distance posterior,
- Network antenna power pattern, maximal detectable redshift, Previous H0 posterior as a function of H0 bin (optional)
-'''
+
+#Global Imports
+import numpy as np
+import matplotlib 
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+
 # Command line options
 parser = OptionParser(
     description = __doc__,
@@ -39,19 +41,19 @@ parser = OptionParser(
             help="WEIGHTING: Set galaxy catalog weighting"),
         Option("-c", "--completion", metavar="COMPLETENESS", default=None,
             help="COMPLETENESS: Set galaxy catalog completion function."),
-        Option("-r", "--counterpart_ra", metavar="RA", default=None,
+        Option("-r", "--counterpart_ra", metavar="RA", default='0.0',
             help="RA: Right ascension of counterpart"),
-        Option("-o", "--counterpart_dec", metavar="DEC", default=None,
+        Option("-o", "--counterpart_dec", metavar="DEC", default='0.0',
             help="DEC: Declination of counterpart"),
-        Option("-j", "--counterpart_vel", metavar="VELOCITY", default=None,
+        Option("-j", "--counterpart_vel", metavar="VELOCITY", default='0.',
             help="VELOCITY: Peculiar velocity of counterpart"),
-        Option("-i", "--skymap_fits", metavar="SKYMAP", default=None,
+        Option("-i", "--skymap", metavar="SKYMAP", default='200.0',
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-s", "--posterior_samples", metavar="SAMPLES", default=None,
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5)"),
-        Option("-z", "--z_max", metavar="ZMAX", default=None,
+        Option("-z", "--z_max", metavar="ZMAX", default='1.0',
             help="ZMAX: Maximal detectable redshift"),
-        Option("-a", "--antenna", metavar="ANTENNA", default=None,
+        Option("-a", "--antenna_network", metavar="ANTENNA", default=None,
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
@@ -68,34 +70,57 @@ if len(missing) > 0:
 
 print 'Selected method is:', opts.method
 
-if opts.method == 'statistical':
-    useNGC4993only = 0
-    cfactor = 1.0
-
 if opts.method == 'counterpart':
-    useNGC4993only = 1
-    gname = 'NGC4993'
-    cfactor = 1.0
+    use_counterpart = 1
+    counterpart_ra = float(opts.counterpart_ra)
+    counterpart_dec = float(opts.counterpart_dec)
+    counterpart_vel = float(opts.counterpart_vel)
 
-if opts.method == 'pencil_beam':
-    useNGC4993only = 1
-    gname = 'NGC4993'
-    cfactor = 1.0
+if opts.method == 'statistical' or 'pencil_beam': 
+	use_counterpart = 0
+	galaxy_catalog = opts.galaxy_catalog
+	galaxy_weighting = opts.galaxy_weighting
+
+	if opts.posterior_samples == 'samples':
+		posterior_samples = opts.posterior_samples
+		#load samples...
+	if opts.skymap == 'skymap':
+		skymap = opts.skymap
+		#load skymap...
+
+if opts.completion == True:
+	completion = 1
+else:
+	completion = 0
+
+if opts.galaxy_weighting == True:
+	galaxy_weighting = 1
+else:
+	galaxy_weighting = 0
+
+# Set command line arguments
+min_h0 = float(opts.min_h0)
+max_h0 = float(opts.max_h0)
+bins_h0 = float(opts.bins_h0)
+
+max_dist = float(opts.max_dist)
+min_dist = float(opts.min_dist)
+bins_dist = float(opts.bins_dist)
+
+z_max = float(opts.z_max)
+antenna_network = opts.antenna_network
+
+options_string = opts.method
+
+hzero = np.linspace(min_h0, max_h0, bins_h0)
 
 def main():
     "Compute P(H0)"
+
+    posterior_file = "posterior_" + options_string
+    np.savez(posterior_file + options_string + '.npz', hzero)
 
     return 0
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
