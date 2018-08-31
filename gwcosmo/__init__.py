@@ -12,3 +12,8 @@ import gwcosmo.prior
 
 from gwcosmo.likelihood import gw, em, posterior_samples
 from gwcosmo.prior import catalog, completion
+
+import gwcosmo.detectionprobability
+import gwcosmo.skymap
+import gwcosmo.schechter_function
+import gwcosmo.standard_cosmology

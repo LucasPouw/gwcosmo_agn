@@ -5,7 +5,8 @@ Rachel Gray, John Veitch
 import lal
 from   lal import ComputeDetAMResponse
 import numpy as np
-
+from scipy.interpolate import interp1d
+import pkg_resources
 """
 We want to create a function for $p(D|z,H_{0},I)$, so that when it is passed a value of $z$ and $H_0$,
 a probability of detection is returned.  This involves marginalising over neutron star masses, inclination, polarisation, and sky location.
@@ -22,8 +23,9 @@ class DetectionProbability(object):
         if psds is not None:
             self.psds = psds
         else:
-            # TODO: Implement default PSDs
-            pass
+            PSD_path = pkg_resources.resource_filename('gwcosmo', 'data/other/PSD_L1_H1_mid.txt')
+            PSD_data = np.genfromtxt(PSD_path)
+            self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
         self.m1 = m1
         self.m2 = m2
         self.mtot = m1+m2
@@ -36,9 +38,9 @@ class DetectionProbability(object):
         the optimal snr squared for one detector, marginalising over sky location, inclination, polarisation, mass
         """
         Fplus,Fcross = lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)
-        A = np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2)
-            * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0) * np.power(self.mc,5.0/6.0) / (DL*lal.PC_SI*1e6)
-    
+        A = np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2) \
+        * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0) * np.power(self.mc,5.0/6.0) / (DL*lal.PC_SI*1e6)
+        
         def I(f):
             return np.power(f,-7.0/3.0)/(PSD(f)**2)
 
