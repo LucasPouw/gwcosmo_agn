@@ -1,31 +1,89 @@
 #!/usr/bin/python
 
 """
-Script to ....
+This script computes H0 as a function of H0 bins.
 """
-__author__ = "Alex Urban <alexander.urban@ligo.org>"
+__author__ = "Ignacio Magana Hernandez <ignacio.magana@ligo.org>"
 
-
-# Global imports.
+# System imports
 import os
 import sys
 from optparse import Option, OptionParser
+'''
 
-# Command line options.
+ Number of luminosity distance bins, 
+Galaxy catalog, Galaxy weighting, Completeness, Option of counterpart/pencil beam/statistical method, Counterpart RA (optional), 
+Counterpart DEC (optional), Peculiar velocity, Option of using sky map fits file/skypost.obj/PE posterior samples for distance posterior,
+ Network antenna power pattern, maximal detectable redshift, Previous H0 posterior as a function of H0 bin (optional)
+'''
+# Command line options
 parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-g", "--graceid", metavar="{E,S,T}XXXXX", default=None,
-            help="Graceid of event (required)"),
+        Option("-m", "--method", metavar="METHOD", default=None,
+            help="METHOD: Select counterpart/statistical/pencil_beam method (required)"),
+        Option("-a", "--min_h0", metavar="MINH0", default='10.0',
+            help="MINH0: Set minimum value of H0 Posterior"),
+        Option("-b", "--max_h0", metavar="MAXH0", default='220.0',
+            help="MAXH0: Set maximum value of H0 Posterior"),
+        Option("-c", "--bins_h0", metavar="BINSH0", default='210.0',
+            help="BINSH0: Set number of H0 Posterior bins"),
+        Option("-d", "--min_dist", metavar="MINDIST", default='0.1',
+            help="MINDIST: Set minimum value of luminosity distance"),
+        Option("-e", "--max_dist", metavar="MAXDIST", default='400.0',
+            help="MAXDIST: Set maximum value of luminosity distance"),
+        Option("-f", "--bins_dist", metavar="BINSDIST", default='1000',
+            help="BINSDIST: Set number of luminosity distance bins"),
+        Option("-g", "--galaxycatalog", metavar="FILE", default=None,
+            help="Galaxy Catalog FILE in format (.xml)"),
+        Option("-p", "--posteriorsamples", metavar="FILE", default=None,
+            help="LALinference Posterior Samples FILE in format (.dat or hdf5)"),
+        Option("-r", "--counterpartra", metavar="RA", default=None,
+            help="RA of counterpart"),
+        Option("-o", "--counterpartdec", metavar="DEC", default=None,
+            help="DEC of counterpart")
     ])
 opts, args = parser.parse_args()
 
-
-# Check for missing required arguments.
+# Check for missing required arguments
 missing = []
 for option in parser.option_list:
     if 'required' in option.help and eval('opts.' + option.dest) == None:
         missing.extend(option._long_opts)
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
+
+print 'Selected method is:', opts.method
+
+if opts.method == 'statistical':
+    useNGC4993only = 0
+    cfactor = 1.0
+
+if opts.method == 'counterpart':
+    useNGC4993only = 1
+    gname = 'NGC4993'
+    cfactor = 1.0
+
+if opts.method == 'pencil_beam':
+    useNGC4993only = 1
+    gname = 'NGC4993'
+    cfactor = 1.0
+
+def main():
+    "Compute P(H0)"
+
+    return 0
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
