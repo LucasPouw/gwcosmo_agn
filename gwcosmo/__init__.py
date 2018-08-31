@@ -10,5 +10,5 @@ __version__ = '0.1.0'
 import gwcosmo.likelihood
 import gwcosmo.prior
 
-from gwcosmo.likelihood import gw, em
+from gwcosmo.likelihood import gw, em, posterior_samples
 from gwcosmo.prior import catalog, completion

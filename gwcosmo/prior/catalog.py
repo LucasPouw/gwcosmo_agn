@@ -7,13 +7,13 @@ import astropy.constants as constants
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import ICRS
 from astropy.coordinates import Galactic
+
 import pkg_resources
 
 # Global
-catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'prior/catalog_data')
-groupmembers4993 = np.genfromtxt(catalog_data_path + "/NGC4993group.txt", usecols=0) #NGC 4993's group
-pgc_KTgroups,groupgal = np.genfromtxt(catalog_data_path + "/KTgroups.txt", usecols=(0,4), unpack=True)
-
+catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
+groupmembers4993 = np.genfromtxt(catalog_data_path + "NGC4993group.txt", usecols=0) #NGC 4993's group
+pgc_KTgroups,groupgal = np.genfromtxt(catalog_data_path + "KTgroups.txt", usecols=(0,4), unpack=True)
 cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.27)
 apex_helio_to_3k = Galactic(l=264.14*u.degree, b=48.26*u.degree, radial_velocity=371.0*u.km/u.s)
 
@@ -126,7 +126,7 @@ class catalog(object):
     ''' Class for galaxy catalog objects
     '''
     def __init__(self,
-                catalog_file = catalog_data_path + "/gladecatalogv2.3.dat",
+                catalog_file = catalog_data_path + "gladecatalogv2.3.dat",
                 catalog_format = 'ascii',
                 catalog = 0,
                 pgc_number = 0,
