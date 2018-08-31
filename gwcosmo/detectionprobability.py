@@ -6,6 +6,9 @@ import lal
 from   lal import ComputeDetAMResponse
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.integrate import quad
+from scipy.stats import ncx2
+
 import pkg_resources
 """
 We want to create a function for $p(D|z,H_{0},I)$, so that when it is passed a value of $z$ and $H_0$,
@@ -41,6 +44,7 @@ class DetectionProbability(object):
         A = np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2) \
         * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0) * np.power(self.mc,5.0/6.0) / (DL*lal.PC_SI*1e6)
         
+        PSD = self.psds
         def I(f):
             return np.power(f,-7.0/3.0)/(PSD(f)**2)
 
