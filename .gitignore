@@ -1,8 +1,6 @@
 *~
 *.egg-info
 *.pyc
-*.dat
-*.txt
 *.DS_Store
 __pycache__
 .eggs
