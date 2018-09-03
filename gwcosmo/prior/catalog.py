@@ -117,10 +117,33 @@ class galaxy(object):
         self.dec = row['Dec']
         self.z = row['z']
         self.distance = row['Distance']
-        self.distance_error = row['distance_error']
+        self.distance_error = row['Distance Error']
         self.abs_mag_r = row['abs_mag_r']
         self.abs_mag_k = row['abs_mag_k']
 
+class Galaxies(object):
+    ''' Class for galaxy catalog objects
+    '''
+    def __init__(self,indexes,dictionary):
+        """Galaxy catalog class... 
+        Parameters
+        """
+        self.indexes = indexes
+        self.dictionary = dictionary
+
+    def load_from_catalog(self,catalog):
+        galaxies={}
+        nGal = len(catalog.catalog)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_astropy_row(k,catalog.catalog[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+
+
+    def get_galaxy(self,index):
+        return self.dictionary[str(int(index))]
 
 class catalog(object):
     ''' Class for galaxy catalog objects
