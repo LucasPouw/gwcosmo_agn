@@ -57,8 +57,8 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
-        Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME", default=False,
-            help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame")
+        #Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME", default=False,
+            #help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame") #Will implement this conversion to galaxy class
     ])
 opts, args = parser.parse_args()
 
@@ -202,11 +202,18 @@ def pH0_D(hzero,prior_choice):
     """
     return 1
 
-
-
+import gwcosmo
 
 def main():
     "Compute P(H0)"
+
+    #Load glade catalog...
+    catalog = gwcosmo.catalog.galaxyCatalog()
+    catalog.load_glade_catalog()
+    some_galaxy = catalog.get_galaxy(1000)
+
+    ra = some_galaxy.ra
+    print ra
 
     posterior_file = "posterior_" + options_string
     np.savez(posterior_file + options_string + '.npz', hzero)
