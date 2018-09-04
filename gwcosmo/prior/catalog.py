@@ -14,7 +14,6 @@ class galaxy(object):
     '''
     def __init__(self,
                 index = 0,
-                astropy_row = 0,
                 pgc_number = 0,
                 galaxy_name = 0,
                 cluster = 0,
@@ -28,12 +27,12 @@ class galaxy(object):
                 abs_mag_r = 0,
                 abs_mag_k = 0,
                 lumB = 0,
-                lumK=0):
+                lumK=0,
+                m = 0):
         """Galaxy catalog class... 
         Parameters
         """
         self.index = index
-        self.astropy_row = astropy_row    
         self.pgc_number = pgc_number
         self.galaxy_name = galaxy_name
         self.cluster = cluster
@@ -48,10 +47,10 @@ class galaxy(object):
         self.abs_mag_k = abs_mag_k
         self.lumB = lumB
         self.lumK = lumK
+        self.m = m
         
-    def load_astropy_row(self, index, row):
+    def load_astropy_row_glade(self, index, row):
         self.index = index
-        self.astropy_row = row
         self.pgc_number = row['PGC']
         self.galaxy_name = row['Galaxy Name']
         self.cluster = row['Cluster']
@@ -63,10 +62,18 @@ class galaxy(object):
         self.abs_mag_r = row['abs_mag_r']
         self.abs_mag_k = row['abs_mag_k']
 
+    def load_astropy_row_mdc(self, index, row, version):
+        self.index = index
+        self.ra = row['RA']
+        self.dec = row['Dec']
+        self.z = row['z']
+        if version != "1.0":
+            self.m = row['m']
+
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
     '''
-    def __init__(self, catalog_file = catalog_data_path + "gladecatalogv2.3.dat",
+    def __init__(self, catalog_file = "",
                 catalog_format = 'ascii',
                 indexes = 0, 
                 dictionary = {}):
@@ -79,12 +86,31 @@ class galaxyCatalog(object):
         self.dictionary = dictionary
 
     def load_glade_catalog(self):
+        self.catalog_file = catalog_data_path + "gladecatalogv2.3.dat"
         t = Table.read(self.catalog_file,format=self.catalog_format)
         galaxies={}
         nGal = len(t)
         for k in range(0,nGal):
             gal = galaxy()
-            gal.load_astropy_row(k,t[k])
+            gal.load_astropy_row_glade(k,t[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+
+    def load_mdc_catalog(self,version='1.0'):
+        if version == '1.0':
+            self.catalog_file = catalog_data_path + "mdc_v1_cat.txt"
+        if version == '2.1':
+            self.catalog_file = catalog_data_path + "mdc_v2_lim_cat.txt"
+        if version == '3.1':
+            self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
+
+        t = Table.read(self.catalog_file,format=self.catalog_format)
+        galaxies={}
+        nGal = len(t)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_astropy_row_mdc(k,t[k],version)
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
