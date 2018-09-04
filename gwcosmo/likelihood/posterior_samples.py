@@ -7,6 +7,8 @@ __author__ = "Ignacio Magana Hernandez <ignacio.magana@ligo.org>"
 """Module containing functionality for creation and management of completion functions."""
 import numpy as np
 import pkg_resources
+from scipy.stats import gaussian_kde
+from scipy import integrate, interpolate, random
 
 # Global 
 posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
@@ -44,3 +46,36 @@ class posterior_samples(object):
         self.ngalaxies = ngalaxies
 
         return lalinference_data,distance,longitude,latitude,weights,ngalaxies
+
+    def lineofsight_distance(self, distance):
+        """
+        Takes distance and makes 1-d kde out of it
+        """
+        return gaussian_kde(self.distance)
+
+    def dist_prior_corr(self, distance):
+        """
+        Change of prior from uniform in volume to uniform in distance
+        """
+        xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 100.)
+        yy = dist_kde(xx)/xx**2.
+        yy /= np.sum(yy)*(xx[1]-xx[0])
+        # Interpolation of normalized prior-corrected distribution
+        try:
+            # The following works only on recent python versions
+            dist_support = interpolate.InterpolatedUnivariateSpline(xx, yy, ext=1)
+        except TypeError:
+            # A workaround to prevent bounds error in earlier python versions
+            dist_interp = interpolate.InterpolatedUnivariateSpline(xx, yy)
+            def dist_support(x):
+                if (x>=xx[0]) and (x<=xx[-1]):
+                    return dist_interp(x)
+                return 0.
+        dist_support = np.vectorize(dist_support)
+        return dist_support
+
+ 
+
+
+
+

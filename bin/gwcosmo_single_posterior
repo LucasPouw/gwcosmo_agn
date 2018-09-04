@@ -57,7 +57,8 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
-        Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME", default=False,
+        Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME
++", default=False,
             help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame")
     ])
 opts, args = parser.parse_args()
