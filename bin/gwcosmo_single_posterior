@@ -57,14 +57,8 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
-<<<<<<< HEAD
-        Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME
-+", default=False,
-            help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame")
-=======
         #Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME", default=False,
             #help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame") #Will implement this conversion to galaxy class
->>>>>>> d590503fdc8341eb55354c83eab4e055a7c0ac1d
     ])
 opts, args = parser.parse_args()
 

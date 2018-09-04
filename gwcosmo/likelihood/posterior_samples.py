@@ -74,7 +74,50 @@ class posterior_samples(object):
         dist_support = np.vectorize(dist_support)
         return dist_support
 
- 
+    def compute_3d_kde(self, catalog, distmin, distmax):
+        "Computes 3d KDE"
+        catalog = gwcosmo.catalog.galaxyCatalog()
+        catalog.load_glade_catalog()
+
+        #some_galaxy = catalog.get_galaxy(1000)
+
+        ra = some_galaxy.ra
+        dec = some_galaxy.dec
+
+        nt = t[np.argmax(t['Distance'] > distmin):np.argmin(t['Distance'] < distmax)]
+
+        nt.sort('RA')
+        nt = nt[np.argmax(nt['RA'] > np.min(self.longitude) - 1.0):np.argmin(nt['RA'] < np.max(self.longitude ) +1.0)]
+
+        nt.sort('Dec')
+        nt = nt[np.argmax(nt['Dec'] > np.min(self.latitude) - 1.0):np.argmin(nt['Dec'] < np.max(self.latitude ) + 1.0)]
+
+        catalog.catalog = nt
+        (pgcCat, ra, dec, dist, z, lumB, angle_error, dist_err, z_err) = catalog.extract_galaxies_table()
+
+        tmpra = np.transpose(np.tile(ra, (len(longitude[self.ngalaxies:]), 1))) - np.tile(longitude[self.ngalaxies:], (len(ra), 1))
+        tmpdec = np.transpose(np.tile(dec, (len(latitude[self.ngalaxies:]), 1))) - np.tile(latitude[self.ngalaxies:], (len(dec), 1))
+        tmpm = np.power(tmpra, 2.) + np.power(tmpdec, 2.)
+        mask1 = np.ma.masked_where(tmpm > (a_err_fraction**2), tmpm).filled(0)
+        mask1 = np.max((mask1 > 0), 1)
+
+        ra = ra[mask1]
+        dec = dec[mask1]
+        dist = dist[mask1]
+        z = z[mask1]
+        lumB = lumB[mask1]
+        print "No. of used galaxies %i" % (len(ra))
+
+        # Calculate posterior
+        for k, x in enumerate(hzero):
+            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+            pdf = stats.gaussian_kde(np.vstack((longitude[nsamples:], latitude[nsamples:], distance[nsamples:] / coverh)))
+            pdfnorm = pdf.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
+            tmppdf = pdf(np.vstack((ra, dec, z))) / pdfnorm
+            ph[k] = np.sum(tmppdf * lumB / (np.cos(dec) * z**2))
+            completion = cfactor * completionFun.generateCompletion(lumB, dist, distance / coverh, useNGC4993only) / (4.0 * np.pi)
+            epsilon = 0.5 * (1 - np.tanh(3.3 * np.log(distance / 80.)))
+            ph[k] = (ph[k] + np.mean((completion ) / ((distance / coverh)**2))) 
 
 
 
