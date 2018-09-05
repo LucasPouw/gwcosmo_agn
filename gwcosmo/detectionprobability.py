@@ -8,7 +8,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy.stats import ncx2
-#from astropy.constants import M_sun
 
 import pkg_resources
 """
@@ -24,16 +23,13 @@ class DetectionProbability(object):
     def __init__(self, detectors=['H1','L1'], psds=None, Nsamps=5000, snr_threshold=8):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
+        # TODO: find official place where PSDs are stored.
         if psds is not None:
             self.psds = psds
         else:
             PSD_path = pkg_resources.resource_filename('gwcosmo', 'data/other/PSD_L1_H1_mid.txt')
             PSD_data = np.genfromtxt(PSD_path)
             self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
-        #self.m1 = m1
-        #self.m2 = m2
-        #self.mtot = m1+m2
-        #self.mc = np.power(m1*m2,3.0/5.0)/np.power(m1+m2,1.0/5.0)
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
         
@@ -67,7 +63,7 @@ class DetectionProbability(object):
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
         return ncx2.sf(effective_threshold**2 , 4, combined_rhosq)
 
-    def p_D(self, dl):
+    def pD_dl_single(self, dl):
         """
         Detection probability for a specific distance, averaged over all other parameters
         """
@@ -86,10 +82,20 @@ class DetectionProbability(object):
         return np.mean(
             [ self.p_D_positional(dl, RAs[i], Decs[i], m1[i], m2[i], incs[i], psis[i]) for i in range(N)]
             )
-    
+            
+    def pD_dl(self,dl_array):
+        """
+        Detection probability over a range of distances, returned as an interpolated function.
+        """
+        prob = np.zeros(len(dl_array))
+        for i in range(len(dl_array)):
+            prob[i] = self.pD_dl_single(dl_array[i])
+        
+        return interp1d(dl_array,prob,bounds_error=False,fill_value=1e-10)
+   
     def __call__(self, dl):
         """
         To call as function of dl
         """
-        return self.p_D(dl)
+        return self.pD_dl_single(dl)
     
