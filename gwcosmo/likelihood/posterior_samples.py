@@ -42,13 +42,13 @@ class posterior_samples(object):
         self.distance = distance
         self.longitude = longitude
         self.latitude = latitude
-        self.weights = weights
-        self.nsamples = nsamples
-        self.ngalaxies = ngalaxies
+        self.weight = weight
+        #self.nsamples = nsamples
+        #self.ngalaxies = ngalaxies
 
-        return lalinference_data,distance,longitude,latitude,weights,ngalaxies
+        return lalinference_data,distance,longitude,latitude,weight
 
-    def lineofsight_distance(self, distance):
+    def lineofsight_distance(self):
         """
         Takes distance and makes 1-d kde out of it
         """
@@ -76,33 +76,7 @@ class posterior_samples(object):
         return dist_support
 
 
-    def ra_dec_from_ipix(self, nside, ipix):
-        (theta, phi) = hp.pix2ang(nside, ipix)
-        return (phi, np.pi/2.-theta)
-
-    # HEALPix index from RA and dec
-    def ipix_from_ra_dec(self, nside, ra, dec):
-        (theta, phi) = (np.pi/2.-dec, ra)
-        return hp.ang2pix(nside, theta, phi)
-
-
-    def compute_2d_sky_prob(self, sky_level, nside, ra, dec):
-   
-        skymap = hp.read_map(skymap_file)
-        nside = hp.npix2nside(len(skymap))
-        ipix_gal = ipix_from_ra_dec(nside, ra, dec)
-
-        # Height of probability contour corresponding to confidence level set above
-        skyconf_obj = confidence(skymap)
-        sky_height = skyconf_obj.height_from_level(sky_level)   
-
-        # Pixels of skymap inside the probability contour
-        ipix_above_height, = np.where(skymap > sky_height)
-
-        # Indices of galaxies inside the probability contour
-        idx_gal_above_height = np.array([ig in ipix_above_height for ig in ipix_gal]) 
-
-       
+    
     def compute_3d_kde(self, catalog, distmin, distmax):
         "Computes 3d KDE"
         catalog = gwcosmo.catalog.galaxyCatalog()
