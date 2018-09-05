@@ -16,9 +16,9 @@ posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
     '''
-    def __init__(self, lalinference_path = posterior_data_path + "/posterior_samples_RR0.dat",
-    			lalinference_data=1,distance=1,longitude=1,latitude=1,weight=1,nsamples=1,ngalaxies=1):
-        """posterior samples class... 
+    def __init__(self, lalinference_path = "",lalinference_data=1,distance=1,
+                longitude=1,latitude=1,weight=1,nsamples=1,ngalaxies=1):
+        """Posterior samples class... (empty by default)
         Parameters
         """
         self.lalinference_path = lalinference_path
@@ -28,25 +28,22 @@ class posterior_samples(object):
         self.latitude = latitude
         self.weight = weight
         self.nsamples = nsamples
-        self.ngalaxies = ngalaxies
 
-    def load_posterior_samples(self):
-        lalinference_data = np.genfromtxt(self.lalinference_path, names=True)
-        distance = lalinference_data['distance']
-        longitude = lalinference_data['ra']
-        latitude = lalinference_data['dec']
-        weight = np.ones(len(latitude))/(distance*distance*np.cos(latitude))
-        nsamples = len(weight)
+    def load_posterior_samples(self, lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"):
+        """ Loads GW170817 posterior samples by default into class 
+            unless lalinference_path points to a samples files. 
+            Currently it only supports .dat posterior samples format.
+            It also returns distance, ra and dec ...
+        """
+        self.lalinference_path = lalinference_path
+        self.lalinference_data = np.genfromtxt(lalinference_path, names=True)
+        self.distance = self.lalinference_data['distance']
+        self.longitude = self.lalinference_data['ra']
+        self.latitude = self.lalinference_data['dec']
+        self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
+        self.nsamples = len(self.weight)
 
-        self.lalinference_data = lalinference_data
-        self.distance = distance
-        self.longitude = longitude
-        self.latitude = latitude
-        self.weight = weight
-        #self.nsamples = nsamples
-        #self.ngalaxies = ngalaxies
-
-        return lalinference_data,distance,longitude,latitude,weight
+        return self.distance, self.longitude, self.latitude
 
     def lineofsight_distance(self):
         """
