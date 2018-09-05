@@ -135,7 +135,7 @@ class posterior_samples(object):
         dist = dist[mask1]
         z = z[mask1]
         lumB = lumB[mask1]
-        print "No. of used galaxies %i" % (len(ra))
+        print("No. of used galaxies %i" % (len(ra)))
 
         # Calculate posterior
         for k, x in enumerate(hzero):
