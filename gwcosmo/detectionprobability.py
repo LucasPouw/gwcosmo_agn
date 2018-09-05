@@ -53,15 +53,27 @@ class DetectionProbability(object):
     
         return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
     
-    def p_D_positional(self, dl, ra, dec, m1, m2, inc, psi):
+    def pD_event(self, dl, ra, dec, m1, m2, inc, psi):
         """
-        detection probability for a particular sky position and orientation
+        detection probability for a particular event (masses, distance, sky position and orientation)
         """
         gmst = 0 # Set to zero as we will average over sky
         rhosqs = [ self.__snr_squared(dl, ra, dec, m1, m2, inc, psi, det, gmst) for det in self.__lal_detectors]
         combined_rhosq = np.sum(rhosqs)
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
         return ncx2.sf(effective_threshold**2 , 4, combined_rhosq)
+        
+    def pD_dlradec_single(self,dl,Ra,Dec):
+        """
+        detection probability for a specific distance and sky position, marginalised over other parameters
+        """
+        return 0
+        
+    def pD_dlradec(self,dl_array):
+        """
+        detection probability interpolated over a range of distances and sky positions
+        """
+        return 0
 
     def pD_dl_single(self, dl):
         """
@@ -80,7 +92,7 @@ class DetectionProbability(object):
         m2 = np.random.normal(1.35,0.1,N)*1.988e30
         
         return np.mean(
-            [ self.p_D_positional(dl, RAs[i], Decs[i], m1[i], m2[i], incs[i], psis[i]) for i in range(N)]
+            [ self.pD_event(dl, RAs[i], Decs[i], m1[i], m2[i], incs[i], psis[i]) for i in range(N)]
             )
             
     def pD_dl(self,dl_array):
