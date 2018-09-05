@@ -62,7 +62,7 @@ class DetectionProbability(object):
         rhosqs = [ self.__snr_squared(dl, ra, dec, inc, psi, det, gmst) for det in self.__lal_detectors]
         combined_rhosq = np.sum(rhosqs)
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
-        return ncx2.sf(effective_threshold**2 , combined_rhosq)
+        return ncx2.sf(effective_threshold**2 , 4, combined_rhosq)
 
     def p_D(self, dl):
         """
