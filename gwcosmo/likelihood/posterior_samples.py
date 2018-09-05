@@ -33,10 +33,10 @@ class posterior_samples(object):
     def load_posterior_samples(self):
         lalinference_data = np.genfromtxt(self.lalinference_path, names=True)
         distance = lalinference_data['distance']
-    	longitude = lalinference_data['ra']
-    	latitude = lalinference_data['dec']
-    	weight = np.ones(len(latitude))/(distance*distance*np.cos(latitude))
-    	nsamples = len(weight)
+        longitude = lalinference_data['ra']
+        latitude = lalinference_data['dec']
+        weight = np.ones(len(latitude))/(distance*distance*np.cos(latitude))
+        nsamples = len(weight)
 
         self.lalinference_data = lalinference_data
         self.distance = distance
