@@ -1,5 +1,7 @@
-
+import numpy as np
 import scipy.stats
+from astropy.io import fits
+import healpy as hp
 
 class FITSkernel(object):
     """
