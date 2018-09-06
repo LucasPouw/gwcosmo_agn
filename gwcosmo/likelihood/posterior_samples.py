@@ -73,7 +73,13 @@ class posterior_samples(object):
         return dist_support
 
 
-    
+    def compute_2d_kde(self):
+        
+        two_d_arr = np.vstack((self.longitude, self.latitutde))
+        radec = gaussian_kde(two_d_arr)
+        return radec    
+
+
     def compute_3d_kde(self, catalog, distmin, distmax):
         "Computes 3d KDE"
         catalog = gwcosmo.catalog.galaxyCatalog()
