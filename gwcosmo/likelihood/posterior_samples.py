@@ -61,7 +61,7 @@ class posterior_samples(object):
         Change of prior from uniform in volume to uniform in distance
         """
         xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 100.)
-        yy = dist_kde(xx)/xx**2.
+        yy = dist_kde(xx)/xx**2.  ## Ignacio: What is dist_kde()?
         yy /= np.sum(yy)*(xx[1]-xx[0])
         # Interpolation of normalized prior-corrected distribution
         try:
@@ -79,8 +79,7 @@ class posterior_samples(object):
 
 
     def compute_2d_kde(self):
-        
-        two_d_arr = np.vstack((self.longitude, self.latitutde))
+        two_d_arr = np.vstack((self.longitude, self.latitude))
         radec = gaussian_kde(two_d_arr)
         return radec    
 
@@ -116,9 +115,3 @@ class posterior_samples(object):
         tmppdf = pdf(np.vstack((ra, dec, z))) / pdfnorm
 
         return tmppdf
-
-        
-        
-
-
-
