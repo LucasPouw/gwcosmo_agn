@@ -10,9 +10,14 @@ import pkg_resources
 import healpy as hp
 from scipy.stats import gaussian_kde
 from scipy import integrate, interpolate, random
+from astropy import units as u
+from astropy import constants as const
 
 # Global 
 posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
+#z_err_fraction = 0.06
+#a_err_fraction = 0.08
+
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
     '''
@@ -79,17 +84,16 @@ class posterior_samples(object):
         radec = gaussian_kde(two_d_arr)
         return radec    
 
-
-    def compute_3d_kde(self, catalog, distmin, distmax):
+    def compute_3d_kde(self):
         "Computes 3d KDE"
-        catalog = gwcosmo.catalog.galaxyCatalog()
-        catalog.load_glade_catalog()
+        #coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance))# / coverh))
+        radecdist = gaussian_kde(three_d_arr)
+        return radecdist
 
-        #some_galaxy = catalog.get_galaxy(1000)
-
-        ra = some_galaxy.ra
-        dec = some_galaxy.dec
-
+    def integrade_3d_kde(self, radecdist_kde, ra, dec, z):
+        pdfnorm = radecdist_kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
+        ###Clean this mess
         nt = t[np.argmax(t['Distance'] > distmin):np.argmin(t['Distance'] < distmax)]
 
         nt.sort('RA')
@@ -98,8 +102,7 @@ class posterior_samples(object):
         nt.sort('Dec')
         nt = nt[np.argmax(nt['Dec'] > np.min(self.latitude) - 1.0):np.argmin(nt['Dec'] < np.max(self.latitude ) + 1.0)]
 
-        catalog.catalog = nt
-        (pgcCat, ra, dec, dist, z, lumB, angle_error, dist_err, z_err) = catalog.extract_galaxies_table()
+        (pgcCat, ra, dec, dist, z, lumB, angle_error, dist_err, z_err) = catalog.extract_galaxies_table(nt)
 
         tmpra = np.transpose(np.tile(ra, (len(longitude[self.ngalaxies:]), 1))) - np.tile(longitude[self.ngalaxies:], (len(ra), 1))
         tmpdec = np.transpose(np.tile(dec, (len(latitude[self.ngalaxies:]), 1))) - np.tile(latitude[self.ngalaxies:], (len(dec), 1))
@@ -109,22 +112,13 @@ class posterior_samples(object):
 
         ra = ra[mask1]
         dec = dec[mask1]
-        dist = dist[mask1]
-        z = z[mask1]
-        lumB = lumB[mask1]
-        print("No. of used galaxies %i" % (len(ra)))
 
-        # Calculate posterior
-        for k, x in enumerate(hzero):
-            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-            pdf = stats.gaussian_kde(np.vstack((longitude[nsamples:], latitude[nsamples:], distance[nsamples:] / coverh)))
-            pdfnorm = pdf.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
-            tmppdf = pdf(np.vstack((ra, dec, z))) / pdfnorm
-            ph[k] = np.sum(tmppdf * lumB / (np.cos(dec) * z**2))
-            completion = cfactor * completionFun.generateCompletion(lumB, dist, distance / coverh, useNGC4993only) / (4.0 * np.pi)
-            epsilon = 0.5 * (1 - np.tanh(3.3 * np.log(distance / 80.)))
-            ph[k] = (ph[k] + np.mean((completion ) / ((distance / coverh)**2))) 
+        tmppdf = pdf(np.vstack((ra, dec, z))) / pdfnorm
 
+        return tmppdf
+
+        
+        
 
 
 
