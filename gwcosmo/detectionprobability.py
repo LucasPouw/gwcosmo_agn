@@ -13,7 +13,7 @@ import healpy as hp
 import pkg_resources
 """
 We want to create a function for $p(D|z,H_{0},I)$, so that when it is passed a value of $z$ and $H_0$,
-a probability of detection is returned.  This involves marginalising over neutron star masses, inclination, polarisation, and sky location.
+a probability of detection is returned.  This involves marginalising over masses, inclination, polarisation, and sky location.
 """
 
 class DetectionProbability(object):
@@ -45,13 +45,13 @@ class DetectionProbability(object):
         q = np.random.rand(N)
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
-        # TODO: Make the mass distribution an input (currently only set for BNSs)
         self.m1 = np.random.normal(m1_mean,m1_std,N)*1.988e30
         self.m2 = np.random.normal(m2_mean,m2_std,N)*1.988e30
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
     def __snr_squared(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
         """
+        OBSOLETE?
         the optimal snr squared for one detector, marginalising over sky location, inclination, polarisation, mass
         """
         mtot = m1+m2
@@ -110,11 +110,10 @@ class DetectionProbability(object):
         return 1/(np.power(6.0,3.0/2.0)*np.pi*m) * lal.C_SI**3/lal.G_SI
 
     
-    def pD_event(self, dl, ra, dec, m1, m2, inc, psi):
+    def pD_event(self, dl, ra, dec, m1, m2, inc, psi,gmst):
         """
         detection probability for a particular event (masses, distance, sky position and orientation)
         """
-        gmst = 0 # Set to zero as we will average over sky
         rhosqs = [ self.__snr_squared(dl, ra, dec, m1, m2, inc, psi, det, gmst) for det in self.__lal_detectors]
         combined_rhosq = np.sum(rhosqs)
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
@@ -148,7 +147,8 @@ class DetectionProbability(object):
             survival = ncx2.sf(effective_threshold**2,4,survival)
 
             pofd_dLRADec[k,:] = np.sum(survival,0)/self.Nsamps
-            
+        
+        # TODO: figure out how to precompute this object so it can be called in a useful manner.   
         survival_func_sky = interp1d(dl_array,pofd_dLRADec,bounds_error=False,fill_value=1e-10)
         hpxmap = survival_func_sky(dl)[pix_ind]
         return hp.get_interp_val(hpxmap,np.pi/2.0-Dec,RA-gmst)
@@ -176,16 +176,16 @@ class DetectionProbability(object):
         q = np.random.rand(N)
         incs = np.arcsin(2.0*q - 1.0)
         psis = np.random.rand(N)*2.0*np.pi
-        # TODO: Make the mass distribution an input (currently only set for BNSs)
         m1 = np.random.normal(1.35,0.1,N)*1.988e30
         m2 = np.random.normal(1.35,0.1,N)*1.988e30
         
         return np.mean(
-            [ self.pD_event(dl, RAs[i], Decs[i], m1[i], m2[i], incs[i], psis[i]) for i in range(N)]
+            [ self.pD_event(dl, RAs[i], Decs[i], m1[i], m2[i], incs[i], psis[i], 0.0) for i in range(N)]
             )
             
     def pD_dl(self,dl_array):
         """
+        OBSOLETE?
         Detection probability over a range of distances, returned as an interpolated function.
         """
         prob = np.zeros(len(dl_array))
