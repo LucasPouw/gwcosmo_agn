@@ -9,6 +9,39 @@ catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_dat
 groupmembers4993 = np.genfromtxt(catalog_data_path + "NGC4993group.txt", usecols=0) #NGC 4993's group
 pgc_KTgroups,groupgal = np.genfromtxt(catalog_data_path + "KTgroups.txt", usecols=(0,4), unpack=True)
 
+# Global Methods
+def vcorr(gc,apex):
+    b = gc.b
+    l = gc.l
+    v = gc.radial_velocity
+    bapex = apex.b
+    lapex = apex.l
+    vapex = apex.radial_velocity
+    return (v + vapex*( np.sin(b)*np.sin(bapex) + np.cos(b)*np.cos(bapex)*np.cos(l-lapex) ))
+
+def blue_luminosity_from_mag(m,d):
+    """
+    Returns the blue luminosity in units of L_10 given the apparent
+    magnitude and the luminosity distance
+    """
+    M_blue_solar = 5.48 # Binney & Tremaine
+    MB = m - 5.0 * np.log10( d / 10.0e-6 )
+    lum = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 )
+    if lum_cut_frac > 0.0:
+        lumCut, idx = lum_cut(lum,lum_cut_frac)
+    else: 
+        lumCut = lum
+        idx = np.arange(len(lumCut))   
+    return lumCut, idx
+
+def replace_bad_magnitudes(aa):
+    maa = np.ma.masked_values(aa,-999.)
+    return maa.filled(1e20).data
+
+def lum_cut(aa,lum_cut_value):
+    lumidx = np.where(aa>lum_cut_value*Lstar)
+    return aa[lumidx], lumidx
+    
 class galaxy(object):
     ''' Class for galaxy objects
     '''
