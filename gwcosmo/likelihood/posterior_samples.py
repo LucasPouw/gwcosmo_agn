@@ -56,13 +56,13 @@ class posterior_samples(object):
         """
         return gaussian_kde(self.distance)
 
-    def dist_prior_corr(self, dist_kde):
+    def dist_prior_corr(self):
         """
         Change of prior from uniform in volume to uniform in distance
-        dist_kde is the lineofsight_distance function passed as an argument to this function
         """
+        dist_kde = self.lineofsight_distance()
         xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 100.)
-        yy = dist_kde(xx)/xx**2.  ## Ignacio: What is dist_kde()?
+        yy = dist_kde(xx)/xx**2. 
         yy /= np.sum(yy)*(xx[1]-xx[0])
         # Interpolation of normalized prior-corrected distribution
         try:
