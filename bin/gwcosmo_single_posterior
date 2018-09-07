@@ -27,13 +27,13 @@ parser = OptionParser(
             help="MINH0: Set minimum value of H0 Posterior"),
         Option("-v", "--max_h0", metavar="MAXH0", default='220.0',
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_h0", metavar="BINSH0", default='210.0',
+        Option("-x", "--bins_h0", metavar="BINSH0", default='50',
             help="BINSH0: Set number of H0 Posterior bins"),
-        Option("-d", "--min_dist", metavar="MINDIST", default='0.1',
+        Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
             help="MINDIST: Set minimum value of luminosity distance"),
-        Option("-e", "--max_dist", metavar="MAXDIST", default='400.0',
+        Option("-e", "--max_dist", metavar="MAXDIST", default='400.0', type=float,
             help="MAXDIST: Set maximum value of luminosity distance"),
-        Option("-f", "--bins_dist", metavar="BINSDIST", default='1000',
+        Option("-f", "--bins_dist", metavar="BINSDIST", default='50', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
         Option("-g", "--galaxy_catalog", metavar="CATALOG", default=None,
             help="CATALOG: Galaxy catalog file in hdf5 format"),
@@ -132,7 +132,7 @@ def px_H0G(hzero,galaxy_catalogue,posterior_samples):
 
 
 
-def pD_H0G(hzero,galaxy_catalogue):
+def pD_H0G(hzero,galaxy_catalog,pdet):
     """
     The normalising factor for px_H0G.
     
@@ -141,7 +141,15 @@ def pD_H0G(hzero,galaxy_catalogue):
     Sums over these values.
     Returns an array of values corresponding to different values of H0.
     """  
-    return 1
+    nGal = galaxy_catalog.nGal()
+    num = np.zeros(len(hzero))
+    for n in range(len(hzero)):
+        for i in range(nGal):
+            gal = galaxy_catalog.get_galaxy(i)
+            z = gal.z
+            num[n] += pdet.pD_dl_eval(gwcosmo.standard_cosmology.dofz(z,hzero[n]))
+        #print("calculated for H0 {}/{}".format(n+1,len(hzero)))
+    return num
 
 
 
@@ -207,21 +215,32 @@ import gwcosmo
 def main():
     "Compute P(H0)"
 
-    #Load glade catalog...
-    catalog = gwcosmo.catalog.galaxyCatalog()
-    catalog.load_glade_catalog()
+    ##Load glade catalog...
+    #catalog = gwcosmo.catalog.galaxyCatalog()
+    #catalog.load_glade_catalog()
 
     # load mdc catalogs... version = ['1.0','2.1','3.1']
     catalog = gwcosmo.catalog.galaxyCatalog()
     catalog.load_mdc_catalog(version='1.0')
 
-    some_galaxy = catalog.get_galaxy(1000)
+    #some_galaxy = catalog.get_galaxy(1000)
+    #ra = some_galaxy.ra
+    #print ra
 
-    ra = some_galaxy.ra
-    print ra
+    #set up array of luminosity distance values
+    dl = np.linspace(opts.min_dist,opts.max_dist,opts.bins_dist)
+    
+    #set up detection probability for BNSs over the range dl
+    dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
+    
+    test = pD_H0G(hzero,catalog,dp)
+    
+    plt.figure()
+    plt.plot(hzero,test)
+    plt.savefig('pD_H0G.png')
 
-    posterior_file = "posterior_" + options_string
-    np.savez(posterior_file + options_string + '.npz', hzero)
+    #posterior_file = "posterior_" + options_string
+    #np.savez(posterior_file + options_string + '.npz', hzero)
 
     return 0
 

@@ -12,6 +12,7 @@ H0 : Hubble parameter in km/s/Mpc from PLACNK 2013 best fit
 
 import numpy as np
 from scipy import integrate
+import lal
 
 c = 2.99792458e+05 # in km/s
 Omega_m = 0.3 # 0.3175 # PLANCK best fit
@@ -158,4 +159,10 @@ def mu(dL):
   distance modulus, mu = 5*np.log10(dL)+25
   """
   return 5*np.log10(dL)+25 # dL has to be in Mpc
+
+def dofz(z,H0):
+    """
+    Very basic cosmology
+    """
+    return (lal.C_SI*z)/(H0*1000)
   

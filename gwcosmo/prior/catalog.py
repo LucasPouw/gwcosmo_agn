@@ -147,6 +147,20 @@ class galaxyCatalog(object):
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
+        
+    def nGal(self,version='1.0'):
+        if version == '1.0':
+            self.catalog_file = catalog_data_path + "mdc_v1_cat.txt"
+        if version == '2.1':
+            self.catalog_file = catalog_data_path + "mdc_v2_lim_cat.txt"
+        if version == '3.1':
+            self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
+
+        t = Table.read(self.catalog_file,format=self.catalog_format)
+        galaxies={}
+        nGal = len(t)
+        return nGal
 
     def get_galaxy(self,index):
         return self.dictionary[str(int(index))]
+
