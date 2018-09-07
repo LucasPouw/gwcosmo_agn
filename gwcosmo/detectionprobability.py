@@ -24,7 +24,8 @@ class DetectionProbability(object):
     def __init__(self, m1_mean, m1_std, m2_mean, m2_std, dl_array, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=8):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
-        # TODO: find official place where PSDs are stored.
+        # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
+        # Also techically ASDs - rename
         if psds is not None:
             self.psds = psds
         else:
@@ -54,7 +55,7 @@ class DetectionProbability(object):
         
         # precompute values which will be called multiple times
         self.interp_dist = self.__pD_dl(self.dl_array)
-        self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array) # make this one optional, as it takes several minutes to set up and is not always needed?
+        self.interp_map = None
        
         
     def __snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
@@ -72,7 +73,7 @@ class DetectionProbability(object):
             return np.power(f,-7.0/3.0)/(PSD(f)**2)
 
         fmin = 10 # Hz
-        fmax = 1/(np.power(6.0,3.0/2.0)*np.pi*mtot) * lal.C_SI**3/lal.G_SI # check units
+        fmax = self.__fmax(mtot)
         num = quad(I,fmin,fmax,epsabs=0,epsrel=1.49e-4)[0]
     
         return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
@@ -96,7 +97,7 @@ class DetectionProbability(object):
 
     def __numfmax_fmax(self,M_min):
         """
-        what exactly does this do?
+        lookup table for snr as a function of max frequency
         """
         PSD = self.psds
         fmax = lambda m: self.__fmax(m)
@@ -205,6 +206,8 @@ class DetectionProbability(object):
         """
         detection probability evaluated at a specific dl,ra,dec and gmst.
         """
+        if self.interp_map == None:
+            self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
         no_pix = hp.pixelfunc.nside2npix(self.Nside)
         pix_ind = range(0,no_pix)
         survival_func_sky = self.interp_map
