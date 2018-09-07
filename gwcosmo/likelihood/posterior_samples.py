@@ -56,9 +56,10 @@ class posterior_samples(object):
         """
         return gaussian_kde(self.distance)
 
-    def dist_prior_corr(self, distance):
+    def dist_prior_corr(self, dist_kde):
         """
         Change of prior from uniform in volume to uniform in distance
+        dist_kde is the lineofsight_distance function passed as an argument to this function
         """
         xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 100.)
         yy = dist_kde(xx)/xx**2.  ## Ignacio: What is dist_kde()?
