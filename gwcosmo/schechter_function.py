@@ -5,6 +5,7 @@ Module with Schechter magnitude function:
 """
 from numpy import *
 from scipy.integrate import quad
+import numpy as np
 
 class SchechterMagFunctionInternal(object):
     def __init__(self,Mstar,alpha,phistar):
@@ -40,4 +41,10 @@ def SchechterMagFunction(H0=70.,Mstar_obs=-20.457,alpha=-1.07,phistar=1.):
     Mstar = Mstar_obs + 5.*np.log10(H0/100.)
     smf = SchechterMagFunctionInternal(Mstar, alpha, phistar)
     return smf.evaluate
+
+def M_Mobs(H0,M_obs):
+    """
+    Given an observed absolute magnitude, returns absolute magnitude
+    """
+    return M_obs + 5.*np.log10(H0/100.)
 

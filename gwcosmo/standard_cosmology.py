@@ -160,9 +160,23 @@ def mu(dL):
   """
   return 5*np.log10(dL)+25 # dL has to be in Mpc
 
-def dofz(z,H0):
+def dl_mM(m,M):
+    """
+    returns luminosity distance in Mpc given apparent magnitude and absolute magnitude
+    """
+    return 10**(0.2*(m-M-25))
+
+
+# Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
+def dl_zH0(z,H0):
     """
     Very basic cosmology
     """
     return (lal.C_SI*z)/(H0*1000)
+    
+def z_dlH0(dl,H0):
+    """
+    Very basic cosmology
+    """
+    return (H0*1000)*dl/lal.C_SI
   

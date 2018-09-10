@@ -15,6 +15,9 @@ import numpy as np
 import matplotlib 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+from scipy.integrate import dblquad
+
+import time
 
 # Command line options
 parser = OptionParser(
@@ -142,36 +145,58 @@ def pD_H0G(hzero,galaxy_catalog,pdet):
     Returns an array of values corresponding to different values of H0.
     """  
     nGal = galaxy_catalog.nGal()
-    num = np.zeros(len(hzero))
-    for n in range(len(hzero)):
-        for i in range(nGal):
-            gal = galaxy_catalog.get_galaxy(i)
-            z = gal.z
-            num[n] += pdet.pD_dl_eval(gwcosmo.standard_cosmology.dofz(z,hzero[n]))
-        #print("calculated for H0 {}/{}".format(n+1,len(hzero)))
-    return num
+    den = np.zeros(len(hzero))       
+    for i in range(nGal):
+        gal = galaxy_catalog.get_galaxy(i)
+        z = gal.z
+        den += pdet.pD_dl_eval(gwcosmo.standard_cosmology.dl_zH0(z,hzero))
+    return den
 
 
 
-def pG_H0D(hzero,mth):
+def pG_H0D(hzero,mth,pdet):
     """
     The probability that the host galaxy is in the catalogue given detection and H0.
     
     Takes an array of H0 values, and the apparent magnitude threshold of the galaxy catalogue.
     Integrates p(M|H0)*p(z)*p(D|dL(z,H0)) over z and M, incorporating mth into limits.  Should be internally normalised.
     Returns an array of probabilities corresponding to different H0s.
-    """
-    return 1
+    """  
+    # Warning - this integral can misbehave for small values of H0 (<25).  TODO: fix this.
+    num = np.zeros(len(hzero)) 
+    den = np.zeros(len(hzero))
+    
+    # TODO: vectorize this if possible
+    for i in range(len(hzero)):
+        
+        def I(z,M):
+            return gwcosmo.schechter_function.SchechterMagFunction(H0=hzero[i])(M)*pdet.pD_dl_eval(gwcosmo.standard_cosmology.dl_zH0(z,hzero[i]))*gwcosmo.prior.basic.pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        Mmin = gwcosmo.schechter_function.M_Mobs(hzero[i],-22.96)
+        Mmax = gwcosmo.schechter_function.M_Mobs(hzero[i],-12.96)
+        
+        num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: gwcosmo.standard_cosmology.z_dlH0(gwcosmo.standard_cosmology.dl_mM(mth,x),hzero[i]),epsabs=0,epsrel=1.49e-6)[0]
+        den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: 6.0,epsabs=0,epsrel=1.49e-6)[0]
+        print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
+    
+    return num/den    
 
 
 
-def pnG_H0D(hzero,pG_H0D):
+def pnG_H0D(hzero,pG=None):
     """
     The probability that a galaxy is not in the catalogue given detection and H0
     
     Returns the complement of pG_H0D.
     """
-    return 1
+    if pG is not None:
+        return 1.0 - pG
+    else:
+        return 1.0 - pG_H0D(H0)
+
 
    
     
@@ -233,11 +258,21 @@ def main():
     #set up detection probability for BNSs over the range dl
     dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
-    test = pD_H0G(hzero,catalog,dp)
+    print("start pD_H0G: {}".format(time.asctime()))
+    pdet_ingal = pD_H0G(hzero,catalog,dp)
+    print("end pD_H0G: {}".format(time.asctime()))
+    
+    print("start pG_H0D: {}".format(time.asctime()))
+    pgal = pG_H0D(hzero,18.0,dp)
+    print("end pG_H0D: {}".format(time.asctime()))
     
     plt.figure()
-    plt.plot(hzero,test)
+    plt.plot(hzero,pdet_ingal)
     plt.savefig('pD_H0G.png')
+    
+    plt.figure()
+    plt.plot(hzero,pgal)
+    plt.savefig('pG_H0D.png')
 
     #posterior_file = "posterior_" + options_string
     #np.savez(posterior_file + options_string + '.npz', hzero)
