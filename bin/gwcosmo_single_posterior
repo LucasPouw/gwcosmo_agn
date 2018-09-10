@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-from scipy.integrate import dblquad
+from scipy.integrate import quad, dblquad
 
 import time
 
@@ -162,7 +162,7 @@ def pG_H0D(hzero,mth,pdet):
     Integrates p(M|H0)*p(z)*p(D|dL(z,H0)) over z and M, incorporating mth into limits.  Should be internally normalised.
     Returns an array of probabilities corresponding to different H0s.
     """  
-    # Warning - this integral can misbehave for small values of H0 (<25).  TODO: fix this.
+    # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
     num = np.zeros(len(hzero)) 
     den = np.zeros(len(hzero))
     
@@ -178,24 +178,22 @@ def pG_H0D(hzero,mth,pdet):
         Mmin = gwcosmo.schechter_function.M_Mobs(hzero[i],-22.96)
         Mmax = gwcosmo.schechter_function.M_Mobs(hzero[i],-12.96)
         
-        num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: gwcosmo.standard_cosmology.z_dlH0(gwcosmo.standard_cosmology.dl_mM(mth,x),hzero[i]),epsabs=0,epsrel=1.49e-6)[0]
-        den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: 6.0,epsabs=0,epsrel=1.49e-6)[0]
-        print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
+        # TODO: change zmax = 6.0 to a reasonably high limit
+        num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: gwcosmo.standard_cosmology.z_dlH0(gwcosmo.standard_cosmology.dl_mM(mth,x),hzero[i]),epsabs=0,epsrel=1.49e-4)[0]
+        den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+        #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
     
     return num/den    
 
 
 
-def pnG_H0D(hzero,pG=None):
+def pnG_H0D(hzero,pG):
     """
     The probability that a galaxy is not in the catalogue given detection and H0
     
     Returns the complement of pG_H0D.
     """
-    if pG is not None:
-        return 1.0 - pG
-    else:
-        return 1.0 - pG_H0D(H0)
+    return 1.0 - pG
 
 
    
@@ -213,7 +211,7 @@ def px_H0nG(hzero,mth,posterior_samples):
 
 
 
-def pD_H0nG(hzero,mth):
+def pD_H0nG(hzero,mth,pdet):
     """
     Normalising factor for px_H0nG
     
@@ -221,11 +219,25 @@ def pD_H0nG(hzero,mth):
     Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
     Returns an array of values corresponding to different values of H0.
     """  
-    return 1
+    # TODO: same fixes as for pG_H0D 
+    den = np.zeros(len(hzero))
+    
+    for i in range(len(hzero)):
+        
+        def I(z,M):
+            return gwcosmo.schechter_function.SchechterMagFunction(H0=hzero[i])(M)*pdet.pD_dl_eval(gwcosmo.standard_cosmology.dl_zH0(z,hzero[i]))*gwcosmo.prior.basic.pz_nG(z)
+        
+        Mmin = gwcosmo.schechter_function.M_Mobs(hzero[i],-22.96)
+        Mmax = gwcosmo.schechter_function.M_Mobs(hzero[i],-12.96)
+        
+        den[i] = dblquad(I,Mmin,Mmax,lambda x: gwcosmo.standard_cosmology.z_dlH0(gwcosmo.standard_cosmology.dl_mM(mth,x),hzero[i]),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+        print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
+    
+    return den
 
 
 
-def pH0_D(hzero,prior_choice):
+def pH0_D(hzero,pdet,prior='uniform'):
     """
     The prior probability of H0 given a detection
     
@@ -233,7 +245,19 @@ def pH0_D(hzero,prior_choice):
     Integrates p(D|dL(z,H0))*p(z) over z
     Returns an array of values corresponding to different values of H0.
     """
-    return 1
+    pH0 = np.zeros(len(hzero))
+    
+    for i in range(len(hzero)):
+        def I(z):
+            return pdet.pD_dl_eval(gwcosmo.standard_cosmology.dl_zH0(z,hzero[i]))*gwcosmo.prior.basic.pz_nG(z)
+   
+        pH0[i] = quad(I,0,6.0,epsabs=0,epsrel=1.49e-4)[0]
+            
+    if prior == 'jeffreys':
+        return pH0/hzero
+        
+    else:
+        return pH0
 
 import gwcosmo
 
@@ -247,6 +271,9 @@ def main():
     # load mdc catalogs... version = ['1.0','2.1','3.1']
     catalog = gwcosmo.catalog.galaxyCatalog()
     catalog.load_mdc_catalog(version='1.0')
+    
+    # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
+    mth = 18.0 # as a test - not true for MDC v1
 
     #some_galaxy = catalog.get_galaxy(1000)
     #ra = some_galaxy.ra
@@ -262,17 +289,46 @@ def main():
     pdet_ingal = pD_H0G(hzero,catalog,dp)
     print("end pD_H0G: {}".format(time.asctime()))
     
-    print("start pG_H0D: {}".format(time.asctime()))
-    pgal = pG_H0D(hzero,18.0,dp)
-    print("end pG_H0D: {}".format(time.asctime()))
-    
     plt.figure()
     plt.plot(hzero,pdet_ingal)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(D|H_0,G)$ (unnormalised)')
     plt.savefig('pD_H0G.png')
     
+    #print("start pG_H0D: {}".format(time.asctime()))
+    #pgal = pG_H0D(hzero,mth,dp)
+    #print("end pG_H0D: {}".format(time.asctime()))
+    #
+    #pngal = pnG_H0D(hzero,pgal)
+    #
+    #plt.figure()
+    #plt.plot(hzero,pgal,label='$p(G|H_0,D)$')
+    #plt.plot(hzero,pngal,label='$p(\overline{G}|H_0,D)$')
+    #plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    #plt.ylabel('Probability')
+    #plt.legend()
+    #plt.savefig('pG_H0D.png')
+    
+    #print("start pD_H0nG: {}".format(time.asctime()))
+    #pdet_outgal = pD_H0nG(hzero,mth,dp)
+    #print("end pD_H0nG: {}".format(time.asctime()))
+    #
+    #plt.figure()
+    #plt.plot(hzero,pdet_outgal)
+    #plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    #plt.ylabel('$p(D|H_0,\overline{G})$ (unnormalised)')
+    #plt.savefig('pD_H0nG.png')
+    
+    print("start pD_H0nG: {}".format(time.asctime()))
+    pH0 = pH0_D(hzero,dp,prior='jeffreys')
+    print("end pD_H0nG: {}".format(time.asctime()))
+    
     plt.figure()
-    plt.plot(hzero,pgal)
-    plt.savefig('pG_H0D.png')
+    plt.plot(hzero,pH0)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(H_0|D)$ (unnormalised)')
+    plt.savefig('pH0_D.png')
+    
 
     #posterior_file = "posterior_" + options_string
     #np.savez(posterior_file + options_string + '.npz', hzero)
