@@ -231,7 +231,7 @@ def pD_H0nG(hzero,mth,pdet):
         Mmax = gwcosmo.schechter_function.M_Mobs(hzero[i],-12.96)
         
         den[i] = dblquad(I,Mmin,Mmax,lambda x: gwcosmo.standard_cosmology.z_dlH0(gwcosmo.standard_cosmology.dl_mM(mth,x),hzero[i]),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
-        print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
+        #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(hzero)))
     
     return den
 
@@ -246,7 +246,6 @@ def pH0_D(hzero,pdet,prior='uniform'):
     Returns an array of values corresponding to different values of H0.
     """
     pH0 = np.zeros(len(hzero))
-    
     for i in range(len(hzero)):
         def I(z):
             return pdet.pD_dl_eval(gwcosmo.standard_cosmology.dl_zH0(z,hzero[i]))*gwcosmo.prior.basic.pz_nG(z)
@@ -254,8 +253,7 @@ def pH0_D(hzero,pdet,prior='uniform'):
         pH0[i] = quad(I,0,6.0,epsabs=0,epsrel=1.49e-4)[0]
             
     if prior == 'jeffreys':
-        return pH0/hzero
-        
+        return pH0/hzero  
     else:
         return pH0
 
@@ -295,29 +293,29 @@ def main():
     plt.ylabel('$p(D|H_0,G)$ (unnormalised)')
     plt.savefig('pD_H0G.png')
     
-    #print("start pG_H0D: {}".format(time.asctime()))
-    #pgal = pG_H0D(hzero,mth,dp)
-    #print("end pG_H0D: {}".format(time.asctime()))
-    #
-    #pngal = pnG_H0D(hzero,pgal)
-    #
-    #plt.figure()
-    #plt.plot(hzero,pgal,label='$p(G|H_0,D)$')
-    #plt.plot(hzero,pngal,label='$p(\overline{G}|H_0,D)$')
-    #plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    #plt.ylabel('Probability')
-    #plt.legend()
-    #plt.savefig('pG_H0D.png')
+    print("start pG_H0D: {}".format(time.asctime()))
+    pgal = pG_H0D(hzero,mth,dp)
+    print("end pG_H0D: {}".format(time.asctime()))
     
-    #print("start pD_H0nG: {}".format(time.asctime()))
-    #pdet_outgal = pD_H0nG(hzero,mth,dp)
-    #print("end pD_H0nG: {}".format(time.asctime()))
-    #
-    #plt.figure()
-    #plt.plot(hzero,pdet_outgal)
-    #plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    #plt.ylabel('$p(D|H_0,\overline{G})$ (unnormalised)')
-    #plt.savefig('pD_H0nG.png')
+    pngal = pnG_H0D(hzero,pgal)
+    
+    plt.figure()
+    plt.plot(hzero,pgal,label='$p(G|H_0,D)$')
+    plt.plot(hzero,pngal,label='$p(\overline{G}|H_0,D)$')
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('Probability')
+    plt.legend()
+    plt.savefig('pG_H0D.png')
+    
+    print("start pD_H0nG: {}".format(time.asctime()))
+    pdet_outgal = pD_H0nG(hzero,mth,dp)
+    print("end pD_H0nG: {}".format(time.asctime()))
+    
+    plt.figure()
+    plt.plot(hzero,pdet_outgal)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(D|H_0,\overline{G})$ (unnormalised)')
+    plt.savefig('pD_H0nG.png')
     
     print("start pD_H0nG: {}".format(time.asctime()))
     pH0 = pH0_D(hzero,dp,prior='jeffreys')
@@ -327,6 +325,7 @@ def main():
     plt.plot(hzero,pH0)
     plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
     plt.ylabel('$p(H_0|D)$ (unnormalised)')
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     plt.savefig('pH0_D.png')
     
 
