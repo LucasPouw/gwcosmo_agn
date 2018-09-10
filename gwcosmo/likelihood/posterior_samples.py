@@ -12,6 +12,7 @@ from scipy.stats import gaussian_kde
 from scipy import integrate, interpolate, random
 from astropy import units as u
 from astropy import constants as const
+from astropy.table import Table
 
 # Global 
 posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
@@ -91,9 +92,18 @@ class posterior_samples(object):
         radecdist = gaussian_kde(three_d_arr)
         return radecdist
 
-    def integrade_3d_kde(self, radecdist_kde, ra, dec, z):
-        pdfnorm = radecdist_kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
+    def compute_3d_probability(self, ra, dec, dist, z):
+        distmin = 0.1 
+        distmax = 200.
+
+        ngalaxies = 500
+        z_err_fraction = 0.06
+        a_err_fraction = 0.08
+
+        kde = self.compute_3d_kde()
+        pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
         ###Clean this mess
+        t = Table([ra,dec,dist,z],names=('RA','Dec', 'Distance', 'z'))
         nt = t[np.argmax(t['Distance'] > distmin):np.argmin(t['Distance'] < distmax)]
 
         nt.sort('RA')
@@ -102,17 +112,20 @@ class posterior_samples(object):
         nt.sort('Dec')
         nt = nt[np.argmax(nt['Dec'] > np.min(self.latitude) - 1.0):np.argmin(nt['Dec'] < np.max(self.latitude ) + 1.0)]
 
-        (pgcCat, ra, dec, dist, z, lumB, angle_error, dist_err, z_err) = catalog.extract_galaxies_table(nt)
+        ra = nt['RA']
+        dec = nt['Dec']
+        z = nt['z']
 
-        tmpra = np.transpose(np.tile(ra, (len(longitude[self.ngalaxies:]), 1))) - np.tile(longitude[self.ngalaxies:], (len(ra), 1))
-        tmpdec = np.transpose(np.tile(dec, (len(latitude[self.ngalaxies:]), 1))) - np.tile(latitude[self.ngalaxies:], (len(dec), 1))
+        tmpra = np.transpose(np.tile(ra, (len(self.longitude[ngalaxies:]), 1))) - np.tile(self.longitude[ngalaxies:], (len(ra), 1))
+        tmpdec = np.transpose(np.tile(dec, (len(self.latitude[ngalaxies:]), 1))) - np.tile(self.latitude[ngalaxies:], (len(dec), 1))
         tmpm = np.power(tmpra, 2.) + np.power(tmpdec, 2.)
         mask1 = np.ma.masked_where(tmpm > (a_err_fraction**2), tmpm).filled(0)
         mask1 = np.max((mask1 > 0), 1)
 
         ra = ra[mask1]
         dec = dec[mask1]
+        z = z[mask1]
 
-        tmppdf = pdf(np.vstack((ra, dec, z))) / pdfnorm
+        tmppdf = kde(np.vstack((ra, dec, z))) / pdfnorm
 
         return tmppdf
