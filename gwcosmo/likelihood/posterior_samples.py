@@ -75,8 +75,9 @@ class posterior_samples(object):
         """
         Change of prior from uniform in volume to uniform in distance
         """
+        # TODO: decide on resolution of grid which won't cause issues down the line
         dist_kde = self.lineofsight_distance()
-        xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 100.)
+        xx = np.linspace(0.9*np.min(self.distance), 1.1*np.max(self.distance), 1000.)
         yy = dist_kde(xx)/xx**2. 
         yy /= np.sum(yy)*(xx[1]-xx[0])
         # Interpolation of normalized prior-corrected distribution
@@ -98,6 +99,32 @@ class posterior_samples(object):
         two_d_arr = np.vstack((self.longitude, self.latitude))
         radec = gaussian_kde(two_d_arr)
         return radec    
+        
+    def sky_prior_corr(self):
+        """
+        Remove uniform in sky prior
+        """
+        # Currently not working
+        # TODO: make this work in similar way to dist_prior_corr
+        # Also note, might have issues using this method due to wrapping around on the sky.  Move to skymaps?
+        sky_kde = self.compute_2d_kde()
+        ww = np.linspace(0.9*np.min(self.longitude), 1.1*np.max(self.longitude), 100.)
+        xx = np.linspace(0.9*np.min(self.latitude), 1.1*np.max(self.latitude), 100.)
+        yy = sky_kde([ww,xx])*4.0*np.pi/np.cos(xx)
+        yy /= np.sum(yy)*(xx[1]-xx[0])
+        # Interpolation of normalized prior-corrected distribution
+        try:
+            # The following works only on recent python versions
+            sky_support = interpolate.InterpolatedUnivariateSpline(xx, yy, ext=1)
+        except TypeError:
+            # A workaround to prevent bounds error in earlier python versions
+            sky_interp = interpolate.InterpolatedUnivariateSpline(xx, yy)
+            def sky_support(x):
+                if (x>=xx[0]) and (x<=xx[-1]):
+                    return sky_interp(x)
+                return 0.
+        sky_support = np.vectorize(sky_support)
+        return sky_support
 
     def compute_3d_kde(self):
         "Computes 3d KDE"

@@ -33,12 +33,14 @@ class MasterEquation(object):
         weight = np.ones(nGal)
         
         skykernel = posterior_samples.compute_2d_kde()
+        #skykernel = posterior_samples.sky_prior_corr()
         distkernel = posterior_samples.dist_prior_corr()
 
         num = np.zeros(len(H0)) 
         # loop over all possible galaxies
         for i in range(nGal):
             gal = galaxy_catalog.get_galaxy(i)
+            # TODO: move removal of sky prior in to posterior_samples.py
             tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
             tempdist = distkernel(dl_zH0(gal.z,H0))
             
