@@ -1,10 +1,7 @@
 """
 LALinference posterior samples class and methods
+Ignacio Magana, Ankan Sur
 """
-__author__ = "Ignacio Magana Hernandez <ignacio.magana@ligo.org>"
-
-
-"""Module containing functionality for creation and management of completion functions."""
 import numpy as np
 import pkg_resources
 import healpy as hp
@@ -44,6 +41,19 @@ class posterior_samples(object):
         self.lalinference_path = lalinference_path
         self.lalinference_data = np.genfromtxt(lalinference_path, names=True)
         self.distance = self.lalinference_data['distance']
+        self.longitude = self.lalinference_data['ra']
+        self.latitude = self.lalinference_data['dec']
+        self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
+        self.nsamples = len(self.weight)
+
+        return self.distance, self.longitude, self.latitude
+
+    def load_posterior_samples_hdf5(self, samples_file_path):
+        """ Loads hdf5 posterior samples
+        """
+        self.lalinference_path = samples_file_path
+        self.lalinference_data = Table.read(self.lalinference_path)
+        self.distance = self.lalinference_data['dist']
         self.longitude = self.lalinference_data['ra']
         self.latitude = self.lalinference_data['dec']
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
