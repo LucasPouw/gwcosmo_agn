@@ -1,4 +1,6 @@
-"""Module containing functionality for creation and management of galaxy catalogs."""
+"""Module containing functionality for creation and management of galaxy catalogs.
+Ignacio Magana
+"""
 
 import numpy as np
 from astropy.table import Table
@@ -72,10 +74,17 @@ class galaxyCatalog(object):
     def load_glade_catalog(self, version='corrected'):
         if version == 'corrected':
             self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
+            t = Table.read(self.catalog_file,format=self.catalog_format)
         if version == 'original':
             self.catalog_file = catalog_data_path + "gladecatalogv2.3.dat"
+            t = Table.read(self.catalog_file,format=self.catalog_format)
+        if version == 'maya': #Here for testing purposes
+            self.catalog_file = catalog_data_path + "glade23_maya_cuts.txt"
+            pgcsel,rasel,decsel,zsel_group,bmagsel,bMagsel,kmagsel,kMagsel = np.genfromtxt(self.catalog_file,unpack=True)
+            __ = np.ones(len(pgcsel))
+            t = Table([pgcsel, __, __, rasel, decsel, zsel_group, __, __, bMagsel, kMagsel ],
+                names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
 
-        t = Table.read(self.catalog_file,format=self.catalog_format)
         galaxies={}
         nGal = len(t)
         for k in range(0,nGal):
@@ -103,18 +112,8 @@ class galaxyCatalog(object):
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
         
-    def nGal(self,version='1.0'):
-        if version == '1.0':
-            self.catalog_file = catalog_data_path + "mdc_v1_cat.txt"
-        if version == '2.1':
-            self.catalog_file = catalog_data_path + "mdc_v2_lim_cat.txt"
-        if version == '3.1':
-            self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
-
-        t = Table.read(self.catalog_file,format=self.catalog_format)
-        galaxies={}
-        nGal = len(t)
-        return nGal
+    def nGal(self):
+        return len(self.dictionary)
 
     def get_galaxy(self,index):
         return self.dictionary[str(int(index))]
