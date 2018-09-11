@@ -40,8 +40,8 @@ class galaxy(object):
         self.pgc_number = row['PGC']
         self.galaxy_name = row['Galaxy Name']
         self.cluster = row['Cluster']
-        self.ra = row['RA']
-        self.dec = row['Dec']
+        self.ra = row['RA']*np.pi/180.
+        self.dec = row['Dec']*np.pi/180.
         self.z = row['z']
         self.distance = row['Distance']
         self.distance_error = row['Distance Error']
@@ -71,7 +71,7 @@ class galaxyCatalog(object):
         self.indexes = indexes
         self.dictionary = dictionary
 
-    def load_glade_catalog(self, version='corrected'):
+    def load_glade_catalog(self, version='maya'):
         if version == 'corrected':
             self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
             t = Table.read(self.catalog_file,format=self.catalog_format)
