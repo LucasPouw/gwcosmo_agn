@@ -2,9 +2,8 @@
 
 """
 This script computes H0 as a function of H0 bins.
+Ignacio Magana, Rachel Gray, Ankan Sur
 """
-__author__ = "Ignacio Magana Hernandez <ignacio.magana@ligo.org>"
-
 # System imports
 import os
 import sys
@@ -125,12 +124,12 @@ def main():
     "Compute P(H0)"
 
     ##Load glade catalog...
-    #catalog = gwcosmo.catalog.galaxyCatalog()
-    #catalog.load_glade_catalog()
+    catalog = gwcosmo.catalog.galaxyCatalog()
+    catalog.load_glade_catalog(version='maya')
 
     # load mdc catalogs... version = ['1.0','2.1','3.1']
-    catalog = gwcosmo.catalog.galaxyCatalog()
-    catalog.load_mdc_catalog(version='1.0')
+    #catalog = gwcosmo.catalog.galaxyCatalog()
+    #catalog.load_mdc_catalog(version='1.0')
     
     samples = gwcosmo.posterior_samples.posterior_samples()
     samples.load_posterior_samples()
@@ -148,6 +147,16 @@ def main():
     dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     me = gwcosmo.master.MasterEquation(catalog,dp)
+
+    print("start px_H0nG: {}".format(time.asctime()))
+    px_H0nG = me.px_H0nG(hzero,mth,samples)
+    print("end px_H0nG: {}".format(time.asctime()))
+    
+    plt.figure()
+    plt.plot(hzero,px_H0nG)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(x|H_0,\overline{G})$ (unnormalised)')
+    plt.savefig('px_H0nG.png')
 
     print("start px_H0G: {}".format(time.asctime()))
     px_H0G = me.px_H0G(hzero,catalog,samples)
@@ -204,6 +213,16 @@ def main():
     plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     plt.savefig('pH0_D.png')
     
+    print("start pH0_xD: {}".format(time.asctime()))
+    pH0_xD = pH0*( pgal*px_H0G/pdet_ingal + pngal*px_H0nG/pdet_outgal )
+    print("end pH0_xD: {}".format(time.asctime()))
+    
+    plt.figure()
+    plt.plot(hzero,pH0_xD)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(H_0|x,D)$')
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    plt.savefig('pH0_xD.png')
 
     #posterior_file = "posterior_" + options_string
     #np.savez(posterior_file + options_string + '.npz', hzero)

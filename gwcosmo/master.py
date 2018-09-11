@@ -1,7 +1,6 @@
-
 """
-Detection probability
-Rachel Gray, John Veitch
+Master Equation
+Rachel Gray, John Veitch, Ignacio Magana
 """
 import lal
 import numpy as np
@@ -40,16 +39,8 @@ class MasterEquation(object):
         # loop over all possible galaxies
         for i in range(nGal):
             gal = galaxy_catalog.get_galaxy(i)
-            # if using real data samples
-            if posterior_samples is not None:
-                tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
-                tempdist = distkernel.evaluate(dl_zH0(gal.z,H0))
-                #if distpost==False: 
-                    # we remove distance squared prior from the samples #TODO: deal with distpost==False condition neatly.
-                    #tempdist /= dl_zH0(gal.z,H0)**2
-            #else:
-            #    tempdist = ncx2.pdf(rhosq,2,snr(dl_zH0(gal.z,H0))**2) #TODO: snr and rhosq need to be defined
-            #    tempsky = 1.0
+            tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+            tempdist = distkernel.evaluate(dl_zH0(gal.z,H0))
             
             num += tempdist*tempsky*weight[i]
 
@@ -124,8 +115,20 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        return 1
+        num = np.zeros(len(H0))
+        
+        skykernel = posterior_samples.compute_2d_kde()
+        distkernel = posterior_samples.lineofsight_distance()
 
+        for i in range(len(H0)):
+            def Inum(z,M):
+                # we remove distance squared prior from the samples
+                return distkernel.evaluate(dl_zH0(z,H0[i]))*pz_nG(z)*SchechterMagFunction(H0=H0[i])(M)/dl_zH0(z,H0[i])**2
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
+
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0[i]),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+        return num
 
     def pD_H0nG(self,H0,mth,pdet):
         """
