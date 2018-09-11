@@ -10,6 +10,7 @@ from scipy import integrate, interpolate, random
 from astropy import units as u
 from astropy import constants as const
 from astropy.table import Table
+import h5py
 
 # Global 
 posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
@@ -51,11 +52,14 @@ class posterior_samples(object):
     def load_posterior_samples_hdf5(self, samples_file_path):
         """ Loads hdf5 posterior samples
         """
-        self.lalinference_path = samples_file_path
-        self.lalinference_data = Table.read(self.lalinference_path)
-        self.distance = self.lalinference_data['dist']
-        self.longitude = self.lalinference_data['ra']
-        self.latitude = self.lalinference_data['dec']
+        group_name = 'lalinference_mcmc'
+        dataset_name = 'posterior_samples'
+        f1 = h5py.File(samples_file_path, 'r')
+        group = f1[group_name]
+        post = group[dataset_name]
+        self.distance = post['dist']
+        self.longitude = post['ra']
+        self.latitude = post['dec']
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
 
