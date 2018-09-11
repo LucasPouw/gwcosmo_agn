@@ -14,12 +14,14 @@ class MasterEquation(object):
     """
     A class to hold all the individual components of the "master equation" (someone please suggest a better name), and stitch them together in the right way
     """    
-    def __init__(self,galaxy_catalog,pdet,samples=None,skymap=None):
+    def __init__(self,H0,galaxy_catalog,pdet,event_data):
+        self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
-        
+        self.event_data = event_data
+        self.mth = 18.0 # TODO: get this from galaxy_catalog, not hardcoding
     
-    def px_H0G(self,H0,galaxy_catalog,posterior_samples):
+    def px_H0G(self,H0,galaxy_catalog,event_data):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -32,9 +34,9 @@ class MasterEquation(object):
         nGal = galaxy_catalog.nGal()
         weight = np.ones(nGal)
         
-        skykernel = posterior_samples.compute_2d_kde()
-        #skykernel = posterior_samples.sky_prior_corr()
-        distkernel = posterior_samples.dist_prior_corr()
+        skykernel = event_data.compute_2d_kde()
+        #skykernel = event_data.sky_prior_corr()
+        distkernel = event_data.dist_prior_corr()
 
         num = np.zeros(len(H0)) 
         # loop over all possible galaxies
@@ -108,7 +110,7 @@ class MasterEquation(object):
         return 1.0 - pG
        
         
-    def px_H0nG(self,H0,mth,posterior_samples):
+    def px_H0nG(self,H0,mth,event_data):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -119,18 +121,20 @@ class MasterEquation(object):
         """
         num = np.zeros(len(H0))
         
-        skykernel = posterior_samples.compute_2d_kde()
-        distkernel = posterior_samples.lineofsight_distance()
+        skykernel = event_data.compute_2d_kde()
+        #distkernel = event_data.lineofsight_distance()
+        distkernel = event_data.dist_prior_corr()
 
         for i in range(len(H0)):
             def Inum(z,M):
                 # we remove distance squared prior from the samples
-                return distkernel.evaluate(dl_zH0(z,H0[i]))*pz_nG(z)*SchechterMagFunction(H0=H0[i])(M)/dl_zH0(z,H0[i])**2
+                return distkernel(dl_zH0(z,H0[i]))*pz_nG(z)*SchechterMagFunction(H0=H0[i])(M)
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
 
             num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0[i]),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
         return num
+
 
     def pD_H0nG(self,H0,mth,pdet):
         """
@@ -176,3 +180,39 @@ class MasterEquation(object):
             return pH0/H0  
         else:
             return pH0
+            
+            
+    def likelihood(self,complete=False):
+        """
+        The likelihood for a single event
+        """    
+        H0 = self.H0
+        mth = self.mth
+        pdet = self.pdet
+        galaxy_catalog = self.galaxy_catalog
+        event_data = self.event_data
+        
+        
+        pxG = self.px_H0G(H0,galaxy_catalog,event_data)
+        pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
+        
+        # TODO: make efficient, by initialising event-independent functions when first called
+        # (so only calculated once if multiple events run in same script).
+        # TODO: normalise returned values
+        
+        if complete==True:
+            return pxG/pDG
+        
+        else:
+            pG = self.pG_H0D(H0,mth,pdet)
+            pnG = self.pnG_H0D(H0,pG)
+        
+            pxnG = self.px_H0nG(H0,mth,event_data)
+            pDnG = self.pD_H0nG(H0,mth,pdet)
+            
+            return pG*(pxG/pDG) + pnG*(pxnG/pDnG)
+        
+        
+        
+        
+        
