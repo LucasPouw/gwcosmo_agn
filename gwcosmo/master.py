@@ -6,6 +6,7 @@ Rachel Gray, John Veitch
 import lal
 import numpy as np
 from scipy.integrate import quad, dblquad
+from scipy.stats import ncx2, norm
 from standard_cosmology import *
 from schechter_function import *
 from prior.basic import *
@@ -29,7 +30,30 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        return 1
+        nGal = galaxy_catalog.nGal()
+        weight = np.ones(nGal)
+        
+        skykernel = posterior_samples.compute_2d_kde()
+        distkernel = posterior_samples.lineofsight_distance()
+
+        num = np.zeros(len(H0)) 
+        # loop over all possible galaxies
+        for i in range(nGal):
+            gal = galaxy_catalog.get_galaxy(i)
+            # if using real data samples
+            if posterior_samples is not None:
+                tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+                tempdist = distkernel.evaluate(dl_zH0(gal.z,H0))
+                #if distpost==False: 
+                    # we remove distance squared prior from the samples #TODO: deal with distpost==False condition neatly.
+                    #tempdist /= dl_zH0(gal.z,H0)**2
+            #else:
+            #    tempdist = ncx2.pdf(rhosq,2,snr(dl_zH0(gal.z,H0))**2) #TODO: snr and rhosq need to be defined
+            #    tempsky = 1.0
+            
+            num += tempdist*tempsky*weight[i]
+
+        return num
 
 
     def pD_H0G(self,H0,galaxy_catalog,pdet):

@@ -132,6 +132,8 @@ def main():
     catalog = gwcosmo.catalog.galaxyCatalog()
     catalog.load_mdc_catalog(version='1.0')
     
+    samples = gwcosmo.posterior_samples.posterior_samples()
+    samples.load_posterior_samples()
     # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
     mth = 18.0 # as a test - not true for MDC v1
 
@@ -146,6 +148,16 @@ def main():
     dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     me = gwcosmo.master.MasterEquation(catalog,dp)
+
+    print("start px_H0G: {}".format(time.asctime()))
+    px_H0G = me.px_H0G(hzero,catalog,samples)
+    print("end px_H0G: {}".format(time.asctime()))
+    
+    plt.figure()
+    plt.plot(hzero,px_H0G)
+    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
+    plt.ylabel('$p(x|H_0,G)$ (unnormalised)')
+    plt.savefig('px_H0G.png')
     
     print("start pD_H0G: {}".format(time.asctime()))
     pdet_ingal = me.pD_H0G(hzero,catalog,dp)
