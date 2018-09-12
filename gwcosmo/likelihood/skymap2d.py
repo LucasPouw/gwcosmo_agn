@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
+'''
+Module to compute 2d sky probability an select galaxies 
+
+authors= Archisman Ghosh, Ankan Sur
+
+'''
+
 import numpy as np, healpy as hp
 from scipy import interpolate
-
-
 
 class confidence(object):
     def __init__(self, counts):
@@ -40,7 +45,7 @@ def ipix_from_ra_dec(nside, ra, dec):
     return hp.ang2pix(nside, theta, phi)
 
 
-def 2dskyprob(skymap_file, ra, dec, z_gal, z_min, z_max, sky_level=0.99):
+def twodskyprob(skymap_file, ra, dec, z_gal, z_min, z_max, sky_level=0.99):
 
     skymap = hp.read_map(skymap_file)
     nside = hp.npix2nside(len(skymap))
