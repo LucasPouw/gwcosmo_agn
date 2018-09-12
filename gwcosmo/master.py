@@ -14,12 +14,11 @@ class MasterEquation(object):
     """
     A class to hold all the individual components of the "master equation" (someone please suggest a better name), and stitch them together in the right way
     """    
-    def __init__(self,H0,galaxy_catalog,pdet,event_data):
+    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
-        self.event_data = event_data
-        self.mth = 18.0 # TODO: get this from galaxy_catalog, not hardcoding
+        self.mth = mth # TODO: get this from galaxy_catalog, not explicitly
     
     def px_H0G(self,H0,galaxy_catalog,event_data):
         """
@@ -182,7 +181,7 @@ class MasterEquation(object):
             return pH0
             
             
-    def likelihood(self,complete=False):
+    def likelihood(self,event_data,complete=False):
         """
         The likelihood for a single event
         """    
@@ -190,7 +189,7 @@ class MasterEquation(object):
         mth = self.mth
         pdet = self.pdet
         galaxy_catalog = self.galaxy_catalog
-        event_data = self.event_data
+        dH0 = H0[1]-H0[0]
         
         
         pxG = self.px_H0G(H0,galaxy_catalog,event_data)
@@ -201,7 +200,7 @@ class MasterEquation(object):
         # TODO: normalise returned values
         
         if complete==True:
-            return pxG/pDG
+            likelihood = pxG/pDG
         
         else:
             pG = self.pG_H0D(H0,mth,pdet)
@@ -210,7 +209,9 @@ class MasterEquation(object):
             pxnG = self.px_H0nG(H0,mth,event_data)
             pDnG = self.pD_H0nG(H0,mth,pdet)
             
-            return pG*(pxG/pDG) + pnG*(pxnG/pDnG)
+            likelihood = pG*(pxG/pDG) + pnG*(pxnG/pDnG)
+            
+        return likelihood/np.sum(likelihood)/dH0
         
         
         
