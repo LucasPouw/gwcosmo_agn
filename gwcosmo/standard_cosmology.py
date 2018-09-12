@@ -4,8 +4,8 @@ Module for basic late-time cosmology calculations. Currently implements only fla
 Constants
 ---------
 c : speed of light in km/s
-Omega_m : matter fraction from PLANCK 2013 best fit
-H0 : Hubble parameter in km/s/Mpc from PLACNK 2013 best fit
+Omega_m : matter fraction
+H0 : Hubble parameter
 
 (c) Archisman Ghosh, 2013-Nov
 """
@@ -14,7 +14,7 @@ import numpy as np
 from scipy import integrate
 import lal
 
-c = 2.99792458e+05 # in km/s
+c = lal.C_SI/1000. #2.99792458e+05 # in km/s
 Omega_m = 0.3 # 0.3175 # PLANCK best fit
 H0 = 70 # 67.11 # in km/s/Mpc
 
@@ -168,15 +168,47 @@ def dl_mM(m,M):
 
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
-def dl_zH0(z,H0):
+def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):
     """
-    Very basic cosmology
-    """
-    return (lal.C_SI*z)/(H0*1000)
+    Returns luminosity distance given distance and cosmological parameters
+
+    Parameters
+    ----------
+    z : redshift
+    H0 : Hubble parameter in km/s/Mpc (default=70.)
+    Omega_m : matter fraction (default=0.3) 
+    linear : assumes local cosmology and suppresses non-linear effects (default=False)
     
-def z_dlH0(dl,H0):
+    Returns
+    -------
+    luminosity distance, dl (in Mpc)
     """
-    Very basic cosmology
+    if linear:
+        # Local cosmology
+        return z*c/H0
+    else:
+        # Standard cosmology
+        return dLH0overc(z, Omega_m=Omega_m)*c/H0
+    
+def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
     """
-    return (H0*1000)*dl/lal.C_SI
+    Returns redshift given luminosity distance and cosmological parameters
+
+    Parameters
+    ----------
+    dl : luminosity distance in Mpc
+    H0 : Hubble parameter in km/s/Mpc (default=70.)
+    Omega_m : matter fraction (default=0.3)
+    linear : assumes local cosmology and suppresses non-linear effects (default=False)
+    
+    Returns
+    -------
+    redshift, z
+    """
+    if linear:
+        # Local cosmology
+        return dl*H0/c
+    else:
+        # Standard cosmology
+        return redshift(dl*H0/c, Omega_m=Omega_m)
   
