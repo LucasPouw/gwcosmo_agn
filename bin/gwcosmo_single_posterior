@@ -52,15 +52,15 @@ parser = OptionParser(
         Option("-i", "--skymap", metavar="SKYMAP", default='200.0',
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-s", "--posterior_samples", metavar="SAMPLES", default=None,
-            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5)"),
+            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) (required)"),
         Option("-z", "--z_max", metavar="ZMAX", default='1.0',
             help="ZMAX: Maximal detectable redshift"),
         Option("-a", "--antenna_network", metavar="ANTENNA", default=None,
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
-            help="POSTERIOR: Previous H0 posterior as a function of H0 bin")
-        #Option("-hc", "--helio-cmb-conv", metavar="REDSHIFT_FRAME", default=False,
-            #help="REDSHIFT_FRAME: Convert redshift from heliocentric to cmb frame") #Will implement this conversion to galaxy class
+            help="POSTERIOR: Previous H0 posterior as a function of H0 bin"),
+        Option("-y", "--plot", metavar="PLOT", default=False,
+            help="PLOT: Plot results")
     ])
 opts, args = parser.parse_args()
 
@@ -103,6 +103,8 @@ else:
 	galaxy_weighting = 0
 
 # Set command line arguments
+samples_file_path = str(opts.posterior_samples)
+
 min_h0 = float(opts.min_h0)
 max_h0 = float(opts.max_h0)
 bins_h0 = float(opts.bins_h0)
@@ -117,28 +119,27 @@ antenna_network = opts.antenna_network
 options_string = opts.method
 
 hzero = np.linspace(min_h0, max_h0, bins_h0)
+dhzero = hzero[1] - hzero[0]
+
+plot = bool(opts.plot)
 
 import gwcosmo
 
 def main():
     "Compute P(H0)"
 
-    ##Load glade catalog...
+    ##Load glade catalog... or mdc catalogs... version = ['1.0','2.1','3.1']
     catalog = gwcosmo.catalog.galaxyCatalog()
-    catalog.load_glade_catalog(version='maya')
-
-    # load mdc catalogs... version = ['1.0','2.1','3.1']
-    #catalog = gwcosmo.catalog.galaxyCatalog()
-    #catalog.load_mdc_catalog(version='1.0')
+    #catalog.load_glade_catalog(version='corrected')
+    catalog.load_mdc_catalog(version='1.0')
     
-    samples = gwcosmo.posterior_samples.posterior_samples()
-    samples.load_posterior_samples()
+    samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
+    
+    #samples.load_posterior_samples()
+    samples.load_posterior_samples_hdf5(samples_file_path)
+
     # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
     mth = 18.0 # as a test - not true for MDC v1
-
-    #some_galaxy = catalog.get_galaxy(1000)
-    #ra = some_galaxy.ra
-    #print ra
 
     #set up array of luminosity distance values
     dl = np.linspace(opts.min_dist,opts.max_dist,opts.bins_dist)
@@ -146,88 +147,29 @@ def main():
     #set up detection probability for BNSs over the range dl
     dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
-    me = gwcosmo.master.MasterEquation(catalog,dp)
+    # compute likelihood
+    me = gwcosmo.master.MasterEquation(hzero,catalog,dp,linear=True)
+    likelihood = me.likelihood(samples,complete=True)
 
-    print("start px_H0nG: {}".format(time.asctime()))
-    px_H0nG = me.px_H0nG(hzero,mth,samples)
-    print("end px_H0nG: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,px_H0nG)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(x|H_0,\overline{G})$ (unnormalised)')
-    plt.savefig('px_H0nG.png')
+    prior = me.pH0_D(prior='jeffreys')
 
-    print("start px_H0G: {}".format(time.asctime()))
-    px_H0G = me.px_H0G(hzero,catalog,samples)
-    print("end px_H0G: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,px_H0G)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(x|H_0,G)$ (unnormalised)')
-    plt.savefig('px_H0G.png')
-    
-    print("start pD_H0G: {}".format(time.asctime()))
-    pdet_ingal = me.pD_H0G(hzero,catalog,dp)
-    print("end pD_H0G: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,pdet_ingal)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(D|H_0,G)$ (unnormalised)')
-    plt.savefig('pD_H0G.png')
-    
-    print("start pG_H0D: {}".format(time.asctime()))
-    pgal = me.pG_H0D(hzero,mth,dp)
-    print("end pG_H0D: {}".format(time.asctime()))
-    
-    pngal = me.pnG_H0D(hzero,pgal)
-    
-    plt.figure()
-    plt.plot(hzero,pgal,label='$p(G|H_0,D)$')
-    plt.plot(hzero,pngal,label='$p(\overline{G}|H_0,D)$')
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('Probability')
-    plt.legend()
-    plt.savefig('pG_H0D.png')
-    
-    print("start pD_H0nG: {}".format(time.asctime()))
-    pdet_outgal = me.pD_H0nG(hzero,mth,dp)
-    print("end pD_H0nG: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,pdet_outgal)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(D|H_0,\overline{G})$ (unnormalised)')
-    plt.savefig('pD_H0nG.png')
-    
-    print("start pD_H0nG: {}".format(time.asctime()))
-    pH0 = me.pH0_D(hzero,dp,prior='jeffreys')
-    print("end pD_H0nG: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,pH0)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(H_0|D)$ (unnormalised)')
-    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    plt.savefig('pH0_D.png')
-    
-    print("start pH0_xD: {}".format(time.asctime()))
-    pH0_xD = pH0*( pgal*px_H0G/pdet_ingal + pngal*px_H0nG/pdet_outgal )
-    print("end pH0_xD: {}".format(time.asctime()))
-    
-    plt.figure()
-    plt.plot(hzero,pH0_xD)
-    plt.xlabel('$H_0 (kms^{-1}Mpc^{-1})$')
-    plt.ylabel('$p(H_0|x,D)$')
-    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    plt.savefig('pH0_xD.png')
+    posterior = prior*likelihood
 
-    #posterior_file = "posterior_" + options_string
-    #np.savez(posterior_file + options_string + '.npz', hzero)
+    posterior_norm = posterior/np.sum(posterior)/dhzero
+    prior_norm = prior/np.sum(prior)/dhzero
 
-    return 0
+    if plot == True:
+        plt.figure()
+        plt.plot(hzero,likelihood,'g', label='likelihood')
+        plt.plot(hzero,prior_norm, 'y', linestyle='dashed', label='$p(H_0|D)$')
+        plt.plot(hzero,posterior_norm,'k', label='posterior')
+        plt.axvline(70, label='True $H_0$')
+        plt.xlabel('$H_{0}$  (kms$^{-1}$Mpc$^{-1}$)')
+        plt.ylabel('$p(H_{0})$')
+        plt.legend()
+        plt.savefig('posterior.png',dpi=100)
+
+    return likelihood, prior, hzero
 
 if __name__ == "__main__":
     main()
