@@ -25,6 +25,8 @@ class MasterEquation(object):
         self.pG = None
         self.pnG = None
         self.pDnG = None
+        
+        # TODO: replace all later mentions of H0 etc with self.H0 and tidy
     
     def px_H0G(self,H0,galaxy_catalog,event_data):
         """
@@ -199,10 +201,10 @@ class MasterEquation(object):
         
         
         pxG = self.px_H0G(H0,galaxy_catalog,event_data)
-        #if self.pDG==None:
-        #    self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
+        if all(self.pDG)==None:
+            self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
         
-        self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
+        #self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
         
         # TODO: make efficient, by initialising event-independent functions when first called
         # (so only calculated once if multiple events run in same script).
@@ -211,11 +213,16 @@ class MasterEquation(object):
             likelihood = pxG/self.pDG
         
         else:
-            pG = self.pG_H0D(H0,mth,pdet)
-            pnG = self.pnG_H0D(H0,pG)
-        
+            if all(self.pG)==None:
+                self.pG = self.pG_H0D(H0,mth,pdet)
+                
+            if all(self.pnG)==None:
+                self.pnG = self.pnG_H0D(H0,self.pG)
+            
+            if all(self.pDnG)==None:
+                self.pDnG = self.pD_H0nG(H0,mth,pdet)
+            
             pxnG = self.px_H0nG(H0,mth,event_data)
-            pDnG = self.pD_H0nG(H0,mth,pdet)
             
             likelihood = self.pG*(pxG/self.pDG) + self.pnG*(pxnG/self.pDnG)
             
