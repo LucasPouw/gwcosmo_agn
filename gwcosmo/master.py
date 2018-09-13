@@ -25,10 +25,8 @@ class MasterEquation(object):
         self.pG = None
         self.pnG = None
         self.pDnG = None
-        
-        # TODO: replace all later mentions of H0 etc with self.H0 and tidy
     
-    def px_H0G(self,H0,galaxy_catalog,event_data):
+    def px_H0G(self,event_data):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -38,27 +36,26 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = galaxy_catalog.nGal()
+        nGal = self.galaxy_catalog.nGal()
         weight = np.ones(nGal)
         
         skykernel = event_data.compute_2d_kde()
-        #skykernel = event_data.sky_prior_corr()
         distkernel = event_data.dist_prior_corr()
 
-        num = np.zeros(len(H0)) 
+        num = np.zeros(len(self.H0)) 
         # loop over all possible galaxies
         for i in range(nGal):
-            gal = galaxy_catalog.get_galaxy(i)
-            # TODO: move removal of sky prior in to posterior_samples.py
+            gal = self.galaxy_catalog.get_galaxy(i)
+            # TODO: add possibility of using skymaps/other ways of using gw data
             tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
-            tempdist = distkernel(dl_zH0(gal.z,H0,linear=self.linear))
+            tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))
             
             num += tempdist*tempsky*weight[i]
 
         return num
 
 
-    def pD_H0G(self,H0,galaxy_catalog,pdet):
+    def pD_H0G(self):
         """
         The normalising factor for px_H0G.
         
@@ -67,16 +64,16 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """  
-        nGal = galaxy_catalog.nGal()
-        den = np.zeros(len(H0))       
+        nGal = self.galaxy_catalog.nGal()
+        den = np.zeros(len(self.H0))       
         for i in range(nGal):
-            gal = galaxy_catalog.get_galaxy(i)
+            gal = self.galaxy_catalog.get_galaxy(i)
             z = gal.z
-            den += pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear))
+            den += self.pdet.pD_dl_eval(dl_zH0(z,self.H0,linear=self.linear))
         return den
 
 
-    def pG_H0D(self,H0,mth,pdet):
+    def pG_H0D(self):
         """
         The probability that the host galaxy is in the catalogue given detection and H0.
         
@@ -85,30 +82,30 @@ class MasterEquation(object):
         Returns an array of probabilities corresponding to different H0s.
         """  
         # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
-        num = np.zeros(len(H0)) 
-        den = np.zeros(len(H0))
+        num = np.zeros(len(self.H0)) 
+        den = np.zeros(len(self.H0))
         
         # TODO: vectorize this if possible
-        for i in range(len(H0)):
+        for i in range(len(self.H0)):
             
             def I(z,M):
-                return SchechterMagFunction(H0=H0[i])(M)*pdet.pD_dl_eval(dl_zH0(z,H0[i],linear=self.linear))*pz_nG(z)
+                return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
             # TODO: test how sensitive this result is to changing Mmin and Mmax.
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(self.H0[i],-22.96)
+            Mmax = M_Mobs(self.H0[i],-12.96)
             
             # TODO: change zmax = 6.0 to a reasonably high limit
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
-            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(H0)))
+            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
         
         return num/den    
 
 
-    def pnG_H0D(self,H0,pG):
+    def pnG_H0D(self,pG):
         """
         The probability that a galaxy is not in the catalogue given detection and H0
         
@@ -117,7 +114,7 @@ class MasterEquation(object):
         return 1.0 - pG
        
         
-    def px_H0nG(self,H0,mth,event_data):
+    def px_H0nG(self,event_data):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -126,24 +123,22 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        num = np.zeros(len(H0))
+        num = np.zeros(len(self.H0))
         
-        skykernel = event_data.compute_2d_kde()
-        #distkernel = event_data.lineofsight_distance()
+        #skykernel = event_data.compute_2d_kde() 
         distkernel = event_data.dist_prior_corr()
 
-        for i in range(len(H0)):
+        for i in range(len(self.H0)):
             def Inum(z,M):
-                # we remove distance squared prior from the samples
-                return distkernel(dl_zH0(z,H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=H0[i])(M)
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)
+            Mmin = M_Mobs(self.H0[i],-22.96)
+            Mmax = M_Mobs(self.H0[i],-12.96)
 
-            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
         return num
 
 
-    def pD_H0nG(self,H0,mth,pdet):
+    def pD_H0nG(self):
         """
         Normalising factor for px_H0nG
         
@@ -152,23 +147,23 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(H0))
+        den = np.zeros(len(self.H0))
         
-        for i in range(len(H0)):
+        for i in range(len(self.H0)):
             
             def I(z,M):
-                return SchechterMagFunction(H0=H0[i])(M)*pdet.pD_dl_eval(dl_zH0(z,H0[i],linear=self.linear))*pz_nG(z)
+                return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(self.H0[i],-22.96)
+            Mmax = M_Mobs(self.H0[i],-12.96)
             
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
-            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(H0)))
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
         
         return den
 
 
-    def pH0_D(self,H0,pdet,prior='uniform'):
+    def pH0_D(self,prior='uniform'):
         """
         The prior probability of H0 given a detection
         
@@ -176,15 +171,15 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z) over z
         Returns an array of values corresponding to different values of H0.
         """
-        pH0 = np.zeros(len(H0))
-        for i in range(len(H0)):
+        pH0 = np.zeros(len(self.H0))
+        for i in range(len(self.H0)):
             def I(z):
-                return pdet.pD_dl_eval(dl_zH0(z,H0[i],linear=self.linear))*pz_nG(z)
+                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
        
             pH0[i] = quad(I,0,6.0,epsabs=0,epsrel=1.49e-4)[0]
                 
         if prior == 'jeffreys':
-            return pH0/H0  
+            return pH0/self.H0  
         else:
             return pH0
             
@@ -193,36 +188,25 @@ class MasterEquation(object):
         """
         The likelihood for a single event
         """    
-        H0 = self.H0
-        mth = self.mth
-        pdet = self.pdet
-        galaxy_catalog = self.galaxy_catalog
-        dH0 = H0[1]-H0[0]
+        dH0 = self.H0[1]-self.H0[0]
         
-        
-        pxG = self.px_H0G(H0,galaxy_catalog,event_data)
+        pxG = self.px_H0G(event_data)
         if all(self.pDG)==None:
-            self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
-        
-        #self.pDG = self.pD_H0G(H0,galaxy_catalog,pdet)
-        
-        # TODO: make efficient, by initialising event-independent functions when first called
-        # (so only calculated once if multiple events run in same script).
+            self.pDG = self.pD_H0G()
         
         if complete==True:
             likelihood = pxG/self.pDG
         
+        # TODO: check this works in python 3 as well as 2.7
         else:
             if all(self.pG)==None:
-                self.pG = self.pG_H0D(H0,mth,pdet)
-                
+                self.pG = self.pG_H0D()    
             if all(self.pnG)==None:
-                self.pnG = self.pnG_H0D(H0,self.pG)
-            
+                self.pnG = self.pnG_H0D(self.pG)
             if all(self.pDnG)==None:
-                self.pDnG = self.pD_H0nG(H0,mth,pdet)
+                self.pDnG = self.pD_H0nG()
             
-            pxnG = self.px_H0nG(H0,mth,event_data)
+            pxnG = self.px_H0nG(event_data)
             
             likelihood = self.pG*(pxG/self.pDG) + self.pnG*(pxnG/self.pDnG)
             
