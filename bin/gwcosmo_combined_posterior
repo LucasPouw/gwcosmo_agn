@@ -1,0 +1,52 @@
+#!/usr/bin/python
+# System imports
+import os
+import sys
+from optparse import Option, OptionParser
+
+#Global Imports
+import numpy as np
+import matplotlib 
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+import gwcosmo
+import time
+
+# Command line options
+parser = OptionParser(
+    description = __doc__,
+    usage = "%prog [options]",
+    option_list = [
+        Option("-d", "--mdcdir", metavar="MDCDIR", default=None,
+            help="MDCDIR: Directory to MDC posterior samples (required)")
+    ])
+opts, args = parser.parse_args()
+
+# Check for missing required arguments
+missing = []
+for option in parser.option_list:
+    if 'required' in option.help and eval('opts.' + option.dest) == None:
+        missing.extend(option._long_opts)
+if len(missing) > 0:
+    parser.error('Missing required options: {0}'.format(str(missing)))
+
+mdc_dir = str(opts.mdcdir)
+Nev = 5
+Nstart = 1
+
+H0 = np.linspace(25.0,150.0,50)
+dH0 = H0[1]-H0[0]
+likelihoods = np.zeros((H0.size, Nev))
+
+print('{}: started computing pnW'.format(time.asctime()))
+
+# read in the samples from multiple events
+for n in range(Nstart,Nev+Nstart):
+    if n == 180:
+        continue
+        
+    samples_path = mdc_dir+'/first2years-data/2016/lalinference_mcmc/{}/posterior_samples.hdf5'.format(n)
+    
+    likelihoods[:,n-Nstart] = #grab likelihoods from single_posterior
+    
+    print('{}: computed event {} ({}/{})'.format(time.asctime(),n,n-Nstart+1,Nev))
