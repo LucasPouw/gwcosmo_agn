@@ -6,9 +6,9 @@ import lal
 import numpy as np
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-from standard_cosmology import *
-from schechter_function import *
-from prior.basic import *
+from gwcosmo.standard_cosmology import *
+from gwcosmo.schechter_function import *
+from gwcosmo.prior.basic import *
 
 class MasterEquation(object):
     """
