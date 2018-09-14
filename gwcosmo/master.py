@@ -4,11 +4,20 @@ Rachel Gray, John Veitch, Ignacio Magana
 """
 import lal
 import numpy as np
+import sys
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-from gwcosmo.standard_cosmology import *
-from gwcosmo.schechter_function import *
-from gwcosmo.prior.basic import *
+
+python_version = sys.version_info.major
+
+#check which python version
+if python_version==2:
+    import gwcosmo
+
+else:
+    from gwcosmo.standard_cosmology import *
+    from gwcosmo.schechter_function import *
+    from gwcosmo.prior.basic import *
 
 class MasterEquation(object):
     """
