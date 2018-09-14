@@ -261,7 +261,7 @@ class MasterEquation(object):
             
             pxnG = self.px_H0nG(event_data)
             
-            likelihood = self.pG*(pxG/self.pDG) + self.pnG*(pxnG/self.pDnG)
+            likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
         

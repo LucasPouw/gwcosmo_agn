@@ -71,7 +71,7 @@ for option in parser.option_list:
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
-print 'Selected method is:', opts.method
+print('Selected method is:', opts.method)
 
 if opts.method == 'counterpart':
     use_counterpart = 1
