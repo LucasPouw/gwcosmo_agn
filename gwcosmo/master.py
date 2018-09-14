@@ -12,7 +12,9 @@ python_version = sys.version_info.major
 
 #check which python version
 if python_version==2:
-    import gwcosmo
+    from standard_cosmology import *
+    from schechter_function import *
+    from prior.basic import *
 
 else:
     from gwcosmo.standard_cosmology import *
