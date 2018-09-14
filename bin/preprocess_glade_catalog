@@ -1,25 +1,22 @@
-import sys
+#!/usr/bin/python
+"""
+This script preprocesses Glade v2.3 catalog into production use.
+Ignacio Magana
+"""
+import numpy as np
+import astropy
+import astropy.constants as constants
 from astropy.table import Table
 from astropy import units as u
-import astropy.constants as constants
-import numpy as np
-from pylab import *
-import astropy
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import ICRS
 from astropy.coordinates import Galactic
-from scipy import stats
 import pkg_resources
 
 cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.27)
-blue_luminosity_density = 1.98e-2 
+
 z_err_fraction = 0.06
 a_err_fraction = 0.08
-h = 0.7
-L0 = 3.0128e28
-Lsun = 3.828e26
-Lstar = 1.2e10*h**(-2)*Lsun
-lum_cut_frac = 0.0
 useNGC4993only = 0.0
 
 catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
@@ -51,16 +48,11 @@ def blue_luminosity_from_mag(m,d):
     """
     M_blue_solar = 5.48 # Binney & Tremaine
     MB = m - 5.0 * np.log10( d / 10.0e-6 )
-    lum = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 )
-    if lum_cut_frac > 0.0:
-        lumCut, idx = lum_cut(lum,lum_cut_frac)
-    else: 
-        lumCut = lum
-        idx = np.arange(len(lumCut))   
-    return lumCut, idx
+    lum = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
+    return lum
 
 def replace_bad_magnitudes(aa):
-    maa = ma.masked_values(aa,-999.)
+    maa = np.ma.masked_values(aa,-999.)
     return maa.filled(1e20).data
 
 def remove_nans(aa):
@@ -87,33 +79,19 @@ def extract_galaxies(tt):
     angle_error = a_err_fraction / ( dist )
     
     dist_err = tt['Distance Error']
-    fractional_err = ma.masked_values(dist_err,-999.) / dist
+    fractional_err = np.ma.masked_values(dist_err,-999.) / dist
     dist_err = dist * fractional_err.filled(z_err_fraction).data
 
     z_err = z * fractional_err.filled(z_err_fraction).data
     
     B = replace_bad_magnitudes( tt['abs_mag_r'] )
-    lumB, idx = blue_luminosity_from_mag(B,dist)
+    lumB = blue_luminosity_from_mag(B,dist)
 
-    galname = galname[idx]
-    cluster_name = cluster_name[idx]
-    pgcCat=pgcCat[idx]
-    ra = ra[idx]
-    dec = dec[idx]
-    dist = dist[idx]
-    z = z[idx]
-    lumB = lumB[idx]
-    angle_error = angle_error[idx]
-    dist_err = dist_err[idx]
-    z_err = z_err[idx]
     # hack to weight the extra galaxies at 11.429 with zero blue luminosity
-    lumB = ma.masked_where( ((dist>11.4291) & (dist<11.4293)) , lumB).filled(0)   
+    lumB = np.ma.masked_where( ((dist>11.4291) & (dist<11.4293)) , lumB).filled(0)   
     
     # hack to remove deal with Galactic Center and SN1987a
-    if useNGC4993only > 0:
-        glist = []
-    else:
-        glist = ['GALCENTER','ESO056-115']
+    glist = ['GALCENTER','ESO056-115']
     for g in glist:
         delete_i = np.argmax(tt['Galaxy Name']==g)
         if delete_i:
@@ -138,7 +116,7 @@ def extract_galaxies(tt):
 
 def group_velocity_corr(z,pgcCat):
     # group correction (from Maya)
-    allgroups = unique(groupgal)
+    allgroups = np.unique(groupgal)
     groupmembersKT = [[] for i in range(len(allgroups))]
     zsel_group = z
     for i in range(len(allgroups)):
@@ -151,7 +129,7 @@ def group_velocity_corr(z,pgcCat):
         for j, pgc in enumerate(pgcCat):
             if pgc in groupmembersKT[i]:
                 zs_group[i].append(z[j])
-    zs_groupaverage = [mean(zs_group[i]) for i in range(len(allgroups))]
+    zs_groupaverage = [np.mean(zs_group[i]) for i in range(len(allgroups))]
 
     for i in range(len(allgroups)):
         for j, pgc in enumerate(pgcCat):
@@ -163,16 +141,22 @@ def group_velocity_corr(z,pgcCat):
             zsel_group[i] = 3017./constants.c.to('km/s').value
     return zsel_group 
 
-t = Table.read(catalog_file,format='ascii')
-t = remove_clusters(t)
-g_galactic = ICRS(ra=t['RA']*u.degree, dec=t['Dec']*u.degree, radial_velocity=t['z']*constants.c.to('km/s')).transform_to(Galactic)
-z=vcorr(g_galactic, apex_helio_to_3k)/constants.c.to('km/s')  
-t.replace_column('z', ma.masked_where(z<0.0,z).filled(0))
-t.replace_column('Distance', cosmo.luminosity_distance(t['z']).value)
-t.sort('Distance')
+def main():
+    t = Table.read(catalog_file,format='ascii')
+    t = remove_clusters(t)
+    g_galactic = ICRS(ra=t['RA']*u.degree, dec=t['Dec']*u.degree, \
+        radial_velocity=t['z']*constants.c.to('km/s')).transform_to(Galactic)
+    z=vcorr(g_galactic, apex_helio_to_3k)/constants.c.to('km/s')  
+    t.replace_column('z', np.ma.masked_where(z<0.0,z).filled(0))
+    t.replace_column('Distance', cosmo.luminosity_distance(t['z']).value)
+    t.sort('Distance')
 
-(pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK) = extract_galaxies(t)
-z = group_velocity_corr(z,pgcCat)
+    (pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK) = extract_galaxies(t)
+    z = group_velocity_corr(z,pgcCat)
 
-data = Table([pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK],names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
-astropy.io.ascii.write(data, 'gladecatalogv2.3_corrected.dat')
+    data = Table([pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK], \
+        names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
+    astropy.io.ascii.write(data, 'gladecatalogv2.3_corrected.dat')
+
+if __name__ == "__main__":
+    main()

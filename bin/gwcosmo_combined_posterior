@@ -1,4 +1,8 @@
 #!/usr/bin/python
+"""
+This script combines individual H0 posteriors.
+Ignacio Magana, Rachel Gray
+"""
 # System imports
 import os
 import sys
