@@ -22,9 +22,11 @@ class MasterEquation(object):
         self.linear = linear
         
         self.pDG = None
-        self.pG = None
-        self.pnG = None
+        self.pGD = None
+        self.pnGD = None
         self.pDnG = None
+        self.pG = None
+        self.PnG = None
     
     def px_H0G(self,event_data):
         """
@@ -105,13 +107,13 @@ class MasterEquation(object):
         return num/den    
 
 
-    def pnG_H0D(self,pG):
+    def pnG_H0D(self,pG_H0D):
         """
         The probability that a galaxy is not in the catalogue given detection and H0
         
         Returns the complement of pG_H0D.
         """
-        return 1.0 - pG
+        return 1.0 - pG_H0D
        
         
     def px_H0nG(self,event_data):
@@ -182,8 +184,48 @@ class MasterEquation(object):
             return pH0/self.H0  
         else:
             return pH0
+
+    def pG(self):
+        """
+        The prior probability that a galaxy is in the catalog.
+        
+        Takes an array of H0 values and a choice of prior.
+        Integrates p(D|dL(z,H0))*p(z) over z
+        Returns an array of values corresponding to different values of H0.
+        """
+        pG = np.zeros(len(self.H0))
+        return pG
+
+    def pnG(self,pG):
+        """
+        The prior probability that a galaxy is not in the catalog.
+        
+        Returns the complement of pG.
+        """
+        return 1.0 - pG
+
+    def psiH0(self):
+        """
+        The infamous H0**3 term.
+        """
+        return self.H0**3        
+
+    def likelihood_PRB(self,event_data):
+        """
+        The likelihood for a single event
+        """    
+        dH0 = self.H0[1]-self.H0[0]
+        
+        pxG = self.px_H0G(event_data)
+        pxnG = self.px_H0nG(event_data)
+
+        pG = self.pG()
+        pnG = self.pnG(pG)
+
+        likelihood = pG*pxG + pnG*pxnG
             
-            
+        return likelihood
+
     def likelihood(self,event_data,complete=False):
         """
         The likelihood for a single event
@@ -199,10 +241,10 @@ class MasterEquation(object):
         
         # TODO: check this works in python 3 as well as 2.7
         else:
-            if all(self.pG)==None:
-                self.pG = self.pG_H0D()    
-            if all(self.pnG)==None:
-                self.pnG = self.pnG_H0D(self.pG)
+            if all(self.pGD)==None:
+                self.pGD = self.pG_H0D()    
+            if all(self.pnGD)==None:
+                self.pnGD = self.pnG_H0D(self.pGD)
             if all(self.pDnG)==None:
                 self.pDnG = self.pD_H0nG()
             
@@ -211,8 +253,4 @@ class MasterEquation(object):
             likelihood = self.pG*(pxG/self.pDG) + self.pnG*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
-        
-        
-        
-        
         
