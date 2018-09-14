@@ -196,7 +196,7 @@ class MasterEquation(object):
         else:
             return pH0
 
-    def pG(self):
+    def p_G(self,zs):
         """
         The prior probability that a galaxy is in the catalog.
         
@@ -204,10 +204,31 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z) over z
         Returns an array of values corresponding to different values of H0.
         """
-        pG = np.zeros(len(self.H0))
-        return pG
+        L0 = 1.98e-2 # Kopparapu et al
+        #def I(z):
+        #    return L0*z**2
+        I = lambda x: L0*x**2
+        
+        nGal = self.galaxy_catalog.nGal()
+        zgal = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            zgal[i] = gal.z
+        zgal = np.sort(zgal)
+        
+        zG = np.zeros(nGal)
+        znG = np.zeros(nGal)
+        for i in range(nGal):
+            if zgal[i] < zs:
+                zG[i] = zgal[i]
+            else: 
+                znG[i] = zgal[i]
+        
+        LG = pz_nG(zG)/quad(I, min(zG), zs)[0]
+        LnG = pz_nG(znG)/quad(I, zs, max(znG))[0]
+        return LG/(LG + LnG)
 
-    def pnG(self,pG):
+    def p_nG(self,pG):
         """
         The prior probability that a galaxy is not in the catalog.
         
@@ -221,17 +242,17 @@ class MasterEquation(object):
         """
         return self.H0**3        
 
-    def likelihood_PRB(self,event_data):
+    def likelihood_PRB(self,event_data,zs):
         """
         The likelihood for a single event
-        """    
+        """ 
+        pG = self.p_G(zs)
+        pnG = self.p_nG(pG)
+        
         dH0 = self.H0[1]-self.H0[0]
         
         pxG = self.px_H0G(event_data)
         pxnG = self.px_H0nG(event_data)
-
-        pG = self.pG()
-        pnG = self.pnG(pG)
 
         likelihood = pG*pxG + pnG*pxnG
             
