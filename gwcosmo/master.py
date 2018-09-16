@@ -2,24 +2,17 @@
 Master Equation
 Rachel Gray, John Veitch, Ignacio Magana
 """
+from __future__ import absolute_import
+
 import lal
 import numpy as np
 import sys
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 
-python_version = sys.version_info.major
-
-#check which python version
-if python_version==2:
-    from standard_cosmology import *
-    from schechter_function import *
-    from prior.basic import *
-
-else:
-    from gwcosmo.standard_cosmology import *
-    from gwcosmo.schechter_function import *
-    from gwcosmo.prior.basic import *
+from . import standard_cosmology
+from . import schechter_function
+from .prior import basic
 
 class MasterEquation(object):
     """
