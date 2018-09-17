@@ -10,9 +10,9 @@ import sys
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 
-from . import standard_cosmology
-from . import schechter_function
-from .prior import basic
+from .standard_cosmology import *
+from .schechter_function import *
+from .prior.basic import *
 
 class MasterEquation(object):
     """
