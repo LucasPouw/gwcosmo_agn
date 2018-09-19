@@ -14,6 +14,7 @@ from .standard_cosmology import *
 from .schechter_function import *
 from .prior.basic import *
 
+
 class MasterEquation(object):
     """
     A class to hold all the individual components of the "master equation" (someone please suggest a better name), and stitch them together in the right way
@@ -46,7 +47,8 @@ class MasterEquation(object):
         weight = np.ones(nGal)
         
         skykernel = event_data.compute_2d_kde()
-        distkernel = event_data.dist_prior_corr()
+        #distkernel = event_data.dist_prior_corr()
+        distkernel = event_data.lineofsight_distance()
 
         num = np.zeros(len(self.H0)) 
         # loop over all possible galaxies
@@ -54,7 +56,7 @@ class MasterEquation(object):
             gal = self.galaxy_catalog.get_galaxy(i)
             # TODO: add possibility of using skymaps/other ways of using gw data
             tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
-            tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))
+            tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2
             
             num += tempdist*tempsky*weight[i]
 
@@ -132,11 +134,12 @@ class MasterEquation(object):
         num = np.zeros(len(self.H0))
         
         #skykernel = event_data.compute_2d_kde() 
-        distkernel = event_data.dist_prior_corr()
+        #distkernel = event_data.dist_prior_corr()
+        distkernel = event_data.lineofsight_distance()
 
         for i in range(len(self.H0)):
             def Inum(z,M):
-                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)
+                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
 
@@ -275,6 +278,7 @@ class MasterEquation(object):
             
             pxnG = self.px_H0nG(event_data)
             
+
             likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
