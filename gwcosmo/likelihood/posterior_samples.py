@@ -145,14 +145,14 @@ class posterior_samples(object):
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
         ###Clean this mess
         t = Table([ra,dec,dist,z],names=('RA','Dec', 'Distance', 'z'))
-        nt = t[np.argmax(t['Distance'] > distmin):np.argmin(t['Distance'] < distmax)]
+        nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
 
         nt.sort('RA')
-        nt = nt[np.argmax(nt['RA'] > np.min(self.longitude) - 1.0):np.argmin(nt['RA'] < np.max(self.longitude ) +1.0)]
-
+        nt = nt[(np.where((nt['RA'] > np.min(pos.longitude) - 1.0) \
+                          & (nt['RA'] < np.max(pos.longitude ) +1.0)))]
         nt.sort('Dec')
-        nt = nt[np.argmax(nt['Dec'] > np.min(self.latitude) - 1.0):np.argmin(nt['Dec'] < np.max(self.latitude ) + 1.0)]
-
+        nt = nt[(np.where((nt['Dec'] > np.min(pos.latitude) - 1.0) \
+                          & (nt['Dec'] < np.max(pos.latitude ) +1.0)))]
         ra = nt['RA']
         dec = nt['Dec']
         z = nt['z']
