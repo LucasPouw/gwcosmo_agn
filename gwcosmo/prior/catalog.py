@@ -99,6 +99,10 @@ class galaxyCatalog(object):
             self.catalog_file = catalog_data_path + "mdc_v1_cat.txt"
         if version == '2.1':
             self.catalog_file = catalog_data_path + "mdc_v2_lim_cat.txt"
+        if version == '2.2':
+            self.catalog_file = catalog_data_path + "mdc_v2-2_lim_cat.txt"
+        if version == '2.3':
+            self.catalog_file = catalog_data_path + "mdc_v2-3_lim_cat.txt"            
         if version == '3.1':
             self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
 
