@@ -3,7 +3,7 @@
 '''
 Module to compute 2d sky probability an select galaxies 
 
-authors= Archisman Ghosh, Ankan Sur
+authors= Archisman Ghosh, Ankan Sur, Rachel Gray
 
 '''
 
@@ -44,6 +44,24 @@ def ra_dec_from_ipix(nside, ipix):
 def ipix_from_ra_dec(nside, ra, dec):
     (theta, phi) = (np.pi/2.-dec, ra)
     return hp.ang2pix(nside, theta, phi)
+
+class skymap2d(object):
+    """
+    Class for reading in 2d skymaps and returning various things (ie probabilities as specific sky-locations)
+    """
+    # TODO: tidy this up wrt the functions currently defined outside it.
+    def __init__(self,skymap_file):
+        self.skymap = hp.read_map(skymap_file)
+        self.npix = len(self.skymap)
+        self.nside = hp.npix2nside(self.npix)
+        
+    def skyprob(self,ra,dec):
+        """
+        Takes a value (or array of values) for ra and dec, and computes the probability of the skymap at the location in the sky
+        """
+        # TODO: change this to interpolate between pixels
+        ipix_gal = ipix_from_ra_dec(self.nside,ra,dec)
+        return self.skymap[ipix_gal]
 
 
 def twodskyprob(skymap_file, ra, dec, z_gal, z_min, z_max, sky_level=0.99):

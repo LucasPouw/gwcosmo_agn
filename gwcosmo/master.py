@@ -33,7 +33,7 @@ class MasterEquation(object):
         self.pG = None
         self.PnG = None
     
-    def px_H0G(self,event_data):
+    def px_H0G(self,event_data,skymap2d):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -53,8 +53,13 @@ class MasterEquation(object):
         # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
+            
             # TODO: add possibility of using skymaps/other ways of using gw data
-            tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+            if skymap2d is not None:
+                tempsky = skymap2d.skyprob(gal.ra,gal.dec)
+            else:
+                tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+            
             tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
             
             num += tempdist*tempsky*weight[i]
@@ -251,13 +256,13 @@ class MasterEquation(object):
             
         return likelihood
 
-    def likelihood(self,event_data,complete=False):
+    def likelihood(self,event_data,complete=False,skymap2d=None):
         """
         The likelihood for a single event
         """    
         dH0 = self.H0[1]-self.H0[0]
         
-        pxG = self.px_H0G(event_data)
+        pxG = self.px_H0G(event_data,skymap2d)
         if all(self.pDG)==None:
             self.pDG = self.pD_H0G()
         
