@@ -68,11 +68,7 @@ def extract_galaxies(tt):
     cluster_name = tt['Cluster']
     pgcCat = tt['PGC']
     ra = tt['RA']
-    ra = np.pi * ra / 180.0
-    
-    dec = tt['Dec']
-    dec = np.pi * dec / 180.0
-    
+    dec = tt['Dec']    
     z = tt['z']
     dist = tt['Distance']
 
