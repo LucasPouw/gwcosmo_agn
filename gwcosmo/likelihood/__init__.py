@@ -1,1 +1,2 @@
 import gwcosmo.likelihood.posterior_samples
+import gwcosmo.likelihood.skymap2d

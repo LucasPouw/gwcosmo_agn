@@ -9,6 +9,7 @@ authors= Archisman Ghosh, Ankan Sur
 
 import numpy as np, healpy as hp
 from scipy import interpolate
+import sys
 
 class confidence(object):
     def __init__(self, counts):
