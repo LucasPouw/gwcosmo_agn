@@ -33,7 +33,7 @@ class MasterEquation(object):
         self.pG = None
         self.PnG = None
     
-    def px_H0G(self,event_data,skymap2d):
+    def px_H0G(self,event_data,skymap2d,lum_weights=None):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -43,8 +43,12 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()
+        nGal = self.galaxy_catalog.nGal()     
         weight = np.ones(nGal)
+
+        # weight galaxies according to luminosity: imput required= absolute magnitude of galaxies ???
+        if lum_weights is not None:
+            weight = weight#*SchechterMagFunction(H0=self.H0)(M_list)
         
         skykernel = event_data.compute_2d_kde()
         distkernel = event_data.lineofsight_distance()
