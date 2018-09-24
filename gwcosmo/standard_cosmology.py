@@ -185,7 +185,10 @@ def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):
     """
     if linear:
         # Local cosmology
-        return z*c/H0
+        if z==0:
+            return 10**(-30)
+        else:
+            return z*c/H0
     else:
         # Standard cosmology
         return dLH0overc(z, Omega_m=Omega_m)*c/H0

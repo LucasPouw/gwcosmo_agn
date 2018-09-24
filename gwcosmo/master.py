@@ -37,7 +37,8 @@ class MasterEquation(object):
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
     
-    def px_H0G(self,event_data,skymap2d=None):
+
+    def px_H0G(self,event_data,skymap2d=None,lum_weights=None):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -47,8 +48,12 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()
+        nGal = self.galaxy_catalog.nGal()     
         weight = np.ones(nGal)
+
+        # weight galaxies according to luminosity: imput required= absolute magnitude of galaxies ???
+        if lum_weights is not None:
+            weight = weight#*SchechterMagFunction(H0=self.H0)(M_list)
         
         skykernel = event_data.compute_2d_kde()
         distkernel = event_data.lineofsight_distance()

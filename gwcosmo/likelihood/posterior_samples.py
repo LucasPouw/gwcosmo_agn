@@ -143,14 +143,10 @@ class posterior_samples(object):
 
         kde = self.compute_3d_kde()
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
-        ###Clean this mess
         t = Table([ra,dec,dist,z],names=('RA','Dec', 'Distance', 'z'))
         nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
-
-        nt.sort('RA')
         nt = nt[(np.where((nt['RA'] > np.min(pos.longitude) - 1.0) \
                           & (nt['RA'] < np.max(pos.longitude ) +1.0)))]
-        nt.sort('Dec')
         nt = nt[(np.where((nt['Dec'] > np.min(pos.latitude) - 1.0) \
                           & (nt['Dec'] < np.max(pos.latitude ) +1.0)))]
         ra = nt['RA']
