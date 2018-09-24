@@ -32,8 +32,12 @@ class MasterEquation(object):
         self.pDnG = None
         self.pG = None
         self.PnG = None
+        
+        # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
+        # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
+        self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
     
-    def px_H0G(self,event_data,skymap2d):
+    def px_H0G(self,event_data,skymap2d=None):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -56,7 +60,7 @@ class MasterEquation(object):
             
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
-                tempsky = skymap2d.skyprob(gal.ra,gal.dec)
+                tempsky = skymap2d.skyprob(gal.ra,gal.dec) # TODO: test fully and integrate into px_H0nG
             else:
                 tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
             
@@ -109,9 +113,8 @@ class MasterEquation(object):
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
             
-            # TODO: change zmax = 6.0 to a reasonably high limit
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
         
         return num/den    
@@ -145,7 +148,7 @@ class MasterEquation(object):
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
 
-            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
         return num
 
 
@@ -168,7 +171,7 @@ class MasterEquation(object):
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
             
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: 6.0,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
         
         return den
@@ -187,7 +190,7 @@ class MasterEquation(object):
             def I(z):
                 return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
        
-            pH0[i] = quad(I,0,6.0,epsabs=0,epsrel=1.49e-4)[0]
+            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
                 
         if prior == 'jeffreys':
             return pH0/self.H0  
