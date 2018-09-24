@@ -58,8 +58,12 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin"),
-        Option("-y", "--plot", metavar="PLOT", default=False,
-            help="PLOT: Plot results")
+        Option("-y", "--plot", metavar="PLOT", default=True,
+            help="PLOT: Plot results"),
+        Option("-k", "--save", metavar="SAVE", default=True,
+            help="SAVE: Save results"),
+        Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
+            help="OUTPUTFILE: Name of output file")
     ])
 opts, args = parser.parse_args()
 
@@ -122,6 +126,9 @@ dhzero = hzero[1] - hzero[0]
 
 plot = bool(opts.plot)
 
+save = bool(opts.save)
+outputfile = str(opts.outputfile)
+
 import gwcosmo
 
 def main():
@@ -166,9 +173,10 @@ def main():
         plt.xlabel('$H_{0}$  (kms$^{-1}$Mpc$^{-1}$)')
         plt.ylabel('$p(H_{0})$')
         plt.legend()
-        plt.savefig('posterior.png',dpi=100)
+        plt.savefig(outputfile+'.png',dpi=100)
 
-    return likelihood, prior, hzero
+    if save == True:
+        np.savez(outputfile+'.npz',[hzero,likelihood,prior])
 
 if __name__ == "__main__":
     main()
