@@ -14,6 +14,7 @@ from .standard_cosmology import *
 from .schechter_function import *
 from .prior.basic import *
 from astropy import constants as const
+from astropy import units as u
 
 class MasterEquation(object):
     """
@@ -36,7 +37,39 @@ class MasterEquation(object):
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
-    
+        
+    def px_H0G3D(self,event_data):
+        blue_luminosity_density = 1.98e-2
+        cfactor = 1.0
+        def pd(x):
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            tmpd = coverh * x
+            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+        
+        nGal = self.galaxy_catalog.nGal()
+        
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        dist = np.zeros(nGal)
+        z = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            dist[i] = gal.distance
+            z[i] = gal.z
+            
+        ph = np.zeros(len(self.H0))
+        for k, x in enumerate(self.H0):
+            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+            ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, coverh)
+            completion = cfactor * pd( event_data.distance / coverh ) / ( 4.0 * np.pi )
+            epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
+            ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
+            print(ph[k])
+        return ph
+        
 
     def px_H0G(self,event_data,skymap2d=None,lum_weights=None):
         """
@@ -219,7 +252,7 @@ class MasterEquation(object):
         zgal = np.sort(zgal)
         zs = max(zgal)
         
-        dl = np.linspace(0.1,400.0,50)
+        dl = np.linspace(0.1,400.0,20)
         zH0 = dl*self.H0/const.c.to('km/s').value
     
         zG = np.zeros(len(self.H0))
@@ -257,7 +290,8 @@ class MasterEquation(object):
         
         dH0 = self.H0[1]-self.H0[0]
         
-        pxG = self.px_H0G(event_data)
+        #pxG = self.px_H0G(event_data)
+        pxG = self.px_H0G3D(event_data)
         pxnG = self.px_H0nG(event_data)
 
         likelihood_prb = pG*pxG + pnG*pxnG
