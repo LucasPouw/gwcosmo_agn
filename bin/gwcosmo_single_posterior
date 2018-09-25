@@ -24,7 +24,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-        
+
 # Command line options
 parser = OptionParser(
     description = __doc__,
@@ -66,13 +66,13 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin"),
-        Option("-y", "--plot", metavar="PLOT", default=True,
+        Option("-y", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
-        Option("-k", "--save", metavar="SAVE", default=True,
+        Option("-k", "--save", metavar="SAVE", default='True',
             help="SAVE: Save results"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
             help="OUTPUTFILE: Name of output file"),
-        Option("-l", "--prblikelihood", metavar="prblikelihood", default=False,
+        Option("-l", "--prblikelihood", metavar="prblikelihood", default='False',
             help="prblikelihood: Use PRB Master Equation.")
     ])
 opts, args = parser.parse_args()
