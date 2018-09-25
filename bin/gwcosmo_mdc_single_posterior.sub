@@ -1,0 +1,24 @@
+############################################################################
+# HTCondor submit script for gwcosmo MDC
+############################################################################
+universe = vanilla
+getenv = True
+executable = gwcosmo_mdc_single_posterior.sh
+
+# Macros (variables) to use in this submit description file
+Process_count = 10
+environment = "Process=$(Process) Process_count=$(Process_count)"
+
+# Accounting stuff
+accounting_group = ligo.dev.o3.cbc.explore.test
+accounting_group_user = ignacio.magana
+
+request_memory = 1000
+
+# Output and logging
+output = mdc/event_$(Process).stdout
+error = mdc/event_$(Process).stderr
+log = mdc/event_$(Process).log
+
+# Start $(Process_count) number of jobs
+queue $(Process_count)
