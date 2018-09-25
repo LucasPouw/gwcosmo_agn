@@ -13,7 +13,7 @@ from scipy.stats import ncx2, norm
 from .standard_cosmology import *
 from .schechter_function import *
 from .prior.basic import *
-
+from astropy import constants as const
 
 class MasterEquation(object):
     """
@@ -125,13 +125,13 @@ class MasterEquation(object):
         return num/den    
 
 
-    def pnG_H0D(self,pG_H0D):
+    def pnG_H0D(self):
         """
         The probability that a galaxy is not in the catalogue given detection and H0
         
         Returns the complement of pG_H0D.
         """
-        return 1.0 - pG_H0D
+        return 1.0 - self.pG_H0D()
        
         
     def px_H0nG(self,event_data):
@@ -202,13 +202,9 @@ class MasterEquation(object):
         else:
             return pH0
 
-    def p_G(self,zs):
+    def p_G(self):
         """
         The prior probability that a galaxy is in the catalog.
-        
-        Takes an array of H0 values and a choice of prior.
-        Integrates p(D|dL(z,H0))*p(z) over z
-        Returns an array of values corresponding to different values of H0.
         """
         L0 = 1.98e-2 # Kopparapu et al
         #def I(z):
@@ -221,26 +217,30 @@ class MasterEquation(object):
             gal = self.galaxy_catalog.get_galaxy(i)
             zgal[i] = gal.z
         zgal = np.sort(zgal)
+        zs = max(zgal)
         
-        zG = np.zeros(nGal)
-        znG = np.zeros(nGal)
-        for i in range(nGal):
-            if zgal[i] < zs:
-                zG[i] = zgal[i]
+        dl = np.linspace(0.1,400.0,50)
+        zH0 = dl*self.H0/const.c.to('km/s').value
+    
+        zG = np.zeros(len(self.H0))
+        znG = np.zeros(len(self.H0))
+        for i in range(len(self.H0)):
+            if zH0[i] < zs:
+                zG[i] = zH0[i]
             else: 
-                znG[i] = zgal[i]
+                znG[i] = zH0[i]
         
-        LG = pz_nG(zG)/quad(I, min(zG), zs)[0]
-        LnG = pz_nG(znG)/quad(I, zs, max(znG))[0]
+        LG = L0*pz_nG(zG)/quad(I, 0., zs)[0]
+        LnG = L0*pz_nG(znG)/quad(I, zs, self.zmax)[0]
         return LG/(LG + LnG)
 
-    def p_nG(self,pG):
+    def p_nG(self):
         """
         The prior probability that a galaxy is not in the catalog.
         
         Returns the complement of pG.
         """
-        return 1.0 - pG
+        return 1.0 - self.p_G()
 
     def psiH0(self):
         """
@@ -248,21 +248,21 @@ class MasterEquation(object):
         """
         return self.H0**3        
 
-    def likelihood_PRB(self,event_data,zs):
+    def likelihood_PRB(self,event_data):
         """
         The likelihood for a single event
         """ 
-        pG = self.p_G(zs)
-        pnG = self.p_nG(pG)
+        pG = self.p_G()
+        pnG = self.p_nG()
         
         dH0 = self.H0[1]-self.H0[0]
         
         pxG = self.px_H0G(event_data)
         pxnG = self.px_H0nG(event_data)
 
-        likelihood = pG*pxG + pnG*pxnG
+        likelihood_prb = pG*pxG + pnG*pxnG
             
-        return likelihood
+        return likelihood_prb
 
     def likelihood(self,event_data,complete=False,skymap2d=None):
         """
@@ -282,7 +282,7 @@ class MasterEquation(object):
             if all(self.pGD)==None:
                 self.pGD = self.pG_H0D()    
             if all(self.pnGD)==None:
-                self.pnGD = self.pnG_H0D(self.pGD)
+                self.pnGD = self.pnG_H0D()
             if all(self.pDnG)==None:
                 self.pDnG = self.pD_H0nG()
             
