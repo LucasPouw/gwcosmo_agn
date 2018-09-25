@@ -166,6 +166,25 @@ def dl_mM(m,M):
     """
     return 10**(0.2*(m-M-25))
 
+def L_M(M):
+    """
+    Returns luminosity when given an absolute magnitude 
+    """
+    # TODO: double check use of L0=3.0128e28 
+    return 3.0128e28*10**(-0.4*M)
+    
+def M_mdl(m,dl):
+    """
+    Returns a source's absolute magnitude given apparent magnitude and luminosity distance
+    """
+    return m - mu(dl)
+    
+def L_mdl(m,dl):
+    """
+    Returns luminosity when given apparent magnitude and luminosity distance
+    """
+    return L_M(M_mdl(m,dl))
+
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
 def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):

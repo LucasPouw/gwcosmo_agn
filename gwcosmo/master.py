@@ -19,12 +19,13 @@ class MasterEquation(object):
     """
     A class to hold all the individual components of the "master equation" (someone please suggest a better name), and stitch them together in the right way
     """    
-    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False):
+    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False,weighted=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.mth = mth # TODO: get this from galaxy_catalog, not explicitly
         self.linear = linear
+        self.weighted = weighted
         
         self.pDG = None
         self.pGD = None
@@ -38,7 +39,7 @@ class MasterEquation(object):
         self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
     
 
-    def px_H0G(self,event_data,skymap2d=None,lum_weights=None):
+    def px_H0G(self,event_data,skymap2d=None):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -48,13 +49,9 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()     
-        weight = np.ones(nGal)
-
-        # weight galaxies according to luminosity: imput required= absolute magnitude of galaxies ???
-        if lum_weights is not None:
-            weight = weight#*SchechterMagFunction(H0=self.H0)(M_list)
-        
+        nGal = self.galaxy_catalog.nGal()
+        weightnorm = 0.0 # set up normalising factor for the luminosity weights    
+       
         skykernel = event_data.compute_2d_kde()
         distkernel = event_data.lineofsight_distance()
 
@@ -62,6 +59,13 @@ class MasterEquation(object):
         # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
+            
+            if self.weighted:
+                weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                weightnorm += weight
+            else:
+                weight = 1.0
+                weightnorm = 1.0
             
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
@@ -71,9 +75,9 @@ class MasterEquation(object):
             
             tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
             
-            num += tempdist*tempsky*weight[i]
+            num += tempdist*tempsky*weight
 
-        return num
+        return num/weightnorm
 
 
     def pD_H0G(self):
@@ -86,12 +90,21 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         nGal = self.galaxy_catalog.nGal()
+        weightnorm = 0.0
+        
         den = np.zeros(len(self.H0))       
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-            z = gal.z
-            den += self.pdet.pD_dl_eval(dl_zH0(z,self.H0,linear=self.linear))
-        return den
+            
+            if self.weighted:
+                weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                weightnorm += weight
+            else:
+                weight = 1.0
+                weightnorm = 1.0
+                                
+            den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
+        return den/weightnorm
 
 
     def pG_H0D(self):
@@ -109,8 +122,13 @@ class MasterEquation(object):
         # TODO: vectorize this if possible
         for i in range(len(self.H0)):
             
-            def I(z,M):
-                return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            else:
+                def I(z,M):
+                    return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
@@ -148,8 +166,14 @@ class MasterEquation(object):
         distkernel = event_data.lineofsight_distance()
 
         for i in range(len(self.H0)):
-            def Inum(z,M):
-                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+        
+            if self.weighted:
+                def Inum(z,M):
+                    return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*L_M(M)*SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+            else:
+                def Inum(z,M):
+                    return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+                
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
 
@@ -170,8 +194,12 @@ class MasterEquation(object):
         
         for i in range(len(self.H0)):
             
-            def I(z,M):
-                return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            else:
+                def I(z,M):
+                    return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
