@@ -9,12 +9,12 @@ import numpy as np
 import sys
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-
-from .standard_cosmology import *
-from .schechter_function import *
-from .prior.basic import *
 from astropy import constants as const
 from astropy import units as u
+
+from .utilities.standard_cosmology import *
+from .utilities.schechter_function import *
+from .utilities.basic import *
 
 class MasterEquation(object):
     """
@@ -325,4 +325,3 @@ class MasterEquation(object):
             likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
-        
