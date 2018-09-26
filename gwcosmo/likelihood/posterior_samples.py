@@ -126,29 +126,29 @@ class posterior_samples(object):
         sky_support = np.vectorize(sky_support)
         return sky_support
 
-    def compute_3d_kde(self):
+    def compute_3d_kde(self,coverh_x):
         "Computes 3d KDE"
         #coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance))# / coverh))
+        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh_x))# / coverh))
         radecdist = gaussian_kde(three_d_arr)
         return radecdist
 
-    def compute_3d_probability(self, ra, dec, dist, z):
+    def compute_3d_probability(self, ra, dec, dist, z, coverh_x):
         distmin = 0.1 
-        distmax = 200.
-
-        ngalaxies = 500
+        distmax = 400.
+        
+        ngalaxies = len(self.longitude) - 1000
         z_err_fraction = 0.06
         a_err_fraction = 0.08
 
-        kde = self.compute_3d_kde()
+        kde = self.compute_3d_kde(coverh_x)
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
         t = Table([ra,dec,dist,z],names=('RA','Dec', 'Distance', 'z'))
         nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
-        nt = nt[(np.where((nt['RA'] > np.min(pos.longitude) - 1.0) \
-                          & (nt['RA'] < np.max(pos.longitude ) +1.0)))]
-        nt = nt[(np.where((nt['Dec'] > np.min(pos.latitude) - 1.0) \
-                          & (nt['Dec'] < np.max(pos.latitude ) +1.0)))]
+        nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
+                          & (nt['RA'] < np.max(self.longitude ) +1.0)))]
+        nt = nt[(np.where((nt['Dec'] > np.min(self.latitude) - 1.0) \
+                          & (nt['Dec'] < np.max(self.latitude ) +1.0)))]
         ra = nt['RA']
         dec = nt['Dec']
         z = nt['z']
@@ -162,7 +162,7 @@ class posterior_samples(object):
         ra = ra[mask1]
         dec = dec[mask1]
         z = z[mask1]
-
+        lumB = np.ones(len(z))
         tmppdf = kde(np.vstack((ra, dec, z))) / pdfnorm
 
-        return tmppdf
+        return np.sum(tmppdf*lumB/(np.cos(dec)*z**2))
