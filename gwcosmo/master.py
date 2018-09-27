@@ -7,6 +7,8 @@ from __future__ import absolute_import
 import lal
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
+
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 from astropy import constants as const
@@ -37,39 +39,6 @@ class MasterEquation(object):
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
-        
-    def px_H0G3D(self,event_data):
-        blue_luminosity_density = 1.98e-2
-        cfactor = 1.0
-        def pd(x):
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
-        
-        nGal = self.galaxy_catalog.nGal()
-        
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        dist = np.zeros(nGal)
-        z = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            dist[i] = gal.distance
-            z[i] = gal.z
-            
-        ph = np.zeros(len(self.H0))
-        for k, x in enumerate(self.H0):
-            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-            ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, coverh)
-            completion = cfactor * pd( event_data.distance / coverh ) / ( 4.0 * np.pi )
-            epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
-            ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
-            print(ph[k])
-        return ph
-        
 
     def px_H0G(self,event_data,skymap2d=None,lum_weights=None):
         """
@@ -234,7 +203,35 @@ class MasterEquation(object):
             return pH0/self.H0  
         else:
             return pH0
+        
+    def likelihood(self,event_data,complete=False,skymap2d=None):
+        """
+        The likelihood for a single event
+        """    
+        dH0 = self.H0[1]-self.H0[0]
+        
+        pxG = self.px_H0G(event_data,skymap2d)
+        if all(self.pDG)==None:
+            self.pDG = self.pD_H0G()
+        
+        if complete==True:
+            likelihood = pxG/self.pDG
+        
+        # TODO: check this works in python 3 as well as 2.7
+        else:
+            if all(self.pGD)==None:
+                self.pGD = self.pG_H0D()    
+            if all(self.pnGD)==None:
+                self.pnGD = self.pnG_H0D()
+            if all(self.pDnG)==None:
+                self.pDnG = self.pD_H0nG()
+            
+            pxnG = self.px_H0nG(event_data)
 
+            likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+            
+        return likelihood/np.sum(likelihood)/dH0
+    
     def p_G(self):
         """
         The prior probability that a galaxy is in the catalog.
@@ -274,13 +271,7 @@ class MasterEquation(object):
         Returns the complement of pG.
         """
         return 1.0 - self.p_G()
-
-    def psiH0(self):
-        """
-        The infamous H0**3 term.
-        """
-        return self.H0**3        
-
+    
     def likelihood_PRB(self,event_data):
         """
         The likelihood for a single event
@@ -298,30 +289,142 @@ class MasterEquation(object):
             
         return likelihood_prb
 
-    def likelihood(self,event_data,complete=False,skymap2d=None):
+class pofH0(object):
+    """
+    Class that contains ingredients necessary to compute P(H0) in a different way.
+    """
+    def __init__(self,H0,galaxy_catalog,dmax=400.0,cfactor=1.0):
+        self.H0 = H0
+        self.galaxy_catalog = galaxy_catalog
+        self.dmax = dmax
+        self.cfactor = cfactor
+        
+        self.post = None
+        self.like = None
+        self.norm = None
+        self.psi = None
+        
+    def plot(self):
         """
-        The likelihood for a single event
-        """    
-        dH0 = self.H0[1]-self.H0[0]
+        Make plot of P(H0).
+        """
+        tmpp2, tmpp4 = self.post
         
-        pxG = self.px_H0G(event_data,skymap2d)
-        if all(self.pDG)==None:
-            self.pDG = self.pD_H0G()
+        fig, ax = plt.subplots()
+        ax.plot(self.H0,tmpp2,linewidth=2,label='Log Prior')
+        ax.plot(self.H0,tmpp2[-1]*np.power(self.H0,-1.0)/(np.power(self.H0,-1.0)[-1]),'g-.',label='$H_0^{-1}$')
+        ax.plot(self.H0,tmpp4,linewidth=2,label='Uniform Prior')
+        ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
+        ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
+        ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
+        legend = ax.legend(loc='upper right', shadow=True, fontsize='medium')
+        legend.get_frame().set_facecolor('#FFFFFF')
+        fname = 'hubble'
+        fig.savefig(fname,format='pdf')
+        plt.show()
         
-        if complete==True:
-            likelihood = pxG/self.pDG
+    def posterior(self):
+        """
+        The posterior for a single event.
+        """ 
+        hzero = self.H0
+        aofh = self.psi/self.norm
+        ph = self.like
+        tmpp1=ph*aofh/hzero
+        dh = hzero[1]-hzero[0]
+        tmpp2=tmpp1/np.sum(tmpp1*dh)
         
-        # TODO: check this works in python 3 as well as 2.7
-        else:
-            if all(self.pGD)==None:
-                self.pGD = self.pG_H0D()    
-            if all(self.pnGD)==None:
-                self.pnGD = self.pnG_H0D()
-            if all(self.pDnG)==None:
-                self.pDnG = self.pD_H0nG()
+        tmpp3=ph*aofh
+        tmpp4=tmpp3/np.sum(tmpp3*dh)
+        
+        self.post = tmpp2, tmpp4
+        return tmpp2, tmpp4
+    
+    def psiH0(self):
+        """
+        The infamous H0**3 term.
+        """
+        self.psi = self.H0**3
+        return self.H0**3  
+    
+    def likelihood(self,event_data):
+        """
+        The likelihood for a single event.
+        """
+        def pd(x):
+            blue_luminosity_density = 1.98e-2
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            tmpd = coverh * x
+            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+        
+        nGal = self.galaxy_catalog.nGal()
+        
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        dist = np.zeros(nGal)
+        z = np.zeros(nGal)
+        lumB = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            dist[i] = gal.distance
+            z[i] = gal.z
+            lumB[i] = gal.lumB
             
-            pxnG = self.px_H0nG(event_data)
+        ph = np.zeros(len(self.H0))
+        for k, x in enumerate(self.H0):
+            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+            ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh)
+            completion = self.cfactor * pd( event_data.distance / coverh ) / ( 4.0 * np.pi )
+            epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
+            ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
+            print(ph[k])
+        self.like = ph
+        return ph
+    
+    def normalization(self):
+        """
+        The normalization for a single event.
+        """
+        def pd(x):
+            blue_luminosity_density = 1.98e-2
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            tmpd = coverh * x
+            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+        
+        nGal = self.galaxy_catalog.nGal()
 
-            likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
-            
-        return likelihood/np.sum(likelihood)/dH0
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        dist = np.zeros(nGal)
+        z = np.zeros(nGal)
+        lumB = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            dist[i] = gal.distance
+            z[i] = gal.z
+            lumB[i] = gal.lumB
+
+        normalization = np.ones(len(self.H0))
+        for k, x in enumerate(self.H0):
+            zmax = ( (self.dmax * u.Mpc) * (x * u.km / u.s / u.Mpc) / const.c.to('km/s') ).value
+            tmpz = np.linspace(0.00001,zmax,100)
+            coverh = (const.c.to('km/s') / ( x * u.km / u.s / u.Mpc )).value
+            tmpr = z * coverh
+            epsilon = 0.5*(1 - np.tanh(3.3*np.log(tmpr/80.)))
+            epLumB = lumB * epsilon
+            dz = tmpz[1]-tmpz[0]
+            completion = self.cfactor*pd(tmpz)
+            epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
+            #completion = self.cfactor*ma.masked_where(completion<0.0,completion).filled(0)
+            tmpnorm = 0.0
+            #tmpnorm = np.sum(ma.masked_where(z>zmax,tmpLumB).filled(0)) + np.sum(completion) * dz
+            tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion) * dz
+            normalization[k] = tmpnorm
+        self.norm = normalization
+        return normalization
