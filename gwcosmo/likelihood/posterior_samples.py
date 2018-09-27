@@ -133,7 +133,7 @@ class posterior_samples(object):
         radecdist = gaussian_kde(three_d_arr)
         return radecdist
 
-    def compute_3d_probability(self, ra, dec, dist, z, coverh_x):
+    def compute_3d_probability(self, ra, dec, dist, z, lumB, coverh_x):
         distmin = 0.1 
         distmax = 400.
         
@@ -143,7 +143,7 @@ class posterior_samples(object):
 
         kde = self.compute_3d_kde(coverh_x)
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
-        t = Table([ra,dec,dist,z],names=('RA','Dec', 'Distance', 'z'))
+        t = Table([ra,dec,dist,lumB,z],names=('RA','Dec', 'Distance', 'lumB', 'z'))
         nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
                           & (nt['RA'] < np.max(self.longitude ) +1.0)))]
@@ -152,6 +152,7 @@ class posterior_samples(object):
         ra = nt['RA']
         dec = nt['Dec']
         z = nt['z']
+        lumB = nt['lumB']
 
         tmpra = np.transpose(np.tile(ra, (len(self.longitude[ngalaxies:]), 1))) - np.tile(self.longitude[ngalaxies:], (len(ra), 1))
         tmpdec = np.transpose(np.tile(dec, (len(self.latitude[ngalaxies:]), 1))) - np.tile(self.latitude[ngalaxies:], (len(dec), 1))
@@ -162,7 +163,8 @@ class posterior_samples(object):
         ra = ra[mask1]
         dec = dec[mask1]
         z = z[mask1]
-        lumB = np.ones(len(z))
+        lumB = lumB[mask1]
+        
         tmppdf = kde(np.vstack((ra, dec, z))) / pdfnorm
 
         return np.sum(tmppdf*lumB/(np.cos(dec)*z**2))
