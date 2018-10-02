@@ -137,7 +137,7 @@ class posterior_samples(object):
         distmin = 0.1 
         distmax = 400.
         
-        ngalaxies = len(self.longitude) - 1000
+        ngalaxies = len(self.distance) - 1000
         z_err_fraction = 0.06
         a_err_fraction = 0.08
 

@@ -20,15 +20,16 @@ from .utilities.basic import *
 
 class MasterEquation(object):
     """
-    A class to hold all the individual components of the "master equation" (someone please suggest a better name), and stitch them together in the right way
-    """    
+    A class to hold all the individual components of the posterior for H0,
+    and methods to stitch them together in the right way.
+    """
     def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.mth = mth # TODO: get this from galaxy_catalog, not explicitly
         self.linear = linear
-        
+
         self.pDG = None
         self.pGD = None
         self.pnGD = None
@@ -64,7 +65,6 @@ class MasterEquation(object):
         # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-            
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
                 tempsky = skymap2d.skyprob(gal.ra,gal.dec) # TODO: test fully and integrate into px_H0nG
@@ -110,7 +110,6 @@ class MasterEquation(object):
         
         # TODO: vectorize this if possible
         for i in range(len(self.H0)):
-            
             def I(z,M):
                 return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
@@ -122,8 +121,7 @@ class MasterEquation(object):
             
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
-        
+
         return num/den    
 
 
@@ -151,7 +149,8 @@ class MasterEquation(object):
 
         for i in range(len(self.H0)):
             def Inum(z,M):
-                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)*SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+                return distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
+            *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
             Mmin = M_Mobs(self.H0[i],-22.96)
             Mmax = M_Mobs(self.H0[i],-12.96)
 
@@ -171,7 +170,6 @@ class MasterEquation(object):
         den = np.zeros(len(self.H0))
         
         for i in range(len(self.H0)):
-            
             def I(z,M):
                 return SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             
@@ -179,8 +177,7 @@ class MasterEquation(object):
             Mmax = M_Mobs(self.H0[i],-12.96)
             
             den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            #print("{}: Calculated for H0 {}/{}".format(time.asctime(),i+1,len(self.H0)))
-        
+            
         return den
 
 
@@ -196,7 +193,6 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
             def I(z):
                 return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-       
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
                 
         if prior == 'jeffreys':
@@ -215,9 +211,7 @@ class MasterEquation(object):
             self.pDG = self.pD_H0G()
         
         if complete==True:
-            likelihood = pxG/self.pDG
-        
-        # TODO: check this works in python 3 as well as 2.7
+            likelihood = pxG/self.pDG 
         else:
             if all(self.pGD)==None:
                 self.pGD = self.pG_H0D()    
@@ -293,7 +287,7 @@ class pofH0(object):
     """
     Class that contains ingredients necessary to compute P(H0) in a different way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0,cfactor=1.0):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0,cfactor=1.0, option='GW170817'):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
@@ -310,6 +304,7 @@ class pofH0(object):
         
         self.prior_type = None
         self.dH0 = self.H0[1] - self.H0[0]
+        self.option = option
     
     def prior(self, prior_type='log'):
         self.prior_type = prior_type
@@ -344,8 +339,11 @@ class pofH0(object):
         for k, x in enumerate(self.H0):
             coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
             ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh)
-            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist ) / ( 4.0 * np.pi )
-            epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
+            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist, self.option ) / ( 4.0 * np.pi )
+            if self.option == 'GW170817':
+                epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
+            if self.option == 'MDC1':
+                epsilon = 0.5*(1 - np.tanh(2.8*np.log(event_data.distance/90.)))
             ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
             print(ph[k])
         self.like = ph
@@ -366,8 +364,11 @@ class pofH0(object):
             epsilon = 0.5*(1 - np.tanh(3.3*np.log(tmpr/80.)))
             epLumB = lumB * epsilon
             dz = tmpz[1]-tmpz[0]
-            completion = self.cfactor*self.pd(tmpz,lumB,dist)
-            epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
+            completion = self.cfactor*self.pd(tmpz,lumB,dist,self.option)
+            if self.option == 'GW170817':
+                epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
+            if self.option == 'MDC1':
+                epsilon = 0.5*(1 - np.tanh(2.8*np.log(coverh*tmpz/90.)))
             tmpnorm = 0.0
             tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion)*dz
             normalization[k] = tmpnorm
@@ -440,10 +441,18 @@ class pofH0(object):
         return ra, dec, dist, z, lumB
 
     #place this somewhere specific to glade... preprocessing?       
-    def pd(self,x,lumB,dist):
-        blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
-        coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-        tmpd = coverh * x
-        tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-        return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+    def pd(self,x,lumB,dist,option):
+        option = self.option
+        if option == 'GW170817':
+            blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            tmpd = coverh * x
+            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+        if option == 'MDC1':
+            blue_luminosity_density = 0.00013501121143
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            tmpd = coverh * x
+            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-0.0)**2)
+            return ma.masked_where(tmpd<435.,tmpp).filled(0)
     
