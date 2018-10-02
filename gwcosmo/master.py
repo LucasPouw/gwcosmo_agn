@@ -293,12 +293,13 @@ class pofH0(object):
     """
     Class that contains ingredients necessary to compute P(H0) in a different way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,dmax=400.0,cfactor=1.0):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0,cfactor=1.0):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.linear = linear
         self.dmax = dmax
+        self.zmax = zmax
         self.cfactor = cfactor
         
         self.post = None
@@ -308,7 +309,6 @@ class pofH0(object):
         self.prior_ = None
         
         self.prior_type = None
-        self.zmax = 1.0
         self.dH0 = self.H0[1] - self.H0[0]
     
     def prior(self, prior_type='log'):
@@ -338,33 +338,13 @@ class pofH0(object):
         """
         The likelihood for a single event.
         """
-        def pd(x):
-            blue_luminosity_density = 1.98e-2
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
-        
-        nGal = self.galaxy_catalog.nGal()
-        
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        dist = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            dist[i] = gal.distance
-            z[i] = gal.z
-            lumB[i] = gal.lumB
+        ra, dec, dist, z, lumB = self.extract_galaxies()
             
         ph = np.zeros(len(self.H0))
         for k, x in enumerate(self.H0):
             coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
             ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh)
-            completion = self.cfactor * pd( event_data.distance / coverh ) / ( 4.0 * np.pi )
+            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist ) / ( 4.0 * np.pi )
             epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
             ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
             print(ph[k])
@@ -375,28 +355,8 @@ class pofH0(object):
         """
         The normalization for a single event.
         """
-        def pd(x):
-            blue_luminosity_density = 1.98e-2
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+        ra, dec, dist, z, lumB = self.extract_galaxies()
         
-        nGal = self.galaxy_catalog.nGal()
-
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        dist = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            dist[i] = gal.distance
-            z[i] = gal.z
-            lumB[i] = gal.lumB
-
         normalization = np.ones(len(self.H0))
         for k, x in enumerate(self.H0):
             zmax = ( (self.dmax * u.Mpc) * (x * u.km / u.s / u.Mpc) / const.c.to('km/s') ).value
@@ -406,12 +366,10 @@ class pofH0(object):
             epsilon = 0.5*(1 - np.tanh(3.3*np.log(tmpr/80.)))
             epLumB = lumB * epsilon
             dz = tmpz[1]-tmpz[0]
-            completion = self.cfactor*pd(tmpz)
+            completion = self.cfactor*self.pd(tmpz,lumB,dist)
             epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
-            #completion = self.cfactor*ma.masked_where(completion<0.0,completion).filled(0)
             tmpnorm = 0.0
-            #tmpnorm = np.sum(ma.masked_where(z>zmax,tmpLumB).filled(0)) + np.sum(completion) * dz
-            tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion) * dz
+            tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion)*dz
             normalization[k] = tmpnorm
         self.norm = normalization
         return self.norm
@@ -463,3 +421,29 @@ class pofH0(object):
             legend.get_frame().set_facecolor('#FFFFFF')
             fig.savefig(fname,format='pdf')
             plt.show()
+            
+    #place this somewhere in catalog modules..
+    def extract_galaxies(self):
+        nGal = self.galaxy_catalog.nGal()
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        dist = np.zeros(nGal)
+        z = np.zeros(nGal)
+        lumB = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            dist[i] = gal.distance
+            z[i] = gal.z
+            lumB[i] = gal.lumB
+        return ra, dec, dist, z, lumB
+
+    #place this somewhere specific to glade... preprocessing?       
+    def pd(self,x,lumB,dist):
+        blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
+        coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+        tmpd = coverh * x
+        tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+        return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+    
