@@ -311,14 +311,14 @@ class pofH0(object):
         self.zmax = 1.0
         self.dH0 = self.H0[1] - self.H0[0]
     
-    def prior(self, prior_type='uniform'):
+    def prior(self, prior_type='log'):
         self.prior_type = prior_type
         if prior_type == 'log':
             self.prior_ = 1./self.H0
-            return 1./self.H0
+            return self.prior_
         if prior_type == 'uniform':
             self.prior_ = np.ones(len(self.H0))
-            return np.ones(len(self.H0))
+            return self.prior_
         
     def psiH0(self):
         """
@@ -332,7 +332,7 @@ class pofH0(object):
         #self.psi = pH0/(np.sum(pH0)*self.dH0)
         #return pH0/(np.sum(pH0)*self.dH0)
         self.psi = self.H0**3
-        return self.H0**3
+        return self.psi
     
     def likelihood(self,event_data):
         """
@@ -369,7 +369,7 @@ class pofH0(object):
             ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
             print(ph[k])
         self.like = ph
-        return ph
+        return self.like
     
     def normalization(self):
         """
@@ -414,46 +414,48 @@ class pofH0(object):
             tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion) * dz
             normalization[k] = tmpnorm
         self.norm = normalization
-        return normalization
+        return self.norm
     
-    def posterior(self, event_data, prior_type='uniform'):
+    def posterior(self, event_data, prior_type='log'):
         """
         The posterior for a single event.
         """
-        print("Calculating aofh")
-        norm = self.normalization()
-        psi = self.psiH0()
-        if prior_type == 'log':
-            prior = self.prior('log')
-        if prior_type == 'uniform':
-            prior = self.prior('uniform')
-        print("Setting up" + str(prior_type) + "prior")
-        print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
-        like = self.likelihood(event_data)
+        if self.like is None:
+            print("Calculating aofh")
+            norm = self.normalization()
+            psi = self.psiH0()
+            if prior_type == 'log':
+                prior = self.prior('log')
+            if prior_type == 'uniform':
+                prior = self.prior('uniform')
+            print("Setting up" + str(prior_type) + "prior")
+            print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
+            like = self.likelihood(event_data)
 
-        posterior=like*prior*psi/norm
-        
-        self.prior_type = prior_type
-        self.like = like
-        self.norm = norm
-        self.psi = psi
-        self.prior_ = prior
+            self.like = like
+            self.norm = norm
+            self.psi = psi
+            self.prior_ = prior
+            self.prior_type = prior_type
+
+        posterior=self.like*self.prior_*self.psi/self.norm
         self.post = posterior/np.sum(posterior*self.dH0)
-        return posterior/np.sum(posterior*self.dH0)
+        return self.post
     
     def plot(self,fname='posterior.pdf'):
         """
         Make plot of P(H0).
         """
-        if self.post != None:
+        if self.post is None:
+            print("Calculate posterior first fool...")
+            return 0
+        else:
             fig, ax = plt.subplots()
-            
+            ax.plot(self.H0,self.post,linewidth=2,color='orange',label='Posterior')
             if self.prior_type == 'log':
-                ax.plot(self.H0,self.post,linewidth=2,label='Log Prior')
+                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Log Prior')
             if self.prior_type == 'uniform':
-                ax.plot(self.H0,self.post,linewidth=2,label='Uniform Prior')
-
-            ax.plot(self.H0,1./self.H0/np.sum(1./H0*self.dH0),'g-.',label='$H_0^{-1}$')
+                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Uniform Prior')
             ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
             ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
             ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
@@ -461,7 +463,3 @@ class pofH0(object):
             legend.get_frame().set_facecolor('#FFFFFF')
             fig.savefig(fname,format='pdf')
             plt.show()
-        
-        else:
-            print("Calculate posterior first fool...")
-            return 0
