@@ -293,9 +293,11 @@ class pofH0(object):
     """
     Class that contains ingredients necessary to compute P(H0) in a different way.
     """
-    def __init__(self,H0,galaxy_catalog,dmax=400.0,cfactor=1.0):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,dmax=400.0,cfactor=1.0):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
+        self.pdet = pdet
+        self.linear = linear
         self.dmax = dmax
         self.cfactor = cfactor
         
@@ -303,49 +305,34 @@ class pofH0(object):
         self.like = None
         self.norm = None
         self.psi = None
+        self.prior_ = None
         
-    def plot(self):
-        """
-        Make plot of P(H0).
-        """
-        tmpp2, tmpp4 = self.post
-        
-        fig, ax = plt.subplots()
-        ax.plot(self.H0,tmpp2,linewidth=2,label='Log Prior')
-        ax.plot(self.H0,tmpp2[-1]*np.power(self.H0,-1.0)/(np.power(self.H0,-1.0)[-1]),'g-.',label='$H_0^{-1}$')
-        ax.plot(self.H0,tmpp4,linewidth=2,label='Uniform Prior')
-        ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
-        ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
-        ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
-        legend = ax.legend(loc='upper right', shadow=True, fontsize='medium')
-        legend.get_frame().set_facecolor('#FFFFFF')
-        fname = 'hubble'
-        fig.savefig(fname,format='pdf')
-        plt.show()
-        
-    def posterior(self):
-        """
-        The posterior for a single event.
-        """ 
-        hzero = self.H0
-        aofh = self.psi/self.norm
-        ph = self.like
-        tmpp1=ph*aofh/hzero
-        dh = hzero[1]-hzero[0]
-        tmpp2=tmpp1/np.sum(tmpp1*dh)
-        
-        tmpp3=ph*aofh
-        tmpp4=tmpp3/np.sum(tmpp3*dh)
-        
-        self.post = tmpp2, tmpp4
-        return tmpp2, tmpp4
+        self.prior_type = None
+        self.zmax = 1.0
+        self.dH0 = self.H0[1] - self.H0[0]
     
+    def prior(self, prior_type='uniform'):
+        self.prior_type = prior_type
+        if prior_type == 'log':
+            self.prior_ = 1./self.H0
+            return 1./self.H0
+        if prior_type == 'uniform':
+            self.prior_ = np.ones(len(self.H0))
+            return np.ones(len(self.H0))
+        
     def psiH0(self):
         """
         The infamous H0**3 term.
         """
+        pH0 = np.zeros(len(self.H0))
+        for i in range(len(self.H0)):
+            def I(z):
+                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+        pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        #self.psi = pH0/(np.sum(pH0)*self.dH0)
+        #return pH0/(np.sum(pH0)*self.dH0)
         self.psi = self.H0**3
-        return self.H0**3  
+        return self.H0**3
     
     def likelihood(self,event_data):
         """
@@ -428,3 +415,53 @@ class pofH0(object):
             normalization[k] = tmpnorm
         self.norm = normalization
         return normalization
+    
+    def posterior(self, event_data, prior_type='uniform'):
+        """
+        The posterior for a single event.
+        """
+        print("Calculating aofh")
+        norm = self.normalization()
+        psi = self.psiH0()
+        if prior_type == 'log':
+            prior = self.prior('log')
+        if prior_type == 'uniform':
+            prior = self.prior('uniform')
+        print("Setting up" + str(prior_type) + "prior")
+        print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
+        like = self.likelihood(event_data)
+
+        posterior=like*prior*psi/norm
+        
+        self.prior_type = prior_type
+        self.like = like
+        self.norm = norm
+        self.psi = psi
+        self.prior_ = prior
+        self.post = posterior/np.sum(posterior*self.dH0)
+        return posterior/np.sum(posterior*self.dH0)
+    
+    def plot(self,fname='posterior.pdf'):
+        """
+        Make plot of P(H0).
+        """
+        if self.post != None:
+            fig, ax = plt.subplots()
+            
+            if self.prior_type == 'log':
+                ax.plot(self.H0,self.post,linewidth=2,label='Log Prior')
+            if self.prior_type == 'uniform':
+                ax.plot(self.H0,self.post,linewidth=2,label='Uniform Prior')
+
+            ax.plot(self.H0,1./self.H0/np.sum(1./H0*self.dH0),'g-.',label='$H_0^{-1}$')
+            ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
+            ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
+            ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
+            legend = ax.legend(loc='upper right', shadow=True, fontsize='medium')
+            legend.get_frame().set_facecolor('#FFFFFF')
+            fig.savefig(fname,format='pdf')
+            plt.show()
+        
+        else:
+            print("Calculate posterior first fool...")
+            return 0
