@@ -150,6 +150,7 @@ class MasterEquation(object):
         
         Returns the complement of pG_H0D.
         """
+        # TODO: set so that if pG_H0D() has been computed since the class was initialised, it uses the computed value
         return 1.0 - self.pG_H0D()
        
         
