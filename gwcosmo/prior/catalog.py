@@ -45,7 +45,7 @@ class galaxy(object):
         self.z = row['z']
         self.distance = row['Distance']
         self.distance_error = row['Distance Error']
-        self.abs_mag_r = row['abs_mag_r']
+        self.lumB = row['abs_mag_r']
         self.abs_mag_k = row['abs_mag_k']
 
     def load_astropy_row_mdc(self, index, row, version):

@@ -17,6 +17,14 @@ from scipy.integrate import quad, dblquad
 
 import time
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 # Command line options
 parser = OptionParser(
     description = __doc__,
@@ -58,8 +66,14 @@ parser = OptionParser(
             help="ANTENNA: Network antenna power pattern"),
         Option("-p", "--posterior", metavar="POSTERIOR", default=None,
             help="POSTERIOR: Previous H0 posterior as a function of H0 bin"),
-        Option("-y", "--plot", metavar="PLOT", default=False,
-            help="PLOT: Plot results")
+        Option("-y", "--plot", metavar="PLOT", default='True',
+            help="PLOT: Plot results"),
+        Option("-k", "--save", metavar="SAVE", default='True',
+            help="SAVE: Save results"),
+        Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
+            help="OUTPUTFILE: Name of output file"),
+        Option("-l", "--prblikelihood", metavar="prblikelihood", default='False',
+            help="prblikelihood: Use PRB Master Equation.")
     ])
 opts, args = parser.parse_args()
 
@@ -117,10 +131,15 @@ antenna_network = opts.antenna_network
 
 options_string = opts.method
 
-hzero = np.linspace(min_h0, max_h0, bins_h0)
-dhzero = hzero[1] - hzero[0]
+H0 = np.linspace(min_h0, max_h0, bins_h0)
+dH0 = H0[1] - H0[0]
 
-plot = bool(opts.plot)
+plot = str2bool(opts.plot)
+
+save = str2bool(opts.save)
+outputfile = str(opts.outputfile)
+
+PRB = str2bool(opts.prblikelihood)
 
 import gwcosmo
 
@@ -144,31 +163,38 @@ def main():
     dl = np.linspace(opts.min_dist,opts.max_dist,opts.bins_dist)
     
     #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.detectionprobability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
+    dp = gwcosmo.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(hzero,catalog,dp,linear=True)
-    likelihood = me.likelihood(samples,complete=True)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True)
+    
+    if PRB == True:
+        print('PRB')
+        likelihood = me.likelihood_PRB(samples)/me.psiH0()
+    elif PRB == False:
+        print('MASTER')
+        likelihood = me.likelihood(samples,complete=True)
 
     prior = me.pH0_D(prior='jeffreys')
 
     posterior = prior*likelihood
 
-    posterior_norm = posterior/np.sum(posterior)/dhzero
-    prior_norm = prior/np.sum(prior)/dhzero
+    posterior_norm = posterior/np.sum(posterior)/dH0
+    prior_norm = prior/np.sum(prior)/dH0
 
     if plot == True:
         plt.figure()
-        plt.plot(hzero,likelihood,'g', label='likelihood')
-        plt.plot(hzero,prior_norm, 'y', linestyle='dashed', label='$p(H_0|D)$')
-        plt.plot(hzero,posterior_norm,'k', label='posterior')
+        plt.plot(H0,likelihood,'g', label='likelihood')
+        plt.plot(H0,prior_norm, 'y', linestyle='dashed', label='$p(H_0|D)$')
+        plt.plot(H0,posterior_norm,'k', label='posterior')
         plt.axvline(70, label='True $H_0$')
         plt.xlabel('$H_{0}$  (kms$^{-1}$Mpc$^{-1}$)')
         plt.ylabel('$p(H_{0})$')
         plt.legend()
-        plt.savefig('posterior.png',dpi=100)
+        plt.savefig(outputfile+'.png',dpi=100)
 
-    return likelihood, prior, hzero
+    if save == True:
+        np.savez(outputfile+'.npz',[H0,likelihood,prior,posterior_norm])
 
 if __name__ == "__main__":
     main()

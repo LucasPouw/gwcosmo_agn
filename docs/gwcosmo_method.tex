@@ -1,0 +1,352 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[margin=1.0in]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{todonotes}
+
+\newcommand\note[1]{\textcolor{red}{#1}}
+
+\title{A summary of the maths in the gwcosmo pipeline}
+\author{Rachel Gray}
+\date{\today} % delete this line to display the current date
+
+%%% BEGIN DOCUMENT
+\begin{document}
+
+\maketitle
+%\tableofcontents
+
+\section{Method}
+\begin{equation} \label{Eq:Master Equation}
+\begin{aligned}
+p(H_0|x,D,I) &= p(H_0|D,I) \bigg[ \dfrac{p(x|H_0,G,I)}{p(D|H_0,G,I)} p(G|H_0,D,I) + \dfrac{p(x|H_0,\bar{G},I)}{p(D|H_0,\bar{G},I)} p(\bar{G}|H_0,D,I) \bigg]
+\end{aligned}
+\end{equation}
+where $H_0$ is the Hubble constant, $x$ is the gravitational wave data, $D$ represents a gravitational wave detection, $G$ refers to the host galaxy being inside the galaxy catalogue, and $\bar{G}$ refers to the host galaxy being outside the galaxy catalogue.
+
+\subsection{Derivation}
+What we wish to obtain eventually is a computable expression for $p(H_0|x,I)$, but first we must marginalise over the events which we do, and do not detect:
+\begin{equation} \label{Eq:sum D}
+\begin{aligned}
+p(H_0|x,I) &= \sum_{d=D,\bar{D}} p(H_0,d|x,I)
+\\ &= \sum_{d=D,\bar{D}} p(H_0|x,d,I) p(d|x,I)
+\\ &= p(H_0|x,D,I) p(D|x,I) + p(H_0|x,\bar{D},I) p(\bar{D}|x,I)
+\end{aligned} 
+\end{equation}
+
+As we only have access to $x$ in the case where it has passed the detection threshold, we consider only the first term, and ignore $p(D|x,I)$ as a constant which is independent of $H_0$.
+
+Applying Bayes' Theorem to the remaining term:
+\begin{equation} \label{Eq:posterior}
+\begin{aligned}
+p(H_0|x,D,I) &= \dfrac{p(x|H_0,D,I)p(H_0|D,I)}{p(x|D,I)},
+\\ &\propto p(x|H_0,D,I)p(H_0|D,I),
+\end{aligned} 
+\end{equation}
+which forms the basis of our method.
+
+Applying Bayes' Theorem to $p(x|H_0,D,I)$:
+\begin{equation} \label{Eq:likelihood}
+\begin{aligned}
+p(x|H_0,D,I) &= \dfrac{p(D|x,H_0,I)p(x|H_0,I)}{p(D|H_0,I)},
+\\ &= \dfrac{p(x|H_0,I)}{p(D|H_0,I)},
+\end{aligned} 
+\end{equation}
+as $p(D|x,H_0,I)=1$ when we have access to the gravitational wave data.
+
+Considering the likelihood, $p(x|H_0,D,I)$, we can also marginalise over the cases where the host galaxy is, and is not, in the galaxy catalogue ($G$ and $\bar{G}$ respectively).
+\begin{equation} \label{Eq:sum G}
+\begin{aligned}
+p(x|H_0,D,I) &= \sum_{g=G,\bar{G}} p(x,g|H_0,D,I)
+\\ &= \sum_{g=G,\bar{G}} p(x|H_0,g,D,I) p(g|H_0,D,I)
+\\ &= p(x|H_0,G,D,I) p(G|H_0,D,I) + p(x|H_0,\bar{G},D,I) p(\bar{G}|H_0,D,I)
+\end{aligned} 
+\end{equation}
+
+Combining Eq. \ref{Eq:sum G} and \ref{Eq:likelihood}, and subbing back into Eq. \ref{Eq:posterior} gives us Eq. \ref{Eq:Master Equation}.
+
+
+\section{Individual components}
+Now to consider the individual components of Eq. \ref{Eq:Master Equation}.
+
+
+\subsection{A brief note on luminosity weighting}
+The reason it has taken so long to figure out how to do luminosity weighting is because we are missing a term on the right-hand side of all of our equations: $s$, where $s$ denotes the true source of the gravitational wave signal.  In the majority of cases, addition of this term does not change the outcome.  For example:
+%\begin{equation}
+%\begin{aligned}
+%p(z|s,I) &= p(z|I)
+%\\ p(\Omega|s,I) &= p(\Omega|I)
+%\\ p(D|s,I) &= p(D|I)
+%\\ p(x|s,I) &= p(x|I)^*
+%\end{aligned}
+%\end{equation}
+%*this final one is actually debatable, given false detections, but it simplifies everything even further if we assume that every detection we make is due to a real signal.
+
+\begin{equation}
+\begin{aligned}
+p(z|s,I) &= \dfrac{p(s|z,I) p(z|I)}{p(s|I)} 
+\\ &= \dfrac{p(s|I) p(z|I)}{p(s|I)} 
+\\ &= p(z|I)
+\end{aligned}
+\end{equation}
+
+However, there is one case in which this is not true all of the time:
+\begin{equation}
+\begin{aligned}
+p(M|s,H_0,I) &= \dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)} 
+\\ &= p(M|H_0,I)
+\end{aligned}
+\end{equation}
+which is \emph{only} true if we believe that the probability of a particular galaxy being host to a gravitational wave event is independent of the galaxy's absolute magnitude. Ie \emph{no luminosity weighting.}
+
+In general, we define $p(M|H_0,I)$ as a distribution of absolute magnitudes represented by the Schechter function, as we believe this mirrors the distribution of absolute magnitudes for all the galaxies in the universe.  If we believe that the probability of a given galaxy being host to the gravitational wave source is dependent on the galaxy's absolute magnitude, then $p(s|M,H_0,I)$ takes some non-constant value.  For example:
+\begin{equation}
+\begin{aligned}
+p(s|M,H_0,I) &\propto L(M)
+\end{aligned}
+\end{equation}
+
+And what of $p(s|H_0,I)$?  Well, hopefully it will cancel out in the numerator and denominator whenever it turns up, so we never have to consider it.
+
+
+
+
+
+\subsection{Likelihood when host is in catalogue: $p(x|H_0,G,D,I)$}
+%Marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
+%\begin{equation}
+%\begin{aligned}
+%p(x|H_0,G,D,I) &= \dfrac{\iiiint p(x|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,G,I) dz d\Omega dm dM}
+%\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,G,I) dz d\Omega dm dM}
+%\end{aligned}
+%\end{equation}
+%which is true \emph{if} we can assume that both $x$ and $D$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
+%
+%As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care:
+%\begin{equation}
+%\begin{aligned}
+%p(z,\Omega,m,M|H_0,G,I) &= p(M|H_0,z,\Omega,m,G,I)p(z,\Omega,m|H_0,G,I)
+%\\ &= p(M|H_0,z,m,G,I)p(z,\Omega,m|G,I)
+%\end{aligned}
+%\end{equation}
+%
+%The form taken by $p(M|H_0,z,m,G,I)$ depends on how we believe a galaxy's absolute magnitude is related to its probability of being a GW host.
+%\begin{equation}
+%\begin{aligned}
+%p(M|H_0,z,m,G,I) &= W[\delta(M(z,H_0,m))] \times Schechter(M(z,H_0,m))
+%\end{aligned}
+%\end{equation}
+%where
+%\begin{equation}
+%\begin{aligned}
+%W[\delta(M(z,H_0,m))] &= 
+%\begin{cases}
+%L(M(z,H_0,m)) & \text{if luminosity weighted}\\
+%const & \text{if unweighted}
+%\end{cases}
+%\end{aligned}
+%\end{equation}
+%
+%\begin{equation}
+%\begin{aligned}
+%p(x|H_0,G,D,I) &= \dfrac{\iiint p(x|H_0,z,\Omega,I) W[\delta(M(H_0,z,m))] p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) W[\delta(M(H_0,z,m))] p(z,\Omega,m|G,I) dz d\Omega dm}
+%\\ &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) W[\delta(M(H_0,z_i,m_i))]}{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I) W[\delta(M(H_0,z_i,m_i))]}
+%\end{aligned}
+%\end{equation}
+%
+%In the unweighted case, this simplifies to the following:
+%\begin{equation}
+%\begin{aligned}
+%p(x|H_0,G,D,I) &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) }{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I)}
+%\end{aligned}
+%\end{equation}
+
+
+
+Marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,G,D,I) &= \dfrac{\iiiint p(x|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+\end{aligned}
+\end{equation}
+which is true \emph{if} we can assume that both $x$ and $D$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
+
+As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care:
+%\begin{equation}
+%\begin{aligned}
+%p(z,\Omega,m,M|s,H_0,G,I) &= p(M|s,H_0,z,\Omega,m,G,I)p(z,\Omega,m|s,H_0,G,I)
+%\\ &= p(M(H_0,z,m)|s,H_0,G,I)p(z,\Omega,m|G,I)
+%\\ &= \dfrac{p(s|M(H_0,z,m),H_0,G,I)p(M(H_0,z,m)|H_0,G,I)}{p(s|H_0,G,I)} p(z,\Omega,m|G,I)
+%\\ &= \dfrac{p(s|M(H_0,z,m),I)\delta(M-M(H_0,z,m))}{p(s|H_0,G,I)} p(z,\Omega,m|G,I)
+%\end{aligned}
+%\end{equation}
+
+
+\begin{equation}
+\begin{aligned}
+p(z,\Omega,m,M|s,H_0,G,I) &= p(M|s,H_0,z,\Omega,m,G,I)p(z,\Omega,m|s,H_0,G,I)
+\\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
+\\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
+\end{aligned}
+\end{equation}
+
+
+The form taken by $p(s|M(H_0,z,m),I)$ depends on how we believe a galaxy's absolute magnitude is related to its probability of being a GW host.
+\begin{equation}
+\begin{aligned}
+p(s|M(H_0,z,m),I) &\propto 
+\begin{cases}
+L(M(H_0,z,m)) & \text{if luminosity weighted}\\
+const & \text{if unweighted}
+\end{cases}
+\end{aligned}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+p(x|H_0,G,D,I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
+\\ &= \dfrac{\iiint p(x|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
+\\ &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
+\end{aligned}
+\end{equation}
+
+In the unweighted case, this simplifies to the following:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,G,D,I) &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) }{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I)}
+\end{aligned}
+\end{equation}
+
+
+
+
+
+
+
+
+
+\subsection{Probability the host galaxy is in the galaxy catalogue: $p(G|H_0,D,I)$}
+
+
+\begin{equation}
+\begin{aligned}
+p(G|H_0,D,I) &= \iiiint p(G,z,\Omega,m,M|H_0,D,I) dz d\Omega dm dM
+\\ &= \iiiint p(G|H_0,D,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,D,I) dz d\Omega dm dM
+\\ &= \iiiint \Theta[m_{th}-m] \dfrac{p(D|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I)}{p(D|H_0,I)}  dz d\Omega dm dM
+\\ &=  \dfrac{\iiiint \Theta[m_{th}-m] p(D|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D,z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+\\ &=  \dfrac{\iiiint \Theta[m_{th}-m] p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+\end{aligned}
+\end{equation}
+where $p(G|H_0,D,z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{th}$ - the apparent magnitude threshold of the galaxy catalogue.
+
+\begin{equation}
+\begin{aligned}
+p(G|H_0,D,I) &=  \dfrac{\iiiint \Theta[m_{th}-m] p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+\\ &= \dfrac{\iiiint \Theta[m_{th}-m] p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
+\\ &= \dfrac{\iiint \Theta[m_{th}-m(z,H_0,M)] p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\iiint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\\ &= \dfrac{\int^{z(H_0,m_{th},M)}_0 dz \int d\Omega \int dM p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\end{aligned}
+\end{equation}
+
+
+\subsubsection{The luminosity weighted case}
+In the case where we consider luminosity weighting, this takes the following form:
+\begin{equation}
+\begin{aligned}
+p(G|H_0,D,I) &= \dfrac{\int^{z(H_0,m_{th},M)}_0 dz \int d\Omega \int dM p(D|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I)}{\iiint p(D|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
+\end{aligned}
+\end{equation}
+
+
+\subsection{Probability the host galaxy is not in the galaxy catalogue: $p(\bar{G}|H_0,D,I)$}
+
+As the probabilities of being in the catalogue and not in the catalogue must add up the one, we can calculate the counterpart to $p(G|H_0,D,I)$ as follows:
+\begin{equation}
+\begin{aligned}
+p(\bar{G}|H_0,D,I) &= 1 - p(G|H_0,D,I)
+\end{aligned}
+\end{equation}
+
+
+
+
+
+
+
+
+\subsection{Likelihood when host is not in catalogue: $p(x|H_0,\bar{G},D,I)$}
+Similarly:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
+\\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(\bar{G}|m(z,M,H_0),I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m(z,M,H_0),I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
+\end{aligned}
+\end{equation}
+which is true \emph{if} we can assume that both $x$ and $D$ are mutually independent of $G$.
+
+\begin{equation}
+\begin{aligned}
+p(x|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) \Theta(m-m_{th})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \Theta(m-m_{th})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiint p(x|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{th}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{th})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\\ &= \dfrac{\int^\infty_{z(H_0,m_{th},M)} \iint p(x|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{th},M)} \iint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\end{aligned}
+\end{equation}
+
+
+\subsubsection{The luminosity weighted case}
+In the case where we consider luminosity weighting, this takes the following form:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,\bar{G},D,I) &= \dfrac{\int^\infty_{z(H_0,m_{th},M)} \iint p(x|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{th},M)} \iint p(D|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
+\end{aligned}
+\end{equation}
+
+
+
+
+
+
+\section{Converting from maths to code}
+There are several things to bear in mind when moving from the maths shown above, to actually doing the calculations in python.
+
+\subsection{$p(G|H_0,D,I)$ and $p(\bar{G}|H_0,D,I)$}
+Instead of calculating 
+\begin{equation}
+\begin{aligned}
+p(G|H_0,D,I) &= \dfrac{\int^{z(H_0,m_{th},M)}_0 dz \int d\Omega \int dM p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM},
+\end{aligned}
+\end{equation}
+we can save time by reducing the number of integrals, by noting that this is the same as the following:
+\begin{equation}
+\begin{aligned}
+p(G|H_0,D,I) &= \dfrac{\int^{z(H_0,m_{th},M)}_0 dz \int dM p(D|H_0,z,I) p(z)p(M|H_0,I)}{\iint p(D|H_0,z,I) p(z)p(M|H_0,I) dz dM}
+\end{aligned}
+\end{equation}
+where the factors of $4\pi$ that come from integrating over the entire sky cancel in numerator and denominator.
+
+
+
+
+\subsection{KDEs}
+When we create a KDE on the event samples, what we make is $p(d_L,\Omega|x)$, not $p(x|d_L,\Omega)$.
+
+Also, we first use a 2+1D KDE approach, where we assume that $d_L$ and $\Omega$ are mutually independent (untrue), in order to split the KDE up as follows:
+\begin{equation}
+\begin{aligned}
+p(d_L,\Omega|x) &= p(d_L|x) p(\Omega|x)
+\\ &= \dfrac{p(x|d_L) p(d_L)}{p(x)} \dfrac{p(x|\Omega) p(\Omega)}{p(x)}
+\end{aligned}
+\end{equation}
+
+Essentially, when we create the KDE it already contains a the prior that was used to generate the samples (ie $d_L^2$ or $1/4\pi$).  This means that if we want to change the prior we are using, we need to first remove the one that is already present.  In particular, this means being careful when summing over the galaxies in the catalogue, as they represent a new prior on $\alpha,\delta,z$, and so the old priors need to be removed in this case.
+
+
+
+
+
+\end{document}
