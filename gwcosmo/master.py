@@ -65,10 +65,9 @@ class MasterEquation(object):
             
             if self.weighted:
                 weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                weightnorm += weight
             else:
                 weight = 1.0
-                weightnorm = 1.0
+            #weightnorm += weight
             
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
@@ -80,7 +79,7 @@ class MasterEquation(object):
             
             num += tempdist*tempsky*weight
 
-        return num/weightnorm
+        return num#/weightnorm
 
 
     def pD_H0G(self):
@@ -101,13 +100,12 @@ class MasterEquation(object):
             
             if self.weighted:
                 weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                weightnorm += weight
             else:
                 weight = 1.0
-                weightnorm = 1.0
+            #weightnorm += weight
                                 
             den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
-        return den/weightnorm
+        return den#/weightnorm
 
 
     def pG_H0D(self):
@@ -150,8 +148,10 @@ class MasterEquation(object):
         
         Returns the complement of pG_H0D.
         """
+        if all(self.pGD)==None:
+            self.pGD = self.pG_H0D() 
         # TODO: set so that if pG_H0D() has been computed since the class was initialised, it uses the computed value
-        return 1.0 - self.pG_H0D()
+        return 1.0 - self.pGD
        
         
     def px_H0nG(self,event_data):
