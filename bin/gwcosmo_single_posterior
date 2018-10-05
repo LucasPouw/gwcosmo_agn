@@ -163,7 +163,7 @@ def main():
     dl = np.linspace(opts.min_dist,opts.max_dist,opts.bins_dist)
     
     #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
+    dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
     me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True)
