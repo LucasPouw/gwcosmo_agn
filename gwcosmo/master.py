@@ -101,7 +101,9 @@ class MasterEquation(object):
                 weight = 1.0
                                 
             den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
-        return den
+
+        self.pDG = den
+        return self.pDG
 
 
     def pG_H0D(self):
@@ -136,7 +138,7 @@ class MasterEquation(object):
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
-        return num/den    
+        return self.pGD    
 
 
     def pnG_H0D(self):
@@ -147,7 +149,8 @@ class MasterEquation(object):
         """
         if all(self.pGD)==None:
             self.pGD = self.pG_H0D()
-        return 1.0 - self.pGD
+        self.pnGD = 1.0 - self.pGD
+        return self.pnGD
        
         
     def px_H0nG(self,event_data):
@@ -204,8 +207,9 @@ class MasterEquation(object):
             Mmax = M_Mobs(self.H0[i],-12.96)
             
             den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            
-        return den
+
+        self.pDnG = den   
+        return self.pDnG
 
 
     def pH0_D(self,prior='uniform'):
