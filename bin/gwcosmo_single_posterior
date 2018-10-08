@@ -36,13 +36,13 @@ parser = OptionParser(
             help="MINH0: Set minimum value of H0 Posterior"),
         Option("-v", "--max_h0", metavar="MAXH0", default='220.0',
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_h0", metavar="BINSH0", default='50',
+        Option("-x", "--bins_h0", metavar="BINSH0", default='210',
             help="BINSH0: Set number of H0 Posterior bins"),
         Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
             help="MINDIST: Set minimum value of luminosity distance"),
         Option("-e", "--max_dist", metavar="MAXDIST", default='400.0', type=float,
             help="MAXDIST: Set maximum value of luminosity distance"),
-        Option("-f", "--bins_dist", metavar="BINSDIST", default='50', type=int,
+        Option("-f", "--bins_dist", metavar="BINSDIST", default='210', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
         Option("-g", "--galaxy_catalog", metavar="CATALOG", default=None,
             help="CATALOG: Galaxy catalog file in hdf5 format"),
@@ -71,9 +71,7 @@ parser = OptionParser(
         Option("-k", "--save", metavar="SAVE", default='True',
             help="SAVE: Save results"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
-            help="OUTPUTFILE: Name of output file"),
-        Option("-l", "--prblikelihood", metavar="prblikelihood", default='False',
-            help="prblikelihood: Use PRB Master Equation.")
+            help="OUTPUTFILE: Name of output file")
     ])
 opts, args = parser.parse_args()
 
@@ -139,22 +137,19 @@ plot = str2bool(opts.plot)
 save = str2bool(opts.save)
 outputfile = str(opts.outputfile)
 
-PRB = str2bool(opts.prblikelihood)
-
 import gwcosmo
 
 def main():
     "Compute P(H0)"
-
     ##Load glade catalog... or mdc catalogs... version = ['1.0','2.1','3.1']
     catalog = gwcosmo.catalog.galaxyCatalog()
-    #catalog.load_glade_catalog(version='corrected')
-    catalog.load_mdc_catalog(version='1.0')
+    catalog.load_glade_catalog(version='corrected')
+    #catalog.load_mdc_catalog(version='1.0')
     
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
     
-    #samples.load_posterior_samples()
-    samples.load_posterior_samples_hdf5(samples_file_path)
+    samples.load_posterior_samples()
+    #samples.load_posterior_samples_hdf5(samples_file_path)
 
     # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
     mth = 18.0 # as a test - not true for MDC v1
@@ -168,12 +163,7 @@ def main():
     # compute likelihood
     me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True)
     
-    if PRB == True:
-        print('PRB')
-        likelihood = me.likelihood_PRB(samples)/me.psiH0()
-    elif PRB == False:
-        print('MASTER')
-        likelihood = me.likelihood(samples,complete=True)
+    likelihood = me.likelihood(samples,complete=False,skymap2d=None,use_3d_kde=True)
 
     prior = me.pH0_D(prior='jeffreys')
 
