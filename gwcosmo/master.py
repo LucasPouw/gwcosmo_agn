@@ -52,11 +52,7 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()   
-       
-        skykernel = event_data.compute_2d_kde()
-        distkernel = event_data.lineofsight_distance()
-
+        nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(self.H0))
         
         if use_3d_kde == True:
@@ -66,6 +62,8 @@ class MasterEquation(object):
                 num[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh) # TODO: lumB does the weighting here in the "trivial" way...
 
         else: # loop over all possible galaxies
+            skykernel = event_data.compute_2d_kde()
+            distkernel = event_data.lineofsight_distance()
             for i in range(nGal):
                 gal = self.galaxy_catalog.get_galaxy(i)
 
@@ -81,8 +79,9 @@ class MasterEquation(object):
                     tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
 
                 tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
-
+                
                 num += tempdist*tempsky*weight
+    
         return num
 
 
