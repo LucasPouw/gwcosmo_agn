@@ -3,7 +3,6 @@
 Contributors may familiarize themselves with GWCosmo itself by going through the
 [First Steps with GWCosmo](https://www.lsc-group.phys.uwm.edu/ligovirgo/cbcnote/Cosmology/gwcosmo/outline) tutorial.
 
-
 # Working with large files
 
 The best and recommended way to work with large files and git is to use Git lfs
