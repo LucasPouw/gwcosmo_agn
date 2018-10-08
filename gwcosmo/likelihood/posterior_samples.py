@@ -128,14 +128,12 @@ class posterior_samples(object):
 
     def compute_3d_kde(self,coverh_x):
         "Computes 3d KDE"
-        #coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh_x))# / coverh))
+        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh_x))
         radecdist = gaussian_kde(three_d_arr)
         return radecdist
 
-    def compute_3d_probability(self, ra, dec, dist, z, lumB, coverh_x):
+    def compute_3d_probability(self, ra, dec, dist, z, lumB, coverh_x, distmax):
         distmin = 0.1 
-        distmax = 400.
         
         ngalaxies = len(self.distance) - 1000
         z_err_fraction = 0.06
@@ -143,12 +141,14 @@ class posterior_samples(object):
 
         kde = self.compute_3d_kde(coverh_x)
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
+        
         t = Table([ra,dec,dist,lumB,z],names=('RA','Dec', 'Distance', 'lumB', 'z'))
         nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
                           & (nt['RA'] < np.max(self.longitude ) +1.0)))]
         nt = nt[(np.where((nt['Dec'] > np.min(self.latitude) - 1.0) \
                           & (nt['Dec'] < np.max(self.latitude ) +1.0)))]
+        
         ra = nt['RA']
         dec = nt['Dec']
         z = nt['z']

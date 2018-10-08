@@ -41,6 +41,7 @@ class MasterEquation(object):
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
+        self.distmax = 400.0
 
     def px_H0G(self,event_data,skymap2d=None,use_3d_kde=True):
         """
@@ -57,9 +58,11 @@ class MasterEquation(object):
         
         if use_3d_kde == True:
             ra, dec, dist, z, lumB = self.extract_galaxies()
+            
             for k, x in enumerate(self.H0):
                 coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-                num[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh) # TODO: lumB does the weighting here in the "trivial" way...
+                num[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh, self.distmax) # TODO: lumB does the weighting here in the "trivial" way...
+                print("Calculating px_H0G: H0 bin " + str(x) + " out of " + str(max(self.H0)) + " , value: "+str(num[k]))
 
         else: # loop over all possible galaxies
             skykernel = event_data.compute_2d_kde()
@@ -242,7 +245,6 @@ class MasterEquation(object):
         """    
         dH0 = self.H0[1]-self.H0[0]
         
-        print("calculating pxG")
         pxG = self.px_H0G(event_data,skymap2d,use_3d_kde)
         if all(self.pDG)==None:
             print("calculating pDG")
@@ -282,6 +284,11 @@ class MasterEquation(object):
             dist[i] = gal.distance
             z[i] = gal.z
             lumB[i] = gal.lumB
+        if all(lumB) == 0: #for mdc1 and mdc2
+            lumB = np.ones(nGal)
+        if all(dist) == 0: #for mdc1 and mdc2
+            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+            dist = coverh * z
         return ra, dec, dist, z, lumB
 
 class pofH0(object):
