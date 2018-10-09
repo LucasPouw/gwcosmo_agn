@@ -57,11 +57,11 @@ class MasterEquation(object):
         num = np.zeros(len(self.H0))
         
         if use_3d_kde == True:
-            ra, dec, dist, z, lumB = self.extract_galaxies()
+            ra, dec, z, lumB = self.extract_galaxies()
             
             for k, x in enumerate(self.H0):
                 coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-                num[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh, self.distmax) # TODO: lumB does the weighting here in the "trivial" way...
+                num[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.zmax) # TODO: lumB does the weighting here in the "trivial" way...
                 print("Calculating px_H0G: H0 bin " + str(x) + " out of " + str(max(self.H0)) + " , value: "+str(num[k]))
 
         else: # loop over all possible galaxies
@@ -274,22 +274,17 @@ class MasterEquation(object):
         nGal = self.galaxy_catalog.nGal()
         ra = np.zeros(nGal)
         dec = np.zeros(nGal)
-        dist = np.zeros(nGal)
         z = np.zeros(nGal)
         lumB = np.zeros(nGal)
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
             ra[i] = gal.ra
             dec[i] = gal.dec
-            dist[i] = gal.distance
             z[i] = gal.z
             lumB[i] = gal.lumB
         if all(lumB) == 0: #for mdc1 and mdc2
             lumB = np.ones(nGal)
-        if all(dist) == 0: #for mdc1 and mdc2
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            dist = coverh * z
-        return ra, dec, dist, z, lumB
+        return ra, dec, z, lumB
 
 class pofH0(object):
     """

@@ -14,8 +14,6 @@ import h5py
 
 # Global 
 posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
-#z_err_fraction = 0.06
-#a_err_fraction = 0.08
 
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
@@ -132,9 +130,7 @@ class posterior_samples(object):
         radecdist = gaussian_kde(three_d_arr)
         return radecdist
 
-    def compute_3d_probability(self, ra, dec, dist, z, lumB, coverh_x, distmax):
-        distmin = 0.1 
-        
+    def compute_3d_probability(self, ra, dec, z, lumB, coverh_x, zmax):        
         ngalaxies = len(self.distance) - 1000
         z_err_fraction = 0.06
         a_err_fraction = 0.08
@@ -142,8 +138,8 @@ class posterior_samples(object):
         kde = self.compute_3d_kde(coverh_x)
         pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
         
-        t = Table([ra,dec,dist,lumB,z],names=('RA','Dec', 'Distance', 'lumB', 'z'))
-        nt = t[(np.where((t['Distance'] > distmin) & (t['Distance'] < distmax)))]
+        t = Table([ra,dec,lumB,z],names=('RA','Dec', 'lumB', 'z'))
+        nt = t[(np.where((t['z'] > 0) & (t['z'] < zmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
                           & (nt['RA'] < np.max(self.longitude ) +1.0)))]
         nt = nt[(np.where((nt['Dec'] > np.min(self.latitude) - 1.0) \
