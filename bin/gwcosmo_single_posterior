@@ -109,6 +109,11 @@ if opts.method == 'counterpart':
     opts.counterpart_dec is None or
     opts.counterpart_z is None):
         parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
+        
+if opts.posterior_samples is not None:
+        samples_file_path = str(opts.posterior_samples)
+if opts.skymap is not None:
+        skymap_file_path = str(opts.skymap)
 
 if opts.method == 'statistical':
     if opts.galaxy_catalog is not None:
@@ -122,12 +127,10 @@ if opts.method == 'statistical':
 
     galaxy_weighting = str2bool(opts.galaxy_weighting)
     completion = str2bool(opts.completion)
-    if opts.posterior_samples is not None:
-        samples_file_path = str(opts.posterior_samples)
-    if opts.skymap is not None:
-        skymap_file_path =  str(opts.skymap)
 
 if opts.method == 'counterpart':
+    galaxy_weighting = False
+    completion = True
     if opts.counterpart_ra is not None:
         counterpart_ra = float(opts.counterpart_ra)
     if opts.counterpart_dec is not None:
@@ -159,18 +162,22 @@ def main():
     "Compute P(H0)"
     H0 = np.linspace(min_h0, max_h0, bins_h0)
     dH0 = H0[1] - H0[0]
-
-    catalog = gwcosmo.catalog.galaxyCatalog()
-    if galaxy_catalog_default == 'glade':
-        catalog.load_glade_catalog(version=glade_version)
-    if galaxy_catalog_default == 'mdc':
-        catalog.load_mdc_catalog(version=mdc_version)
-
+    
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
     if samples_file_path == 'GW170817':
         samples.load_posterior_samples()
     else:    
         samples.load_posterior_samples_hdf5(samples_file_path)
+
+    catalog = gwcosmo.catalog.galaxyCatalog()
+    if opts.method == 'counterpart':
+        catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
+        
+    if opts.method == 'statistical':
+        if galaxy_catalog_default == 'glade':
+            catalog.load_glade_catalog(version=glade_version)
+        if galaxy_catalog_default == 'mdc':
+            catalog.load_mdc_catalog(version=mdc_version)
 
     # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
     mth = 18.0 # as a test - not true for MDC v1
