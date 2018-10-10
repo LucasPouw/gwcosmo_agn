@@ -99,6 +99,9 @@ class galaxyCatalog(object):
             __ = np.ones(len(pgcsel))
             t = Table([pgcsel, __, __, rasel, decsel, zsel_group, __, __, bMagsel, kMagsel ],
                 names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
+        if version == 'hong':
+            self.catalog_file = catalog_data_path + "gladecatalogv2.3_zpoint1_sorted.dat"
+            t = Table.read(self.catalog_file,format=self.catalog_format)
 
         galaxies={}
         nGal = len(t)
