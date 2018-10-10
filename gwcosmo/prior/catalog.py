@@ -55,6 +55,12 @@ class galaxy(object):
         self.z = row['z']
         if version != "1.0":
             self.m = row['m']
+            
+    def load_counterpart(self, ra, dec, z):
+        self.index = 0
+        self.ra = ra
+        self.dec = dec
+        self.z = z
 
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
@@ -70,8 +76,17 @@ class galaxyCatalog(object):
         self.catalog_format = catalog_format
         self.indexes = indexes
         self.dictionary = dictionary
-
-    def load_glade_catalog(self, version='maya'):
+        
+    def load_counterpart_catalog(self, ra, dec, z):   
+        galaxies={}
+        nGal = 1
+        gal = galaxy()
+        gal.load_counterpart(ra, dec, z)
+        galaxies[str(0)] = gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+        
+    def load_glade_catalog(self, version='corrected'):
         if version == 'corrected':
             self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
             t = Table.read(self.catalog_file,format=self.catalog_format)
