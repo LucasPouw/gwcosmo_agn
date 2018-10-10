@@ -30,50 +30,54 @@ parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-m", "--method", metavar="METHOD", default='counterpart',
-            help="METHOD: Select counterpart/statistical/pencil_beam method (required)"),
-        Option("-u", "--min_h0", metavar="MINH0", default='10.0',
+        Option("-m", "--method", metavar="METHOD", default=None,
+            help="METHOD: Select counterpart/statistical (required)"),
+        Option("-u", "--min_h0", metavar="MINH0", default='10.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-v", "--max_h0", metavar="MAXH0", default='220.0',
+        Option("-v", "--max_h0", metavar="MAXH0", default='210.0', type=float,
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_h0", metavar="BINSH0", default='210',
+        Option("-x", "--bins_h0", metavar="BINSH0", default='50', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
         Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
             help="MINDIST: Set minimum value of luminosity distance"),
         Option("-e", "--max_dist", metavar="MAXDIST", default='400.0', type=float,
             help="MAXDIST: Set maximum value of luminosity distance"),
-        Option("-f", "--bins_dist", metavar="BINSDIST", default='210', type=int,
+        Option("-f", "--bins_dist", metavar="BINSDIST", default='50', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
+        Option("-z", "--z_max", metavar="ZMAX", default='1.0', type=float,
+            help="ZMAX: Maximal detectable redshift"),
+        Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
+            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
+        Option("-i", "--skymap", metavar="SKYMAP", default=None,
+            help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="CATALOG", default=None,
             help="CATALOG: Galaxy catalog file in hdf5 format"),
-        Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default=None,
+        Option("-l", "--galaxy_catalog_default", metavar="CATALOG_DEFAULT", default=None,
+            help="CATALOG_DEFAULT: Load default galaxy catalog. Options: glade or mdc"),
+        Option("-n", "--glade_version", metavar="GLADE", default=None,
+            help="GLADE: Version of GLADE catalog available. Options: corrected, original, maya, hong."),
+        Option("-q", "--mdc_version", metavar="MDC", default=None,
+            help="MDC: Version of MDC catalogs available. Options: 1.0, 2.1, 2.2, 2.3, 3.1"),  
+        Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
             help="WEIGHTING: Set galaxy catalog weighting"),
-        Option("-c", "--completion", metavar="COMPLETENESS", default=None,
+        Option("-c", "--completion", metavar="COMPLETENESS", default='False',
             help="COMPLETENESS: Set galaxy catalog completion function."),
-        Option("-r", "--counterpart_ra", metavar="RA", default='0.0',
+        Option("-r", "--counterpart_ra", metavar="RA", default=None,
             help="RA: Right ascension of counterpart"),
-        Option("-o", "--counterpart_dec", metavar="DEC", default='0.0',
+        Option("-o", "--counterpart_dec", metavar="DEC", default=None,
             help="DEC: Declination of counterpart"),
-        Option("-j", "--counterpart_vel", metavar="VELOCITY", default='0.',
-            help="VELOCITY: Peculiar velocity of counterpart"),
-        Option("-i", "--skymap", metavar="SKYMAP", default='200.0',
-            help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
-        Option("-s", "--posterior_samples", metavar="SAMPLES", default=None,
-            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5)"),# (required)"),
-        Option("-z", "--z_max", metavar="ZMAX", default='1.0',
-            help="ZMAX: Maximal detectable redshift"),
-        Option("-a", "--antenna_network", metavar="ANTENNA", default=None,
-            help="ANTENNA: Network antenna power pattern"),
-        Option("-p", "--posterior", metavar="POSTERIOR", default=None,
-            help="POSTERIOR: Previous H0 posterior as a function of H0 bin"),
-        Option("-y", "--plot", metavar="PLOT", default='True',
+        Option("-j", "--counterpart_z", metavar="REDSHIFT", default=None,
+            help="REDSHIFT: Redshift of counterpart"),
+        Option("-p", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
-        Option("-k", "--save", metavar="SAVE", default='True',
+        Option("-s", "--save", metavar="SAVE", default='True',
             help="SAVE: Save results"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
             help="OUTPUTFILE: Name of output file")
     ])
 opts, args = parser.parse_args()
+print(opts)
+print(args)
 
 # Check for missing required arguments
 missing = []
@@ -85,37 +89,53 @@ if len(missing) > 0:
 
 print('Selected method is:', opts.method)
 
+if (opts.posterior_samples is None and
+    opts.skymap is None):
+        parser.error('Provide either posterior samples or skymap.')
+        
+if opts.method == 'statistical':
+    if (opts.galaxy_catalog is None and 
+        opts.galaxy_catalog_default is None):
+        parser.error('The statistical method requires a galaxy catalog. Provide one or use a default catalog.')
+    if opts.galaxy_catalog_default == 'glade':
+        if opts.glade_version is None:
+            parser.error('Provide version of GLADE catalog to use.')
+    if opts.galaxy_catalog_default == 'mdc':
+        if opts.mdc_version is None:
+            parser.error('Provide version of MDC catalog to use.')
+            
 if opts.method == 'counterpart':
-    use_counterpart = 1
-    counterpart_ra = float(opts.counterpart_ra)
-    counterpart_dec = float(opts.counterpart_dec)
-    counterpart_vel = float(opts.counterpart_vel)
+    if (opts.counterpart_ra is None or
+    opts.counterpart_dec is None or
+    opts.counterpart_z is None):
+        parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
 
-if opts.method == 'statistical' or 'pencil_beam': 
-	use_counterpart = 0
-	galaxy_catalog = opts.galaxy_catalog
-	galaxy_weighting = opts.galaxy_weighting
+if opts.method == 'statistical':
+    if opts.galaxy_catalog is not None:
+        galaxy_catalog_path = str(opts.galaxy_catalog)
+    if opts.galaxy_catalog_default is not None:
+        galaxy_catalog_default = str(opts.galaxy_catalog_default)
+        if opts.glade_version is not None:
+            glade_version = str(opts.glade_version)
+        if opts.mdc_version is not None:
+            mdc_version = str(opts.mdc_version)
 
-	if opts.posterior_samples == 'samples':
-		posterior_samples = opts.posterior_samples
-		#load samples...
-	if opts.skymap == 'skymap':
-		skymap = opts.skymap
-		#load skymap...
+    galaxy_weighting = str2bool(opts.galaxy_weighting)
+    completion = str2bool(opts.completion)
+    if opts.posterior_samples is not None:
+        samples_file_path = str(opts.posterior_samples)
+    if opts.skymap is not None:
+        skymap_file_path =  str(opts.skymap)
 
-if opts.completion == True:
-	completion = 1
-else:
-	completion = 0
-
-if opts.galaxy_weighting == True:
-	galaxy_weighting = 1
-else:
-	galaxy_weighting = 0
-
+if opts.method == 'counterpart':
+    if opts.counterpart_ra is not None:
+        counterpart_ra = float(opts.counterpart_ra)
+    if opts.counterpart_dec is not None:
+        counterpart_dec = float(opts.counterpart_dec)
+    if opts.counterpart_z is not None:
+        counterpart_z = float(opts.counterpart_z)
+        
 # Set command line arguments
-samples_file_path = str(opts.posterior_samples)
-
 min_h0 = float(opts.min_h0)
 max_h0 = float(opts.max_h0)
 bins_h0 = float(opts.bins_h0)
@@ -125,45 +145,46 @@ min_dist = float(opts.min_dist)
 bins_dist = float(opts.bins_dist)
 
 z_max = float(opts.z_max)
-antenna_network = opts.antenna_network
 
 options_string = opts.method
 
-H0 = np.linspace(min_h0, max_h0, bins_h0)
-dH0 = H0[1] - H0[0]
-
 plot = str2bool(opts.plot)
-
 save = str2bool(opts.save)
+
 outputfile = str(opts.outputfile)
 
 import gwcosmo
 
 def main():
     "Compute P(H0)"
-    ##Load glade catalog... or mdc catalogs... version = ['1.0','2.1','3.1']
+    H0 = np.linspace(min_h0, max_h0, bins_h0)
+    dH0 = H0[1] - H0[0]
+
     catalog = gwcosmo.catalog.galaxyCatalog()
-    catalog.load_glade_catalog(version='corrected')
-    #catalog.load_mdc_catalog(version='1.0')
-    
+    if galaxy_catalog_default == 'glade':
+        catalog.load_glade_catalog(version=glade_version)
+    if galaxy_catalog_default == 'mdc':
+        catalog.load_mdc_catalog(version=mdc_version)
+
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-    
-    samples.load_posterior_samples()
-    #samples.load_posterior_samples_hdf5(samples_file_path)
+    if samples_file_path == 'GW170817':
+        samples.load_posterior_samples()
+    else:    
+        samples.load_posterior_samples_hdf5(samples_file_path)
 
     # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
     mth = 18.0 # as a test - not true for MDC v1
 
     #set up array of luminosity distance values
-    dl = np.linspace(opts.min_dist,opts.max_dist,opts.bins_dist)
+    dl = np.linspace(min_dist,max_dist,bins_dist)
     
     #set up detection probability for BNSs over the range dl
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
     
-    likelihood = me.likelihood(samples,complete=False,skymap2d=None,use_3d_kde=True)
+    likelihood = me.likelihood(samples,complete=completion,skymap2d=None,use_3d_kde=True)
 
     prior = me.pH0_D(prior='jeffreys')
 
