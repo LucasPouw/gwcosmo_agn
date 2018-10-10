@@ -7,6 +7,8 @@ from __future__ import absolute_import
 import lal
 import numpy as np
 import sys
+import matplotlib 
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 from scipy.integrate import quad, dblquad
