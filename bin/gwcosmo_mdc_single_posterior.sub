@@ -6,7 +6,7 @@ getenv = True
 executable = gwcosmo_mdc_single_posterior.sh
 
 # Macros (variables) to use in this submit description file
-Process_count = 10
+Process_count = 250
 environment = "Process=$(Process) Process_count=$(Process_count)"
 
 # Accounting stuff
