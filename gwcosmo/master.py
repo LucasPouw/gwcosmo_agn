@@ -61,7 +61,7 @@ class MasterEquation(object):
             
             for k, x in enumerate(self.H0):
                 coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-                num[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.zmax) # TODO: lumB does the weighting here in the "trivial" way...
+                num[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.distmax) # TODO: lumB does the weighting here in the "trivial" way...
                 print("Calculating px_H0G: H0 bin " + str(x) + " out of " + str(max(self.H0)) + " , value: "+str(num[k]))
 
         else: # loop over all possible galaxies
@@ -98,17 +98,21 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         nGal = self.galaxy_catalog.nGal()
-        
-        den = np.zeros(len(self.H0))       
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            
-            if self.weighted:
-                weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-            else:
-                weight = 1.0
-                                
-            den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
+
+        if int(nGal) == 1:
+            den = np.ones(len(self.H0))
+
+        else:
+            den = np.zeros(len(self.H0))       
+            for i in range(nGal):
+                gal = self.galaxy_catalog.get_galaxy(i)
+
+                if self.weighted:
+                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                else:
+                    weight = 1.0
+
+                den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
 
         self.pDG = den
         return self.pDG
@@ -228,16 +232,21 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z) over z
         Returns an array of values corresponding to different values of H0.
         """
-        pH0 = np.zeros(len(self.H0))
-        for i in range(len(self.H0)):
-            def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-                
-        if prior == 'jeffreys':
-            return pH0/self.H0  
-        else:
-            return pH0
+        nGal = self.galaxy_catalog.nGal()
+
+        if int(nGal) == 1:
+            return 1./self.H0
+        else:    
+            pH0 = np.zeros(len(self.H0))
+            for i in range(len(self.H0)):
+                def I(z):
+                    return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+            if prior == 'jeffreys':
+                return pH0/self.H0  
+            else:
+                return pH0
         
     def likelihood(self,event_data,complete=False,skymap2d=None,use_3d_kde=True):
         """
