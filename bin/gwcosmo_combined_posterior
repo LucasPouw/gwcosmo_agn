@@ -24,6 +24,7 @@ sns.set_palette('colorblind')
 
 import numpy as np
 import gwcosmo
+import imageio
 
 # Command line options
 parser = OptionParser(
@@ -34,9 +35,11 @@ parser = OptionParser(
             help="MDCDIR: Directory to MDC posterior samples (required)"),
         Option("-y", "--plot", metavar="PLOT", default=True,
             help="PLOT: Plot results"),
+        Option("-c", "--makeconvergeplot", metavar="CONVERGENCE", default='True',
+            help="CONVERGENCE: Make convergence plot for the mdc"),
         Option("-k", "--save", metavar="SAVE", default=True,
             help="SAVE: Save results"),
-        Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
+        Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior_mdc',
             help="OUTPUTFILE: Name of output file")
     ])
 opts, args = parser.parse_args()
@@ -59,6 +62,7 @@ for path, subdirs, files in os.walk(mdc_dir):
             mdc_dir_list.append(filepath)
             
 plot = bool(opts.plot)
+makeconvergeplot = bool(opts.makeconvergeplot)
 
 save = bool(opts.save)
 outputfile = str(opts.outputfile)
@@ -80,10 +84,11 @@ def main():
         likelihoods.append(np.load(path)['arr_0'][1])
 
     likelihood_comb = np.ones(H0.size)
-
+    likelihood_comb_list = []
     for k in range(Nevents):
         likelihood_comb *= likelihoods[k]
         likelihood_comb = likelihood_comb/np.sum(likelihood_comb) #normalise within loop, else will go to 0.
+        likelihood_comb_list.append(likelihood_comb)
 
     posterior = prior*likelihood_comb
 
@@ -92,10 +97,14 @@ def main():
 
     if plot == True:
         plt.figure()
-        plt.plot(H0,prior_norm,ls=':', linewidth = 3.0, label='prior')
+        plt.plot(H0,prior_norm,ls=':',linewidth = 3.0, label='prior')
         plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
         plt.plot(H0,likelihood_comb,linewidth = 3.0, ls = '--', label='likelihood')
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+        for n in range(Nevents):
+            if n == 179:
+                continue
+            plt.plot(H0,likelihoods[n], alpha = 0.3)
         plt.xlim(min_h0,max_h0)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
@@ -104,9 +113,42 @@ def main():
         plt.legend(loc='best',fontsize=16)
         plt.tight_layout()
         plt.savefig(outputfile+'.png',dpi=400)
-
+        plt.close()
+        
     if save == True:
         np.savez(outputfile+'.npz',[H0,likelihood_comb,prior,posterior_norm])
+    
+    if makeconvergeplot == True:
+        error=[]
+        sigma=[]
+        N = np.arange(0,len(likelihood_comb_list))
+        for i in range(0,len(likelihood_comb_list)):
+            if i == 179:
+                continue
+            posterior = prior*likelihood_comb_list[i]
+            posterior_norm = posterior/np.sum(posterior)/dH0
+            sigma_H0_vals = H0[np.where(posterior_norm>max(posterior_norm)-1*np.std(posterior_norm))]
+            error.append( sigma_H0_vals[-1] - sigma_H0_vals[0])
+            sigma.append(np.mean(sigma_H0_vals))
+        error=np.array(error)
+        sigma=np.array(sigma)
+        print(N)
+        print(error)
+        print(sigma)
+        print(len(error))
+        print(len(sigma))
+        print(len(N))
+        plt.figure()
+        plt.errorbar(N, sigma, yerr=error, color='red', fmt='.', markersize='1', ecolor='red',capsize=1, elinewidth=1)
+        plt.axhline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+        plt.xlabel('Number of Events',fontsize=16)
+        plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.legend(loc='best',fontsize=16)
+        plt.tight_layout()
+        plt.savefig(outputfile+'_convergence.png',dpi=400)
+        plt.close()
 
 if __name__ == "__main__":
     main()
