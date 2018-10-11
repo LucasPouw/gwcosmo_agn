@@ -23,6 +23,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 import numpy as np
+from scipy.stats import gaussian_kde
 import gwcosmo
 
 def str2bool(v):
@@ -185,9 +186,22 @@ def main():
         if galaxy_catalog_default == 'mdc':
             catalog.load_mdc_catalog(version=mdc_version)
 
-    # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
-    mth = 18.0 # as a test - not true for MDC v1
-
+    # Get magnitude threshold (at least for MDCs for now) #probably needs a better place
+    # TODO: Probably implement this within master or catalog module, glade catalogs needs to be
+    # updated so that we work with apparent magnitudes instead of blue luminosities, so this currently
+    # doesn't work for them...
+    if galaxy_catalog_default == 'mdc':
+        ngal = catalog.nGal()
+        m = np.zeros(ngal)
+        for i in range(ngal):
+            m[i] = catalog.get_galaxy(i).m
+        kde_m = gaussian_kde(m)
+        m_array = np.linspace(15,25,4000)
+        m_kde = kde_m.evaluate(m_array)
+        mth=m_array[np.where(m_kde==max(m_kde))]
+        print(mth)
+    else:
+        mth=18.0
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
@@ -195,7 +209,7 @@ def main():
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,mth,linear=True,weighted=galaxy_weighting)
     
     likelihood = me.likelihood(samples,complete=completion,skymap2d=None,use_3d_kde=True)
 
