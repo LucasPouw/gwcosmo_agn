@@ -105,8 +105,6 @@ def main():
         plt.plot(H0,likelihood_comb,linewidth = 3.0, ls = '--', label='likelihood')
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         for n in range(Nevents):
-            if n == 179:
-                continue
             plt.plot(H0,likelihoods[n], alpha = 0.3)
         plt.xlim(min_h0,max_h0)
         plt.xticks(fontsize=14)
@@ -126,8 +124,6 @@ def main():
         sigma=[]
         N = np.arange(0,len(likelihood_comb_list))
         for i in range(0,len(likelihood_comb_list)):
-            if i == 179:
-                continue
             posterior = prior*likelihood_comb_list[i]
             posterior_norm = posterior/np.sum(posterior)/dH0
             sigma_H0_vals = H0[np.where(posterior_norm>max(posterior_norm)-1*np.std(posterior_norm))]
@@ -149,8 +145,6 @@ def main():
         
     if makemovie == True:
         for i in range(0,len(likelihood_comb_list)):
-            if i == 179:
-                continue
             plt.figure()
             plt.plot(H0,prior_norm/max(prior_norm), ls=':', linewidth = 3.0, label='prior')
             plt.plot(H0,prior*likelihood_comb_list[i]/max(prior*likelihood_comb_list[i]),linewidth = 3.0, label='posterior')
@@ -168,11 +162,9 @@ def main():
             
         filenames=[]
         for i in range(0,len(likelihood_comb_list)):
-            if i == 179:
-                continue
             filenames.append(mdc_dir+'/'+outputfile+'_'+str(i)+'.png')
 
-        with imageio.get_writer(outputfile+'_movie.gif', mode='I', duration=0.1) as writer:
+        with imageio.get_writer(outputfile+'_movie.gif', mode='I', duration=0.2) as writer:
             for filename in filenames:
                 image = imageio.imread(filename)
                 writer.append_data(image)
