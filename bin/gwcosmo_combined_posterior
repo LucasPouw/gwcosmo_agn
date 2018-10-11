@@ -124,7 +124,7 @@ def main():
     if makeconvergeplot == True:
         error=[]
         sigma=[]
-        N = np.arange(0,len(likelihood_comb_list))
+        N = np.arange(1,len(likelihood_comb_list))
         for i in range(0,len(likelihood_comb_list)):
             if i == 179:
                 continue
