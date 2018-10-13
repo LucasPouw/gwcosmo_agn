@@ -183,28 +183,29 @@ def main():
     catalog = gwcosmo.catalog.galaxyCatalog()
     if opts.method == 'counterpart':
         catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
-        mth = 18.0
+        mth = 25.0
         
     if opts.method == 'statistical':
         if galaxy_catalog_default == 'glade':
             catalog.load_glade_catalog(version=glade_version)
+            mth=18.0
         if galaxy_catalog_default == 'mdc':
             catalog.load_mdc_catalog(version=mdc_version)
         # Get magnitude threshold (at least for MDCs for now) #probably needs a better place
         # TODO: Probably implement this within master or catalog module, glade catalogs needs to be
         # updated so that we work with apparent magnitudes instead of blue luminosities, so this currently
         # doesn't work for them...
-        if galaxy_catalog_default == 'mdc':
-            ngal = catalog.nGal()
-            m = np.zeros(ngal)
-            for i in range(ngal):
-                m[i] = catalog.get_galaxy(i).m
-            kde_m = gaussian_kde(m)
-            m_array = np.linspace(15,25,4000)
-            m_kde = kde_m.evaluate(m_array)
-            mth=m_array[np.where(m_kde==max(m_kde))]
-        else:
-            mth=18.0
+            if mdc_version is not '1.0':
+                ngal = catalog.nGal()
+                m = np.zeros(ngal)
+                for i in range(ngal):
+                    m[i] = catalog.get_galaxy(i).m
+                kde_m = gaussian_kde(m)
+                m_array = np.linspace(15,25,4000)
+                m_kde = kde_m.evaluate(m_array)
+                mth=m_array[np.where(m_kde==max(m_kde))]
+            else:
+                mth=25.0
 
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
