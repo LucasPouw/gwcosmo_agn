@@ -195,7 +195,12 @@ def main():
         # TODO: Probably implement this within master or catalog module, glade catalogs needs to be
         # updated so that we work with apparent magnitudes instead of blue luminosities, so this currently
         # doesn't work for them...
-            if mdc_version is not '1.0':
+            print(mdc_version)
+            print(type(mdc_version))
+            if mdc_version == '1.0':
+                mth = 25.0
+                print(mth)
+            else:
                 ngal = catalog.nGal()
                 m = np.zeros(ngal)
                 for i in range(ngal):
@@ -204,9 +209,7 @@ def main():
                 m_array = np.linspace(15,25,4000)
                 m_kde = kde_m.evaluate(m_array)
                 mth=m_array[np.where(m_kde==max(m_kde))]
-            else:
-                mth=25.0
-
+                print(mth)
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
