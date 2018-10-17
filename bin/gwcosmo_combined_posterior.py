@@ -33,13 +33,13 @@ parser = OptionParser(
     option_list = [
         Option("-d", "--mdcdir", metavar="MDCDIR", default=None,
             help="MDCDIR: Directory to MDC posterior samples (required)"),
-        Option("-y", "--plot", metavar="PLOT", default=True,
+        Option("-y", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
         Option("-c", "--makeconvergeplot", metavar="CONVERGENCE", default='True',
             help="CONVERGENCE: Make convergence plot for the mdc"),
         Option("-m", "--makemovie", metavar="MAKEMOVIE", default='True',
             help="MAKEMOVIE: Make movie for the mdc"),
-        Option("-k", "--save", metavar="SAVE", default=True,
+        Option("-k", "--save", metavar="SAVE", default='True',
             help="SAVE: Save results"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior_mdc',
             help="OUTPUTFILE: Name of output file")
