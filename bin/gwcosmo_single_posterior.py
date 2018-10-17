@@ -23,6 +23,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 import numpy as np
+from scipy.stats import gaussian_kde
 import gwcosmo
 
 def str2bool(v):
@@ -56,6 +57,8 @@ parser = OptionParser(
             help="ZMAX: Maximal detectable redshift"),
         Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
+        Option("-y", "--use_3d_kde", metavar="KDE", default='True',
+            help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-i", "--skymap", metavar="SKYMAP", default=None,
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="CATALOG", default=None,
@@ -120,6 +123,7 @@ if opts.method == 'counterpart':
         
 if opts.posterior_samples is not None:
         samples_file_path = str(opts.posterior_samples)
+        use_3d_kde = str2bool(opts.use_3d_kde)
 if opts.skymap is not None:
         skymap_file_path = str(opts.skymap)
 
@@ -174,20 +178,38 @@ def main():
         samples.load_posterior_samples()
     else:    
         samples.load_posterior_samples_hdf5(samples_file_path)
-
+    
+    # TODO: Clean this mess
     catalog = gwcosmo.catalog.galaxyCatalog()
     if opts.method == 'counterpart':
         catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
+        mth = 25.0
         
     if opts.method == 'statistical':
         if galaxy_catalog_default == 'glade':
             catalog.load_glade_catalog(version=glade_version)
+            mth=18.0
         if galaxy_catalog_default == 'mdc':
             catalog.load_mdc_catalog(version=mdc_version)
-
-    # TODO: get mth from galaxy catalogue, rather than by hardcoding it in
-    mth = 18.0 # as a test - not true for MDC v1
-
+        # Get magnitude threshold (at least for MDCs for now) #probably needs a better place
+        # TODO: Probably implement this within master or catalog module, glade catalogs needs to be
+        # updated so that we work with apparent magnitudes instead of blue luminosities, so this currently
+        # doesn't work for them...
+            print(mdc_version)
+            print(type(mdc_version))
+            if mdc_version == '1.0':
+                mth = 25.0
+                print(mth)
+            else:
+                ngal = catalog.nGal()
+                m = np.zeros(ngal)
+                for i in range(ngal):
+                    m[i] = catalog.get_galaxy(i).m
+                kde_m = gaussian_kde(m)
+                m_array = np.linspace(15,25,4000)
+                m_kde = kde_m.evaluate(m_array)
+                mth=m_array[np.where(m_kde==max(m_kde))]
+                print(mth)
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
@@ -195,9 +217,9 @@ def main():
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,mth,linear=True,weighted=galaxy_weighting)
     
-    likelihood = me.likelihood(samples,complete=completion,skymap2d=None,use_3d_kde=True)
+    likelihood = me.likelihood(samples,complete=completion,skymap2d=None,use_3d_kde=use_3d_kde)
 
     prior = me.pH0_D(prior='jeffreys')
 
