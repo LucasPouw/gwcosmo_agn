@@ -60,6 +60,7 @@ class posterior_samples(object):
         self.latitude = post['dec']
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
+        f1.close()
 
         return self.distance, self.longitude, self.latitude
 
