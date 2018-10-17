@@ -25,7 +25,7 @@ p(H_0|x,D,I) &= p(H_0|D,I) \bigg[ \dfrac{p(x|H_0,G,I)}{p(D|H_0,G,I)} p(G|H_0,D,I
 \end{equation}
 where $H_0$ is the Hubble constant, $x$ is the gravitational wave data, $D$ represents a gravitational wave detection, $G$ refers to the host galaxy being inside the galaxy catalogue, and $\bar{G}$ refers to the host galaxy being outside the galaxy catalogue.
 
-\subsection{Derivation}
+\subsection{Derivation} \label{sec:derivation}
 What we wish to obtain eventually is a computable expression for $p(H_0|x,I)$, but first we must marginalise over the events which we do, and do not detect:
 \begin{equation} \label{Eq:sum D}
 \begin{aligned}
@@ -240,6 +240,54 @@ p(x|H_0,\bar{G},D,I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x|H_
 
 
 
+
+
+\section{The EM counterpart case}
+The method outlined above is for the statistical $H_0$ case, in which no EM counterpart is observed, or expected (eg. for BBHs).  We now consider the case where we expect to observe an EM counterpart (eg. BNSs).  The main difference this change implies is the inclusion of a likelihood term for the EM counterpart data, \emph{in addition} to the galaxy catalogue already in use.
+
+In much the same way as in section \ref{sec:derivation}, we write:
+\begin{equation}
+\begin{aligned}
+p(H_0|x_{\text{GW}},x_{\text{EM}},D_{\text{GW}},D_{\text{EM}},C,I) \propto p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) p(H_0|D_{\text{GW}},D_{\text{EM}},C)
+\end{aligned} 
+\end{equation}
+where $C$ refers to the EM catalogue, and other symbols have their usual meanings.
+
+First we marginalise over the cases where the source is inside and outside the galaxy catalogue:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},x_{\text{EM}},g|H_0,D_{\text{GW}},D_{\text{EM}},C,I)
+\\ &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) p(g|H_0,D_{\text{GW}},D_{\text{EM}},C,I)
+\end{aligned} 
+\end{equation}
+
+And then we Bayes the first expression:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,g,C,I) p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,g,C,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,g,C,I)}
+\\&= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,g,C,I)} 
+\end{aligned} 
+\end{equation}
+We take $p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,g,C,I)=1$ whenever we have GW and EM data (note this currently doesn't include the case in which a GW BNS was detected, and no counterpart was detected).
+
+Both the numerator and denominator can now be expanded:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}}|H_0,g,C,I) p(x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{EM}}|D_{\text{GW}},H_0,g,C,I) p(D_{\text{GW}}|H_0,g,C,I)} 
+\\ &= \dfrac{p(x_{\text{GW}}|H_0,g,C,I) p(x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{GW}}|H_0,g,C,I)} 
+\end{aligned} 
+\end{equation}
+where we take $p(D_{\text{EM}}|D_{\text{GW}},H_0,g,C,I) = 1$, under the assumption that if the event was detected in gravitational waves, it will be detectable to EM telescopes (which is true if the telescope observing it sees beyond the BNS horizon, as is currently the case).  Note that this still involves many assumptions, such as assuming that the EM counterpart is not obscured behind another galaxy, or the galactic plane, and these are assumptions which will have to be dealt with in the future.
+
+
+\subsection{The complete catalogue case}
+For the sake of simplicity, completeness can be assumed for all BNSs with EM counterparts which have already been observed (again, something that will not necessarily be the case in the future).  In this case the likelihood for the event simplifies down to the following:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}}|H_0,G,C,I) p(x_{\text{EM}}|H_0,G,C,I)}{p(D_{\text{GW}}|H_0,G,C,I)} 
+\end{aligned} 
+\end{equation}
+where $G$ now indicates that the source host is inside the galaxy catalogue.
 
 
 
