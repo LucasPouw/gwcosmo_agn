@@ -116,6 +116,23 @@ def main():
         plt.savefig(outputfile+'.png',dpi=400)
         plt.close()
         
+        plt.figure()
+        plt.plot(H0,prior_norm,ls=':',linewidth = 3.0, label='prior')
+        plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
+        plt.plot(H0,likelihood_comb,linewidth = 3.0, ls = '--', label='likelihood')
+        plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+        for n in range(Nevents):
+            plt.plot(H0,likelihoods[n], alpha = 0.3)
+        plt.xlim(60,80)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
+        plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
+        plt.legend(loc='best',fontsize=16)
+        plt.tight_layout()
+        plt.savefig(outputfile+'_zoom.png',dpi=400)
+        plt.close()
+        
     if save == True:
         np.savez(outputfile+'.npz',[H0,likelihood_comb,prior,posterior_norm])
     

@@ -217,9 +217,9 @@ def main():
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,mth,linear=True,weighted=galaxy_weighting)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,mth,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde)
     
-    likelihood = me.likelihood(samples,complete=completion,skymap2d=None,use_3d_kde=use_3d_kde)
+    likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
 
     prior = me.pH0_D(prior='jeffreys')
 
