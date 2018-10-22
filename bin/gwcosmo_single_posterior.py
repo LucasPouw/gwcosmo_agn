@@ -57,6 +57,8 @@ parser = OptionParser(
             help="ZMAX: Maximal detectable redshift"),
         Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
+        Option("-t", "--mass_distribution", metavar="MASS_DISTRIBUTION", default=None,
+            help="MASS_DISTRIBUTION: Choose between BNS or BBH mass distributions for Pdet calculation."),
         Option("-y", "--use_3d_kde", metavar="KDE", default='True',
             help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-i", "--skymap", metavar="SKYMAP", default=None,
@@ -104,6 +106,9 @@ if (opts.posterior_samples is None and
     opts.skymap is None):
         parser.error('Provide either posterior samples or skymap.')
         
+if opts.mass_distribution is None:
+        parser.error('Provide a mass distribution to use for Pdet calculation.')
+        
 if opts.method == 'statistical':
     if (opts.galaxy_catalog is None and 
         opts.galaxy_catalog_default is None):
@@ -126,6 +131,9 @@ if opts.posterior_samples is not None:
         use_3d_kde = str2bool(opts.use_3d_kde)
 if opts.skymap is not None:
         skymap_file_path = str(opts.skymap)
+
+if opts.mass_distribution is not None:
+        mass_distribution = str(opts.mass_distribution)
 
 if opts.method == 'statistical':
     if opts.galaxy_catalog is not None:
@@ -214,7 +222,7 @@ def main():
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
     #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution='BNS',dl)
+    dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution,dl)
     
     # compute likelihood
     me = gwcosmo.master.MasterEquation(H0,catalog,dp,mth,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde)
