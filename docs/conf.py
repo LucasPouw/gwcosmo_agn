@@ -19,6 +19,9 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../gwcosmo/'))
+sys.path.insert(0, os.path.abspath('../gwcosmo/prior'))
+sys.path.insert(0, os.path.abspath('../gwcosmo/likelihood'))
+sys.path.insert(0, os.path.abspath('../gwcosmo/utilities'))
 
 
 # -- General configuration ------------------------------------------------
