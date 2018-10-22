@@ -122,7 +122,7 @@ def main():
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples_hdf5('/home/ignacio.magana/first2years-data/2016/lalinference_mcmc/' \
                                                                 +str(k+1)+'/posterior_samples.hdf5')
-        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,mth,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde)
+        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,mth,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde,counterparts=True)
         likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
         likelihoods.append(likelihood)
 
