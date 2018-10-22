@@ -1,6 +1,6 @@
 """
 Detection probability
-Rachel Gray, John Veitch
+Rachel Gray, John Veitch, Ignacio Magana
 """
 import lal
 from   lal import ComputeDetAMResponse
@@ -21,7 +21,7 @@ class DetectionProbability(object):
     Class to compute p(det | d_L, detectors, m1, m2, ...)
     TODO: Allow choices of distributions for intrinsic params
     """
-    def __init__(self, m1_mean, m1_std, m2_mean, m2_std, dl_array, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=8):
+    def __init__(self, mass_distribution, dl_array, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=8):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -34,12 +34,9 @@ class DetectionProbability(object):
             self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
-        self.m1_mean = m1_mean
-        self.m1_std = m1_std
-        self.m2_mean = m2_mean
-        self.m2_std = m2_std
         self.dl_array = dl_array
         self.Nside = Nside
+        self.mass_distribution = mass_distribution
         
         # set up the samples for monte carlo integral
         N=self.Nsamps
@@ -49,10 +46,20 @@ class DetectionProbability(object):
         q = np.random.rand(N)
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
-        self.m1 = np.random.normal(m1_mean,m1_std,N)*1.988e30
-        self.m2 = np.random.normal(m2_mean,m2_std,N)*1.988e30
-        self.M_min = np.min(self.m1)+np.min(self.m2)
-        
+        if self.mass_distribution == 'BNS':
+            self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
+            self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
+            self.M_min = np.min(self.m1)+np.min(self.m2)
+        if self.mass_distribution == 'BBH':
+            #Based on Maya's notebook
+            def inv_cumulative_power_law(u,mmin,mmax,alpha):
+                if alpha != -1:
+                    return (u*(mmax**(alpha+1)-mmin**(alpha+1))+mmin**(alpha+1))**(1.0/(alpha+1))
+                else:
+                    return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
+            self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
+            self.m2 = np.random.uniform(low=5.0,high=self.m1)*1.988e30
+            self.M_min = np.min(self.m1)+np.min(self.m2)
         # precompute values which will be called multiple times
         self.interp_dist = self.__pD_dl(self.dl_array)
         self.interp_map = None
