@@ -15,6 +15,7 @@ from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 from astropy import constants as const
 from astropy import units as u
+import gwcosmo
 
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
@@ -25,7 +26,7 @@ class MasterEquation(object):
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False,weighted=False,use_3d_kde=True):
+    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False,weighted=False,use_3d_kde=True,counterparts=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
@@ -33,6 +34,7 @@ class MasterEquation(object):
         self.linear = linear
         self.weighted = weighted
         self.use_3d_kde = use_3d_kde
+        self.counterparts = counterparts
         
         self.pDG = None
         self.pGD = None
@@ -102,6 +104,23 @@ class MasterEquation(object):
 
         if self.use_3d_kde == True:
             den = np.ones(len(self.H0))
+        
+        if self.counterparts == True:
+            print('counterparts')
+            
+            den = np.zeros(len(self.H0))
+            catalog = gwcosmo.catalog.galaxyCatalog()
+            catalog.load_mdc_catalog('1.0')
+            nGal = catalog.nGal()
+            for i in range(nGal):
+                gal = catalog.get_galaxy(i)
+
+                if self.weighted:
+                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                else:
+                    weight = 1.0
+
+                den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight            
 
         else:
             den = np.zeros(len(self.H0))       
