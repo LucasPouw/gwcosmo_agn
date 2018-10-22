@@ -104,7 +104,7 @@ def main():
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
     #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.likelihood.detection_probability.DetectionProbability(1.35,0.1,1.35,0.1,dl)
+    dp = gwcosmo.likelihood.detection_probability.DetectionProbability('BNS',dl)
     
     galaxies_list = []
     for k in range(0,250):
