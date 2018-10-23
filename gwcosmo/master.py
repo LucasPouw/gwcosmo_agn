@@ -286,6 +286,13 @@ class MasterEquation(object):
     def likelihood(self,event_data,complete=False,skymap2d=None):
         """
         The likelihood for a single event
+        
+        Parameters
+        ----
+        event_data : posterior samples (distance, ra, dec)
+        complete : boolean
+                    Is catalogue complete?
+        skymap2d : KDe for skymap
         """    
         dH0 = self.H0[1]-self.H0[0]
         
@@ -332,6 +339,123 @@ class MasterEquation(object):
         tmpd = coverh * x
         tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
         return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
+
+class PixelBasedLikelihood(MasterEquation):
+    """
+    Likelihood for a single event, evaluated using a pixel based sky map
+    p(x|D, H0, I)
+    Parameters
+    ----
+    H0 : np.ndarray
+        Vector of H0 values
+    catalogue : gwcosmo.prior.galaxyCatalog
+        Galaxy catalogue
+    skymap3d  : ligo.skymap.kde.SkyKDE
+        Skymap for this event
+    pdet      : gwcosmo.likelihood.detection_probability.DetectionProbability
+        Detection probability class
+    GMST      : float
+        Greenwich Mean Sidereal Time for this event
+    Optional Arguments
+    ----
+    linear : boolean
+        Use linear cosmology?
+    weighted : boolean
+        Use luminosity weighting?
+    counterparts : boolean
+        Event has a counterpart?
+    """
+    def __init__(self, H0, catalog, skymap3d, GMST, pdet=pdet, linear=False, weighted=False, counterparts=False):
+        super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,use_3d_kde=True,counterparts=counterparts)
+        self.pixelmap = skymap3d.as_healpix()
+        self.skymap = skymap3d
+        self.npix = len(self.pixelmap)
+        self.nside = hp.npix2nside(self.npix)
+        
+        # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
+        self.pixel_cats = [ [] for _ in range(self.galaxy_catalog.nGal()) ]
+        ra, dec, _, _ = self.extract_galaxies()
+        theta = np.pi/2.0 - dec
+        pix_idx = hp.ang2pix(self.nside, theta, ra)
+        for j in pix_idx:
+            self.pixel_cats[j].append(self.galaxy_catalog.get_galaxy(j))
+        for pix in range(self.npix):
+            self.mths[pix] = np.max([g.lumB for g in self.pixel_cats[pix]])
+        
+    def likelihood(self, H0):
+        """
+        Return likelihood of this event, given H0.
+        
+        Parameters
+        ----
+        H0 : float or ndarray
+            Value of H0
+        """
+        return np.sum([self.pixel_likelihood(H0, i) for i in range(self.npix)])
+        
+    def pixel_likelihood(self, H0, pixel):
+        """
+        Compute the likelihood for a given pixel
+        """
+        return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel)
+                + self.pixel_likelihood_notG(H0,pixel)*self.pixel_pnG_D(H0,pixel)
+        
+    def pixel_likelihood_G(self,H0,pixel):
+        """
+        p(x | H0, D, G, pix)
+        """
+        val = 0.0
+        for gal in self.pixel_cats[pixel]:
+            dL = dl_zH0(gal.z,H0, linear=self.linear)
+            galprob = self.skymap.posterior_spherical(gal.ra, gal.dec, dl))
+            detprob = self.pdet.pD_dlradec_eval(dl, gal.ra, gal.dec, self.gmst)
+            val += galprob/detprob
+        return val
+        
+    
+    def pixel_likelihood_notG(self,H0,pixel):
+        """
+        p(x | H0, D, notG, pix)
+        """
+        pass
+
+    def pixel_pG_D(self,H0,pixel):
+        """
+        p(G|D, pix)
+        """
+        ra, theta = hp.pix2ang(pixel)
+        dec = np.pi/2.0 - theta
+        if self.weighted:
+            def I(z,M):
+                return L_M(M)*SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dlradec_eval(dl_zH0(z,H0,linear=self.linear),ra, dec, self.gmst)*pz_nG(z)
+        else:
+             def I(z,M):
+                return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dlradec_eval(dl_zH0(z,H0,linear=self.linear),ra, dec, self.gmst)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        mth = self.mths[pixel]
+        Mmin = M_Mobs(H0,-22.96)
+        Mmax = M_Mobs(H0,-12.96)
+        num = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        pGD = num/den
+        return pGD
+    
+    def pixel_pnG_D(self, H0, pixel):
+        """
+        p(notG | D, pix)
+        """
+        pass
+
+class PixelCatalog(object):
+    """
+    Data for each pixel
+    """
+    galaxies=None
+    mth = None
 
 class pofH0(object):
     """
