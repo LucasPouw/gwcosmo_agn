@@ -373,6 +373,7 @@ class PixelBasedLikelihood(MasterEquation):
         self.skymap = skymap3d
         self.npix = len(self.pixelmap)
         self.nside = hp.npix2nside(self.npix)
+        self.gmst = GMST
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
         self.pixel_cats = [ [] for _ in range(self.galaxy_catalog.nGal()) ]
@@ -381,8 +382,9 @@ class PixelBasedLikelihood(MasterEquation):
         pix_idx = hp.ang2pix(self.nside, theta, ra)
         for j in pix_idx:
             self.pixel_cats[j].append(self.galaxy_catalog.get_galaxy(j))
-        for pix in range(self.npix):
-            self.mths[pix] = np.max([g.lumB for g in self.pixel_cats[pix]])
+        #for pix in range(self.npix):
+        #    self.mths[pix] = np.max([g.lumB for g in self.pixel_cats[pix]])
+        self.mths = np.full((self.npix),18.0) # just for testing
         
     def likelihood(self, H0):
         """
@@ -408,8 +410,8 @@ class PixelBasedLikelihood(MasterEquation):
         """
         val = 0.0
         for gal in self.pixel_cats[pixel]:
-            dL = dl_zH0(gal.z,H0, linear=self.linear)
-            galprob = self.skymap.posterior_spherical(gal.ra, gal.dec, dl)
+            dl = dl_zH0(gal.z,H0, linear=self.linear)
+            galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]]))
             detprob = self.pdet.pD_dlradec_eval(dl, gal.ra, gal.dec, self.gmst)
             val += galprob/detprob
         return val
@@ -419,13 +421,38 @@ class PixelBasedLikelihood(MasterEquation):
         """
         p(x | H0, D, notG, pix)
         """
-        pass
+        theta, ra = hp.pix2ang(self.nside,pixel)
+        dec = np.pi/2.0 - theta
+        
+        weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
+                
+        def Inum(z,M):
+            temp = weight*norm.pdf(dl_zH0(z,H0,linear=self.linear),distmu,distsigma)/distnorm*pz_nG(z)*SchechterMagFunction(H0=H0)(M)
+            if self.weighted:
+                return temp*L_M(M)
+            else:
+                return temp
+
+        def Iden(z,M):
+            temp = SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dlradec_eval(dl_zH0(z,H0,linear=self.linear),ra,dec,self.gmst)*pz_nG(z)
+            if self.weighted:
+                return temp*L_M(M)
+            else:
+                return temp
+                
+        Mmin = M_Mobs(H0,-22.96)
+        Mmax = M_Mobs(H0,-12.96)
+        mth = self.mths[pixel]
+        num = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        
+        return num/den
 
     def pixel_pG_D(self,H0,pixel):
         """
         p(G|D, pix)
         """
-        ra, theta = hp.pix2ang(pixel)
+        theta, ra = hp.pix2ang(self.nside,pixel)
         dec = np.pi/2.0 - theta
         if self.weighted:
             def I(z,M):
@@ -446,11 +473,14 @@ class PixelBasedLikelihood(MasterEquation):
         pGD = num/den
         return pGD
     
-    def pixel_pnG_D(self, H0, pixel):
+    def pixel_pnG_D(self, H0, pixel,pG=None):
         """
         p(notG | D, pix)
         """
-        pass
+        if pG != None:
+            return 1.0 - pG
+        else:
+            return 1.0 - self.pixel_pG_D(H0,pixel)
 
 class PixelCatalog(object):
     """
