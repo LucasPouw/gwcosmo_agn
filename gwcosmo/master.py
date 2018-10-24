@@ -367,7 +367,8 @@ class PixelBasedLikelihood(MasterEquation):
     """
     def __init__(self, H0, catalog, skymap3d, GMST, pdet=pdet, linear=False, weighted=False, counterparts=False):
         super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,use_3d_kde=True,counterparts=counterparts)
-        self.pixelmap = skymap3d.as_healpix()
+        from ligo.skymap.bayestar import rasterize
+        self.pixelmap = rasterize(skymap3d.as_healpix())
         self.skymap = skymap3d
         self.npix = len(self.pixelmap)
         self.nside = hp.npix2nside(self.npix)
