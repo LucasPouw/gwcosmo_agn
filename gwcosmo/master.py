@@ -10,6 +10,7 @@ import sys
 import matplotlib 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import healpy as hp
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
@@ -365,7 +366,7 @@ class PixelBasedLikelihood(MasterEquation):
     counterparts : boolean
         Event has a counterpart?
     """
-    def __init__(self, H0, catalog, skymap3d, GMST, pdet=pdet, linear=False, weighted=False, counterparts=False):
+    def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
         super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,use_3d_kde=True,counterparts=counterparts)
         self.pixelmap = skymap3d.as_healpix()
         self.skymap = skymap3d
@@ -397,7 +398,7 @@ class PixelBasedLikelihood(MasterEquation):
         """
         Compute the likelihood for a given pixel
         """
-        return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel)
+        return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel) \
                 + self.pixel_likelihood_notG(H0,pixel)*self.pixel_pnG_D(H0,pixel)
         
     def pixel_likelihood_G(self,H0,pixel):
@@ -407,7 +408,7 @@ class PixelBasedLikelihood(MasterEquation):
         val = 0.0
         for gal in self.pixel_cats[pixel]:
             dL = dl_zH0(gal.z,H0, linear=self.linear)
-            galprob = self.skymap.posterior_spherical(gal.ra, gal.dec, dl))
+            galprob = self.skymap.posterior_spherical(gal.ra, gal.dec, dl)
             detprob = self.pdet.pD_dlradec_eval(dl, gal.ra, gal.dec, self.gmst)
             val += galprob/detprob
         return val
