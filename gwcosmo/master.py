@@ -110,7 +110,7 @@ class MasterEquation(object):
             
             den = np.zeros(len(self.H0))
             catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_mdc_catalog('1.0')
+            catalog.load_mdc_catalog('2.2')
             nGal = catalog.nGal()
             for i in range(nGal):
                 gal = catalog.get_galaxy(i)
@@ -267,21 +267,27 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z) over z
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()
+        pH0 = np.zeros(len(self.H0))
+        for i in range(len(self.H0)):
+            def I(z):
+                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-        if int(nGal) == 1:
+        if prior == 'jeffreys':
+            return pH0/self.H0  
+        else:
+            return pH0
+            
+    def pH0(self,prior='log'):
+        """
+        The prior probability of H0 independent of detection
+        
+        Takes an array of H0 values and a choice of prior.
+        """
+        if prior == 'uniform':
+            return np.ones(len(self.H0))
+        if prior == 'log':
             return 1./self.H0
-        else:    
-            pH0 = np.zeros(len(self.H0))
-            for i in range(len(self.H0)):
-                def I(z):
-                    return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-                pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-
-            if prior == 'jeffreys':
-                return pH0/self.H0  
-            else:
-                return pH0
         
     def likelihood(self,event_data,complete=False,skymap2d=None):
         """

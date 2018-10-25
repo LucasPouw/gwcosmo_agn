@@ -126,7 +126,7 @@ def main():
         likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
         likelihoods.append(likelihood)
 
-    prior = me.pH0_D(prior='jeffreys')
+    prior = me.pH0(prior='log')
     
     posteriors=[] 
     posteriors_norm=[]
