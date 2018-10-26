@@ -26,11 +26,11 @@ class MasterEquation(object):
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False,weighted=False,use_3d_kde=True,counterparts=False):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,weighted=False,use_3d_kde=True,counterparts=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
-        self.mth = mth # TODO: get this from galaxy_catalog, not explicitly
+        self.mth = galaxy_catalog.mth
         self.linear = linear
         self.weighted = weighted
         self.use_3d_kde = use_3d_kde

@@ -4,6 +4,8 @@ Ignacio Magana
 
 import numpy as np
 from astropy.table import Table
+from scipy.stats import gaussian_kde
+
 import pkg_resources
 
 # Global
@@ -128,4 +130,18 @@ class galaxyCatalog(object):
 
     def get_galaxy(self,index):
         return self.dictionary[str(int(index))]
-
+    
+    def mth(self):
+        ngal = self.nGal()
+        m = np.zeros(ngal)
+        for i in range(ngal):
+            m[i] = self.get_galaxy(i).m
+        if sum(m) == 0:
+            mth = 25.0
+        else:
+            kde_m = gaussian_kde(m)
+            m_array = np.linspace(15,25,4000)
+            m_kde = kde_m.evaluate(m_array)
+            mth=m_array[np.where(m_kde==max(m_kde))]
+        print(mth)
+        return mth
