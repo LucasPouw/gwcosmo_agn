@@ -30,7 +30,7 @@ class MasterEquation(object):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
-        self.mth = galaxy_catalog.mth
+        self.mth = galaxy_catalog.mth()
         self.linear = linear
         self.weighted = weighted
         self.use_3d_kde = use_3d_kde

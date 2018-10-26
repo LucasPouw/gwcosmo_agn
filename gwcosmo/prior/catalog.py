@@ -143,5 +143,4 @@ class galaxyCatalog(object):
             m_array = np.linspace(15,25,4000)
             m_kde = kde_m.evaluate(m_array)
             mth=m_array[np.where(m_kde==max(m_kde))]
-        print(mth)
         return mth
