@@ -13,8 +13,7 @@ class galaxy(object):
     ''' Class for galaxy objects
     '''
     def __init__(self, index = 0, pgc_number = 0, galaxy_name = 0, cluster = 0, ra = 0, dec = 0,
-                z = 0, z_err = 0, distance = 0, distance_error = 0, angle_error = 0, 
-                abs_mag_r = 0, abs_mag_k = 0, lumB = 0, lumK=0, m = 0):
+                z = 0, z_err = 0, distance = 0, distance_error = 0, lumB = 0, m = 0):
         """Galaxy catalog class... 
         Parameters
         """
@@ -28,11 +27,7 @@ class galaxy(object):
         self.z_err = z_err
         self.distance = distance
         self.distance_error = distance_error
-        self.angle_error = angle_error
-        self.abs_mag_r = abs_mag_r
-        self.abs_mag_k = abs_mag_k
         self.lumB = lumB
-        self.lumK = lumK
         self.m = m
         
     def load_astropy_row_glade(self, index, row):
@@ -45,8 +40,8 @@ class galaxy(object):
         self.z = row['z']
         self.distance = row['Distance']
         self.distance_error = row['Distance Error']
-        self.lumB = row['abs_mag_r']
-        self.abs_mag_k = row['abs_mag_k']
+        self.m = row['Bmag']
+        self.lumB = row['lumB']
 
     def load_astropy_row_mdc(self, index, row, version):
         self.index = index
@@ -90,15 +85,12 @@ class galaxyCatalog(object):
         if version == 'corrected':
             self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
             t = Table.read(self.catalog_file,format=self.catalog_format)
-        if version == 'original':
-            self.catalog_file = catalog_data_path + "gladecatalogv2.3.dat"
-            t = Table.read(self.catalog_file,format=self.catalog_format)
         if version == 'maya': #Here for testing purposes
             self.catalog_file = catalog_data_path + "glade23_maya_cuts.txt"
             pgcsel,rasel,decsel,zsel_group,bmagsel,bMagsel,kmagsel,kMagsel = np.genfromtxt(self.catalog_file,unpack=True)
             __ = np.ones(len(pgcsel))
-            t = Table([pgcsel, __, __, rasel, decsel, zsel_group, __, __, bMagsel, kMagsel ],
-                names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
+            t = Table([pgcsel, __, __, rasel, decsel, zsel_group, __, __, bmagsel, __],
+                names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','Bmag','lumB'])
 
         galaxies={}
         nGal = len(t)
