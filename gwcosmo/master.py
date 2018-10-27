@@ -45,8 +45,8 @@ class MasterEquation(object):
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
-        self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
-        self.distmax = 400.0
+        self.distmax = pdet.pD_distmax()
+        self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear) 
 
     def px_H0G(self,event_data,skymap2d=None):
         """
@@ -110,7 +110,7 @@ class MasterEquation(object):
             
             den = np.zeros(len(self.H0))
             catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_mdc_catalog('2.2')
+            catalog.load_glade_catalog()
             nGal = catalog.nGal()
             for i in range(nGal):
                 gal = catalog.get_galaxy(i)

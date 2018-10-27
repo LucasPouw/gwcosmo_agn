@@ -228,3 +228,9 @@ class DetectionProbability(object):
         """
         return self.pD_dl_eval(dl)
     
+    
+    def pD_distmax(self):
+        """
+        Returns twice the maximum distance given Pdet(dl) = 0.01.
+        """
+        return 2.*self.dl_array[np.where(self(self.dl_array)>0.01)[0][-1]]
