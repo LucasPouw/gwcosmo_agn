@@ -183,7 +183,9 @@ def main():
     
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
     if samples_file_path == 'GW170817':
-        samples.load_posterior_samples()
+        samples.load_posterior_samples(event=samples_file_path)
+    if samples_file_path == 'GW170818':
+        samples.load_posterior_samples(event=samples_file_path)
     else:    
         samples.load_posterior_samples_hdf5(samples_file_path)
     

@@ -31,12 +31,21 @@ class posterior_samples(object):
         self.weight = weight
         self.nsamples = nsamples
 
-    def load_posterior_samples(self, lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"):
+    def load_posterior_samples(self,event):
         """ Loads GW170817 posterior samples by default into class 
             unless lalinference_path points to a samples files. 
             Currently it only supports .dat posterior samples format.
             It also returns distance, ra and dec ...
         """
+        if event == 'GW170817':
+        #https://git.ligo.org/publications/gw170817/parameter-estimation/blob/master/data/posterior_samples_RR0.dat
+            lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"
+        if event == 'GW170818':
+        #https://git.ligo.org/pe_event_samples/GW170818/blob/master/allIsp_post.dat    
+            lalinference_path=posterior_data_path + "/allIsp_post.dat"
+        if event == 'GW170814':
+        #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
+            lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
         self.lalinference_path = lalinference_path
         self.lalinference_data = np.genfromtxt(lalinference_path, names=True)
         self.distance = self.lalinference_data['distance']
