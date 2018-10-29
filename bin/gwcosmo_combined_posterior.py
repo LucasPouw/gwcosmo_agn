@@ -76,8 +76,8 @@ def main():
     Nevents = len(mdc_dir_list)
     
     H0 = np.load(mdc_dir_list[0])['arr_0'][0]
-    min_h0 = H0[0]
-    max_h0 = H0[-1]
+    min_H0 = H0[0]
+    max_H0 = H0[-1]
     dH0 = H0[1] - H0[0]
     
     prior = np.load(mdc_dir_list[0])['arr_0'][2]
@@ -106,7 +106,7 @@ def main():
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         for n in range(Nevents):
             plt.plot(H0,likelihoods[n], alpha = 0.3)
-        plt.xlim(min_h0,max_h0)
+        plt.xlim(min_H0,max_H0)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
@@ -181,7 +181,7 @@ def main():
             plt.plot(H0,prior*likelihood_comb_list[i]/max(prior*likelihood_comb_list[i]),linewidth = 3.0, label='posterior')
             plt.plot(H0,likelihood_comb_list[i]/max(likelihood_comb_list[i]),linewidth = 3.0, ls = '--', label='likelihood')
             plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-            plt.xlim(min_h0,max_h0)
+            plt.xlim(min_H0,max_H0)
             plt.xticks(fontsize=14)
             plt.yticks(fontsize=14)
             plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)

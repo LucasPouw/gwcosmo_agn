@@ -38,11 +38,11 @@ parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-u", "--min_h0", metavar="MINH0", default='30.0', type=float,
+        Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-v", "--max_h0", metavar="MAXH0", default='210.0', type=float,
+        Option("-v", "--max_H0", metavar="MAXH0", default='210.0', type=float,
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_h0", metavar="BINSH0", default='200', type=int,
+        Option("-x", "--bins_H0", metavar="BINSH0", default='200', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
         Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
             help="MINDIST: Set minimum value of luminosity distance"),
@@ -50,8 +50,6 @@ parser = OptionParser(
             help="MAXDIST: Set maximum value of luminosity distance"),
         Option("-f", "--bins_dist", metavar="BINSDIST", default='200', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
-        Option("-z", "--z_max", metavar="ZMAX", default='1.0', type=float,
-            help="ZMAX: Maximal detectable redshift"),
         Option("-y", "--use_3d_kde", metavar="KDE", default='False',
             help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-p", "--plot", metavar="PLOT", default='True',
@@ -74,15 +72,13 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
         
 # Set command line arguments
-min_h0 = float(opts.min_h0)
-max_h0 = float(opts.max_h0)
-bins_h0 = float(opts.bins_h0)
+min_H0 = float(opts.min_H0)
+max_H0 = float(opts.max_H0)
+bins_H0 = float(opts.bins_H0)
 
 max_dist = float(opts.max_dist)
 min_dist = float(opts.min_dist)
 bins_dist = float(opts.bins_dist)
-
-z_max = float(opts.z_max)
 
 plot = str2bool(opts.plot)
 save = str2bool(opts.save)
@@ -96,7 +92,7 @@ use_3d_kde = str2bool(opts.use_3d_kde)
 counterparts = np.loadtxt('/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mdc_counterparts.txt')
 def main():
     "Compute P(H0)"
-    H0 = np.linspace(min_h0, max_h0, bins_h0)
+    H0 = np.linspace(min_H0, max_H0, bins_H0)
     dH0 = H0[1] - H0[0]
     
     #set up array of luminosity distance values
@@ -142,7 +138,7 @@ def main():
             plt.plot(H0,posteriors_norm[k],linewidth = 3.0, label='posterior')
             plt.plot(H0,likelihoods[k],linewidth = 3.0, ls = '--', label='likelihood')
             plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-            plt.xlim(min_h0,max_h0)
+            plt.xlim(min_H0,max_H0)
             plt.xticks(fontsize=14)
             plt.yticks(fontsize=14)
             plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
