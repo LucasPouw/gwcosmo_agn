@@ -58,13 +58,13 @@ class DetectionProbability(object):
                 else:
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
-            self.m2 = np.random.uniform(low=5.0,high=self.m1)*1.988e30
+            self.m2 = np.random.uniform(low=5.0,high=self.m1)
             self.M_min = np.min(self.m1)+np.min(self.m2)
         # precompute values which will be called multiple times
         self.interp_dist = self.__pD_dl(self.dl_array)
         self.interp_map = None
-       
-        
+    
+    
     def __snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
         """
         the optimal snr squared for one detector, for a specific DL, RA, Dec, m1, m2, inc, psi, gmst
@@ -149,7 +149,7 @@ class DetectionProbability(object):
         
         return interp1d(dl_array,prob,bounds_error=False,fill_value=1e-10)
         
-       
+    
     def __pD_dlradec(self,Nside,dl_array):
         """
         Detection probability over a range of distances, at each pixel on a healpy map.
