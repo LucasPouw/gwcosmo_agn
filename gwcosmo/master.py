@@ -379,7 +379,7 @@ class PixelBasedLikelihood(MasterEquation):
         self.pixel_cats = [ [] for _ in range(self.galaxy_catalog.nGal()) ]
         ra, dec, _, _ = self.extract_galaxies()
         theta = np.pi/2.0 - dec
-        pix_idx = hp.ang2pix(self.nside, theta, ra)
+        pix_idx = hp.ang2pix(self.nside, theta, ra,nest=True)
         for j in pix_idx:
             self.pixel_cats[j].append(self.galaxy_catalog.get_galaxy(j))
         #for pix in range(self.npix):
@@ -412,7 +412,7 @@ class PixelBasedLikelihood(MasterEquation):
         """
         p(x | H0, D, G, pix)
         """
-        theta, ra = hp.pix2ang(self.nside,pixel)
+        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
@@ -432,7 +432,7 @@ class PixelBasedLikelihood(MasterEquation):
         """
         p(x | H0, D, notG, pix)
         """
-        theta, ra = hp.pix2ang(self.nside,pixel)
+        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
@@ -478,7 +478,7 @@ class PixelBasedLikelihood(MasterEquation):
         """
         p(G|D, pix)
         """
-        theta, ra = hp.pix2ang(self.nside,pixel)
+        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         mth = self.mths[pixel]
@@ -517,7 +517,7 @@ class PixelBasedLikelihood(MasterEquation):
         """
         p(D|H0,pix)
         """
-        theta, ra = hp.pix2ang(self.nside,pixel)
+        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         num = np.zeros(len(H0))
