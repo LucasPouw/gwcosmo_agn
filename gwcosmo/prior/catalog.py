@@ -5,6 +5,8 @@ Ignacio Magana
 import numpy as np
 from astropy.table import Table
 from scipy.stats import gaussian_kde
+import pandas as pd
+from astropy.io import fits
 
 import pkg_resources
 
@@ -58,6 +60,13 @@ class galaxy(object):
         self.ra = ra
         self.dec = dec
         self.z = z
+        
+    def load_row_mice(self, index, row):
+        self.index = index
+        self.ra = row.ra_gal*np.pi/180.
+        self.dec = row.dec_gal*np.pi/180.
+        self.z = row.z_cgal_v 
+        self.m = row.des_asahi_full_r_true
 
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
@@ -121,6 +130,21 @@ class galaxyCatalog(object):
         for k in range(0,nGal):
             gal = galaxy()
             gal.load_astropy_row_mdc(k,t[k],version)
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+        
+    def load_mice_catalog(self):
+        "MICE catalog: /home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mice.fits"
+        self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
+        with fits.open('mice_test.fits') as data:
+            df = pd.DataFrame(np.array(data[1].data).byteswap().newbyteorder())
+
+        galaxies={}
+        nGal = len(df)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_row_mice(k,df.iloc[k])
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
