@@ -395,25 +395,36 @@ class PixelBasedLikelihood(MasterEquation):
         H0 : float or ndarray
             Value of H0
         """
-        return np.sum([self.pixel_likelihood(H0, i) for i in range(self.npix)])
+        return np.sum([self.pixel_likelihood(H0, i) for i in range(self.npix)])*self.pixel_pD(H0)
         
     def pixel_likelihood(self, H0, pixel):
         """
         Compute the likelihood for a given pixel
         """
-        return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel) \
-                + self.pixel_likelihood_notG(H0,pixel)*self.pixel_pnG_D(H0,pixel)
+        pG = self.pixel_pG_D(H0,pixel)
+        pnG = self.pixel_pnG_D(H0,pixel,pG=pG)
+        return self.pixel_pD(H0,pixel)*(self.pixel_likelihood_G(H0,pixel)*pG \
+                + self.pixel_likelihood_notG(H0,pixel)*pnG)      
+        #return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel) \
+        #        + self.pixel_likelihood_notG(H0,pixel)*self.pixel_pnG_D(H0,pixel)
         
     def pixel_likelihood_G(self,H0,pixel):
         """
         p(x | H0, D, G, pix)
         """
-        val = 0.0
-        for gal in self.pixel_cats[pixel]:
-            dl = dl_zH0(gal.z,H0, linear=self.linear)
-            galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]]))
-            detprob = self.pdet.pD_dlradec_eval(dl, gal.ra, gal.dec, self.gmst)
-            val += galprob/detprob
+        theta, ra = hp.pix2ang(self.nside,pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
+        
+        val = np.zeros(len(H0))
+        for i,h0 in enumerate(H0):
+            for gal in self.pixel_cats[pixel]:
+                dl = dl_zH0(gal.z,h0, linear=self.linear)
+                #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
+                galprob = weight*norm.pdf(dl,distmu,distsigma)/distnorm
+                detprob = self.pdet.pD_dl_eval(dl, spl)
+                val[i] += galprob/detprob
         return val
         
     
@@ -425,39 +436,43 @@ class PixelBasedLikelihood(MasterEquation):
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
-                
-        def Inum(z,M):
-            temp = pz_nG(z)*SchechterMagFunction(H0=H0)(M)*weight*norm.pdf(dl_zH0(z,H0,linear=self.linear),distmu,distsigma)/distnorm
-            if self.weighted:
-                return temp*L_M(M)
-            else:
-                return temp
-
-        #def Iden(z,M):
-        #    temp = SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*pz_nG(z)
-        #    if self.weighted:
-        #        return temp*L_M(M)
-        #    else:
-        #        return temp
-         
-        def dentemp(z,M):
-            return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*pz_nG(z)
-        if self.weighted:
-            def Iden(z,M):
-                return dentemp(z,M)*L_M(M)
-        else:
-            def Iden(z,M):
-                return dentemp(z,M)
-               
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
         mth = self.mths[pixel]
-        #num = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
-        #num = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        #den = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        den = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
         
-        return den#num/den
+        num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            def Inum(z,M):
+                temp = pz_nG(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+
+            def Iden(z,M):
+                temp = SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+         
+        #def dentemp(z,M):
+        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*pz_nG(z)
+        #if self.weighted:
+        #    def Iden(z,M):
+        #        return dentemp(z,M)*L_M(M)
+        #else:
+        #    def Iden(z,M):
+        #        return dentemp(z,M)
+               
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+        
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
+            den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
+            #num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]
+            #den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]        
+        return num/den
 
     def pixel_pG_D(self,H0,pixel):
         """
@@ -465,33 +480,91 @@ class PixelBasedLikelihood(MasterEquation):
         """
         theta, ra = hp.pix2ang(self.nside,pixel)
         dec = np.pi/2.0 - theta
-        if self.weighted:
-            def I(z,M):
-                return L_M(M)*SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dlradec_eval(dl_zH0(z,H0,linear=self.linear),ra, dec, self.gmst)*pz_nG(z)
-        else:
-             def I(z,M):
-                return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dlradec_eval(dl_zH0(z,H0,linear=self.linear),ra, dec, self.gmst)*pz_nG(z)
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        mth = self.mths[pixel]
+        num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
         # TODO: test how sensitive this result is to changing Mmin and Mmax.
-        mth = self.mths[pixel]
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
-        num = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),H0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
-        den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-        pGD = num/den
-        return pGD
+        return num/den
     
     def pixel_pnG_D(self, H0, pixel,pG=None):
         """
         p(notG | D, pix)
         """
-        if pG != None:
+        if all(pG) != None:
             return 1.0 - pG
         else:
             return 1.0 - self.pixel_pG_D(H0,pixel)
+            
+    def pixel_pD(self,H0,pixel):
+        """
+        p(D|H0,pix)
+        """
+        theta, ra = hp.pix2ang(self.nside,pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        num = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        return num
+        
+    def pD(self,H0):
+        """
+        p(D|H0)
+        """
+        spl = self.pdet.interp_average
+        num = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        return num
+    
 
 class PixelCatalog(object):
     """
