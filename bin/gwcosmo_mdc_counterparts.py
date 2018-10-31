@@ -128,8 +128,8 @@ def main():
     for k in range(0,250):
         posterior = prior*likelihoods[k]
         posteriors.append(posterior)
-        posteriors_norm.append(posterior/np.sum(posterior)/dH0)
-        priors_norm.append(prior/np.sum(prior)/dH0)
+        posteriors_norm.append(posterior/np.sum(posterior*dH0))
+        priors_norm.append(prior/np.sum(prior*dH0))
 
     if plot == True:
         for k in range(0,250):

@@ -95,8 +95,8 @@ def main():
 
     posterior = prior*likelihood_comb
 
-    posterior_norm = posterior/np.sum(posterior)/dH0
-    prior_norm = prior/np.sum(prior)/dH0
+    posterior_norm = posterior/np.sum(posterior*dH0)
+    prior_norm = prior/np.sum(prior*dH0)
 
     if plot == True:
         plt.figure()

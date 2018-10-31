@@ -187,6 +187,8 @@ def main():
             catalog.load_glade_catalog(version=glade_version)
         if galaxy_catalog == 'mdc':
             catalog.load_mdc_catalog(version=mdc_version)
+        if galaxy_catalog == 'mice':
+            catalog.load_mice_catalog()
             
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
@@ -203,8 +205,8 @@ def main():
 
     posterior = prior*likelihood
 
-    posterior_norm = posterior/np.sum(posterior)/dH0
-    prior_norm = prior/np.sum(prior)/dH0
+    posterior_norm = posterior/np.sum(posterior*dH0)
+    prior_norm = prior/np.sum(prior*dH0)
 
     if plot == True:
         plt.figure()
@@ -222,7 +224,7 @@ def main():
         plt.savefig(outputfile+'.png',dpi=400)
 
     if save == True:
-        np.savez(outputfile+'.npz',[H0,likelihood,prior,posterior_norm])
+        np.savez(outputfile+'.npz',[H0,likelihood,prior,posterior_norm,opts])
 
 if __name__ == "__main__":
     main()

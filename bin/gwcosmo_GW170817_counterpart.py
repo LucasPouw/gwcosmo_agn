@@ -115,8 +115,8 @@ def main():
     prior = me.pH0(prior='log')
     
     posterior = prior*likelihood
-    posterior_norm = posterior/np.sum(posterior)/dH0
-    prior_norm = prior/np.sum(prior)/dH0
+    posterior_norm = posterior/np.sum(posterior*dH0)
+    prior_norm = prior/np.sum(prior*dH0)
 
     if plot == True:
         plt.figure()

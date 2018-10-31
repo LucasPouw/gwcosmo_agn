@@ -201,7 +201,7 @@ class MasterEquation(object):
             for k, x in enumerate(self.H0):
                 coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
                 completion = self.pd( event_data.distance / coverh, lumB, z*coverh) / ( 4.0 * np.pi )
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
+                epsilon = self.pdet(event_data.distance)
                 num[k] = np.mean( (completion ) / ((event_data.distance/coverh)**2) ) 
 
         else:
@@ -343,15 +343,18 @@ class pofH0(object):
     """
     Class that contains ingredients necessary to compute P(H0) in a different way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0,cfactor=1.0, option='GW170817'):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,complete=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.linear = linear
         self.dmax = pdet.pD_distmax()
         self.zmax = z_dlH0(self.dmax,H0=max(self.H0),linear=self.linear) 
-
-        self.cfactor = cfactor
+        
+        if complete == True:
+            self.cfactor = 0
+        else:
+            self.cfactor = 1.0
         
         self.post = None
         self.like = None
@@ -361,7 +364,6 @@ class pofH0(object):
         
         self.prior_type = None
         self.dH0 = self.H0[1] - self.H0[0]
-        self.option = option
     
     def prior(self, prior_type='uniform'):
         self.prior_type = prior_type
@@ -388,7 +390,7 @@ class pofH0(object):
         for k, x in enumerate(self.H0):
             coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
             ph[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.zmax)
-            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist, self.option ) / ( 4.0 * np.pi )
+            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist ) / ( 4.0 * np.pi )
             epsilon = self.pdet(event_data.distance)
             ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
             print(ph[k])
@@ -410,7 +412,7 @@ class pofH0(object):
             epsilon = self.pdet(tmpr)
             epLumB = lumB * epsilon
             dz = tmpz[1]-tmpz[0]
-            completion = self.cfactor*self.pd(tmpz,lumB,dist,self.option)
+            completion = self.cfactor*self.pd(tmpz,lumB,dist)
             epsilon = self.pdet(coverh*tmpz)
             tmpnorm = 0.0
             tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion)*dz
@@ -483,17 +485,9 @@ class pofH0(object):
         return ra, dec, dist, z, lumB
 
     #place this somewhere specific to glade... preprocessing?       
-    def pd(self,x,lumB,dist,option):
-        option = self.option
-        if option == 'GW170817':
-            blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
-        if option == 'MDC1':
-            blue_luminosity_density = 0.00013501121143
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-0.0)**2)
-            return ma.masked_where(tmpd<435.,tmpp).filled(0)
+    def pd(self,x,lumB,dist):
+        blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
+        coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
+        tmpd = coverh * x
+        tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
+        return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
