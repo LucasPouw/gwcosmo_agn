@@ -348,8 +348,9 @@ class pofH0(object):
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.linear = linear
-        self.dmax = dmax
-        self.zmax = zmax
+        self.dmax = pdet.pD_distmax()
+        self.zmax = z_dlH0(self.dmax,H0=max(self.H0),linear=self.linear) 
+
         self.cfactor = cfactor
         
         self.post = None
@@ -362,7 +363,7 @@ class pofH0(object):
         self.dH0 = self.H0[1] - self.H0[0]
         self.option = option
     
-    def prior(self, prior_type='log'):
+    def prior(self, prior_type='uniform'):
         self.prior_type = prior_type
         if prior_type == 'log':
             self.prior_ = 1./self.H0
@@ -375,13 +376,6 @@ class pofH0(object):
         """
         The infamous H0**3 term.
         """
-        pH0 = np.zeros(len(self.H0))
-        for i in range(len(self.H0)):
-            def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-        pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        #self.psi = pH0/(np.sum(pH0)*self.dH0)
-        #return pH0/(np.sum(pH0)*self.dH0)
         self.psi = self.H0**3
         return self.psi
     
@@ -390,16 +384,12 @@ class pofH0(object):
         The likelihood for a single event.
         """
         ra, dec, dist, z, lumB = self.extract_galaxies()
-            
         ph = np.zeros(len(self.H0))
         for k, x in enumerate(self.H0):
             coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-            ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh)
+            ph[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.zmax)
             completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist, self.option ) / ( 4.0 * np.pi )
-            if self.option == 'GW170817':
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
-            if self.option == 'MDC1':
-                epsilon = 0.5*(1 - np.tanh(2.8*np.log(event_data.distance/90.)))
+            epsilon = self.pdet(event_data.distance)
             ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
             print(ph[k])
         self.like = ph
@@ -417,21 +407,18 @@ class pofH0(object):
             tmpz = np.linspace(0.00001,zmax,100)
             coverh = (const.c.to('km/s') / ( x * u.km / u.s / u.Mpc )).value
             tmpr = z * coverh
-            epsilon = 0.5*(1 - np.tanh(3.3*np.log(tmpr/80.)))
+            epsilon = self.pdet(tmpr)
             epLumB = lumB * epsilon
             dz = tmpz[1]-tmpz[0]
             completion = self.cfactor*self.pd(tmpz,lumB,dist,self.option)
-            if self.option == 'GW170817':
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
-            if self.option == 'MDC1':
-                epsilon = 0.5*(1 - np.tanh(2.8*np.log(coverh*tmpz/90.)))
+            epsilon = self.pdet(coverh*tmpz)
             tmpnorm = 0.0
             tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion)*dz
             normalization[k] = tmpnorm
         self.norm = normalization
         return self.norm
     
-    def posterior(self, event_data, prior_type='log'):
+    def posterior(self, event_data, prior_type='uniform'):
         """
         The posterior for a single event.
         """
@@ -446,7 +433,6 @@ class pofH0(object):
             print("Setting up" + str(prior_type) + "prior")
             print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
             like = self.likelihood(event_data)
-
             self.like = like
             self.norm = norm
             self.psi = psi
