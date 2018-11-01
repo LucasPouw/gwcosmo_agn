@@ -386,14 +386,30 @@ class pofH0(object):
         The likelihood for a single event.
         """
         ra, dec, dist, z, lumB = self.extract_galaxies()
+        nSplit = 100
+        ra = np.array_split(ra, nSplit)
+        dec = np.array_split(dec, nSplit)
+        dist = np.array_split(dist, nSplit)
+        z = np.array_split(z, nSplit)
+        lumB = np.array_split(lumB, nSplit)
+        
+        ph_list = []
+        for j in range(0,nSplit):
+            print('Processing chunk ' + str(j) + ' out of ' + str(nSplit))
+            ph = np.zeros(len(self.H0))
+            for k, x in enumerate(self.H0):
+                print(x)
+                coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+                ph[k] = event_data.compute_3d_probability(ra[j], dec[j], z[j], lumB[j], coverh, self.zmax)
+                completion = self.cfactor * self.pd( event_data.distance / coverh, lumB[j], dist[j] ) / ( 4.0 * np.pi )
+                epsilon = self.pdet(event_data.distance)
+                ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
+            ph_list.append(ph)
+
         ph = np.zeros(len(self.H0))
-        for k, x in enumerate(self.H0):
-            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-            ph[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.zmax)
-            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist ) / ( 4.0 * np.pi )
-            epsilon = self.pdet(event_data.distance)
-            ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
-            print(ph[k])
+        for j in range(0,nSplit):
+            ph = ph + ph_list[j]
+            
         self.like = ph
         return self.like
     
