@@ -92,17 +92,9 @@ class galaxyCatalog(object):
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
         
-    def load_glade_catalog(self, version='corrected'):
-        if version == 'corrected':
-            self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
-            t = Table.read(self.catalog_file,format=self.catalog_format)
-        if version == 'maya': #Here for testing purposes
-            self.catalog_file = catalog_data_path + "glade23_maya_cuts.txt"
-            pgcsel,rasel,decsel,zsel_group,bmagsel,bMagsel,kmagsel,kMagsel = np.genfromtxt(self.catalog_file,unpack=True)
-            __ = np.ones(len(pgcsel))
-            t = Table([pgcsel, __, __, rasel, decsel, zsel_group, __, __, bmagsel, __],
-                names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','Bmag','lumB'])
-
+    def load_glade_catalog(self):
+        self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
+        t = Table.read(self.catalog_file,format=self.catalog_format)
         galaxies={}
         nGal = len(t)
         for k in range(0,nGal):

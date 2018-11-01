@@ -63,8 +63,6 @@ parser = OptionParser(
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="GALAXY_CATALOG", default=None,
             help="GALAXY_CATALOG: Load galaxy catalog. Options: glade or mdc"),
-        Option("-n", "--glade_version", metavar="GLADE", default=None,
-            help="GLADE: Version of GLADE catalog available. Options: corrected, maya."),
         Option("-q", "--mdc_version", metavar="MDC", default=None,
             help="MDC: Version of MDC catalogs available. Options: 1.0, 2.1, 2.2, 2.3, 3.1"),  
         Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
@@ -108,9 +106,6 @@ if opts.mass_distribution is None:
 if opts.method == 'statistical':
     if opts.galaxy_catalog is None:
         parser.error('The statistical method requires a galaxy catalog. Catalog options: glade or mdc')
-    if opts.galaxy_catalog == 'glade':
-        if opts.glade_version is None:
-            parser.error('Provide version of GLADE catalog to use.')
     if opts.galaxy_catalog == 'mdc':
         if opts.mdc_version is None:
             parser.error('Provide version of MDC catalog to use.')
@@ -184,7 +179,7 @@ def main():
         
     if opts.method == 'statistical':
         if galaxy_catalog == 'glade':
-            catalog.load_glade_catalog(version=glade_version)
+            catalog.load_glade_catalog()
         if galaxy_catalog == 'mdc':
             catalog.load_mdc_catalog(version=mdc_version)
         if galaxy_catalog == 'mice':
