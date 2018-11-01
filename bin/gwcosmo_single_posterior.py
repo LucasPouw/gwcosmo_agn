@@ -128,8 +128,6 @@ if opts.mass_distribution is not None:
 if opts.method == 'statistical':
     if opts.galaxy_catalog is not None:
         galaxy_catalog = str(opts.galaxy_catalog)
-        if opts.glade_version is not None:
-            glade_version = str(opts.glade_version)
         if opts.mdc_version is not None:
             mdc_version = str(opts.mdc_version)
 
