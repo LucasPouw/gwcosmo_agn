@@ -31,8 +31,8 @@ parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-d", "--mdcdir", metavar="MDCDIR", default=None,
-            help="MDCDIR: Directory to MDC posterior samples (required)"),
+        Option("-d", "--dir", metavar="DIR", default=None,
+            help="DIR: Directory to .npz gwcosmo_single_posterior files to be combined. (required)"),
         Option("-y", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
         Option("-c", "--makeconvergeplot", metavar="CONVERGENCE", default='True',
@@ -54,14 +54,14 @@ for option in parser.option_list:
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
-mdc_dir = str(opts.mdcdir)
+dir = str(opts.dir)
 
-mdc_dir_list = []
-for path, subdirs, files in os.walk(mdc_dir):
+dir_list = []
+for path, subdirs, files in os.walk(dir):
     for name in files:
         filepath = os.path.join(path, name)
         if filepath[-4:] == '.npz':
-            mdc_dir_list.append(filepath)
+            dir_list.append(filepath)
             
 plot = bool(opts.plot)
 makemovie = bool(opts.makemovie)
@@ -73,17 +73,17 @@ outputfile = str(opts.outputfile)
 def main():
     "Compute combined P(H0)"
 
-    Nevents = len(mdc_dir_list)
+    Nevents = len(dir_list)
     
-    H0 = np.load(mdc_dir_list[0])['arr_0'][0]
+    H0 = np.load(dir_list[0])['arr_0'][0]
     min_H0 = H0[0]
     max_H0 = H0[-1]
     dH0 = H0[1] - H0[0]
     
-    prior = np.load(mdc_dir_list[0])['arr_0'][2]
+    prior = np.load(dir_list[0])['arr_0'][2]
     
     likelihoods=[]
-    for path in mdc_dir_list:
+    for path in dir_list:
         likelihoods.append(np.load(path)['arr_0'][1])
 
     likelihood_comb = np.ones(H0.size)
@@ -188,12 +188,12 @@ def main():
             plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
             plt.legend(loc='upper right',fontsize=16)
             plt.tight_layout()
-            plt.savefig(mdc_dir+'/'+outputfile+'_'+str(i)+'.png',dpi=400)
+            plt.savefig(dir+'/'+outputfile+'_'+str(i)+'.png',dpi=400)
             plt.close()
             
         filenames=[]
         for i in range(0,len(likelihood_comb_list)):
-            filenames.append(mdc_dir+'/'+outputfile+'_'+str(i)+'.png')
+            filenames.append(dir+'/'+outputfile+'_'+str(i)+'.png')
 
         with imageio.get_writer(outputfile+'_movie.gif', mode='I', duration=0.2) as writer:
             for filename in filenames:

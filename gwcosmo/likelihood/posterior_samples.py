@@ -102,7 +102,6 @@ class posterior_samples(object):
         dist_support = np.vectorize(dist_support)
         return dist_support
 
-
     def compute_2d_kde(self):
         two_d_arr = np.vstack((self.longitude, self.latitude))
         radec = gaussian_kde(two_d_arr)
@@ -135,18 +134,19 @@ class posterior_samples(object):
         return sky_support
 
     def compute_3d_kde(self,coverh_x):
-        "Computes 3d KDE"
-        three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh_x))
-        radecdist = gaussian_kde(three_d_arr)
-        return radecdist
+        "Computes 3D KDE over the samples given an array of H0 values."
+        radecdist_list=[]
+        for coverh in coverh_x:
+            three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh))
+            kde = gaussian_kde(three_d_arr)
+            kde_norm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
+            radecdist_list.append([kde,kde_norm])
+        return radecdist_list
 
-    def compute_3d_probability(self, ra, dec, z, lumB, coverh_x, zmax):        
+    def compute_3d_probability(self, ra, dec, z, lumB, kde, pdfnorm, zmax):        
         ngalaxies = len(self.distance) - 1000
         z_err_fraction = 0.06
         a_err_fraction = 0.08
-
-        kde = self.compute_3d_kde(coverh_x)
-        pdfnorm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
         
         t = Table([ra,dec,lumB,z],names=('RA','Dec', 'lumB', 'z'))
         nt = t[(np.where((t['z'] > 0) & (t['z'] < zmax)))]
