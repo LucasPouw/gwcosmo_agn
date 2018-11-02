@@ -108,7 +108,7 @@ def main():
     
     # compute likelihood
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-    samples.load_posterior_samples()
+    samples.load_posterior_samples('GW170817')
     me = gwcosmo.master.MasterEquation(H0,counterpart,dp,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde,counterparts=True)
     likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
 
