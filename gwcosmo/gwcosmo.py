@@ -4,17 +4,16 @@ Ignacio Magana, Rachel Gray
 """
 from __future__ import absolute_import
 
-import lal
 import numpy as np
 import sys
 import matplotlib 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
-from scipy.integrate import quad, dblquad
-from scipy.stats import ncx2, norm
 from astropy import constants as const
 from astropy import units as u
+from astropy.table import Table
+
 import gwcosmo
 
 from .utilities.standard_cosmology import *
@@ -76,21 +75,24 @@ class pofH0(object):
         z = np.array_split(z, nSplit)
         lumB = np.array_split(lumB, nSplit)
         
-        epsilon = self.pdet(event_data.distance)
-        
+        tables = []
+        for k in range(nSplit):
+            tables.append(Table([ra[k],dec[k],lumB[k],z[k],dist[k]],names=('RA','Dec', 'lumB', 'z', 'dist')))
+            
         coverh_x = np.ones(len(self.H0))
         for k, x in enumerate(self.H0):
             coverh_x[k] = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
         
         kde_list = event_data.compute_3d_kde(coverh_x)
-        
+        epsilon = self.pdet(event_data.distance)
+
         ph_list = []
         for j in range(0,nSplit):
             print('Processing chunk ' + str(j) + ' out of ' + str(nSplit))
             ph = np.zeros(len(self.H0))
             for k, x in enumerate(self.H0):
-                ph[k] = event_data.compute_3d_probability(ra[j], dec[j], z[j], lumB[j], kde_list[k][0], kde_list[k][1], self.zmax)
-                completion = self.cfactor * self.pd( event_data.distance / coverh_x[k], lumB[j], dist[j] ) / ( 4.0 * np.pi )
+                ph[k] = event_data.compute_3d_probability(tables[j], kde_list[k][0], kde_list[k][1], self.zmax)
+                completion = self.cfactor * self.pd( event_data.distance / coverh_x[k], tables[j] ) / ( 4.0 * np.pi )
                 ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh_x[k])**2) ) )
             ph_list.append(ph)
 
@@ -189,7 +191,9 @@ class pofH0(object):
         return ra, dec, dist, z, lumB
 
     #place this somewhere specific to glade... preprocessing?       
-    def pd(self,x,lumB,dist):
+    def pd(self,x,t):
+        lumB = t['lumB']
+        dist = t['dist']
         blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
         coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
         tmpd = coverh * x
