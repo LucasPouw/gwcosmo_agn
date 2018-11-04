@@ -68,6 +68,17 @@ class galaxy(object):
         self.z = row.z_cgal_v 
         self.m = row.des_asahi_full_r_true
 
+    def load_astropy_row_sdss_cluster(self, index, row):
+        self.index = index
+        self.ra = row['RA']
+        self.dec = row['Dec']
+        self.m = 1.0
+        self.lumB = 1.0
+        if row['zspec'] == -1.0:
+            self.z = row['zphoto']
+        else:
+            self.z = row['zspec']
+        
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
     '''
@@ -137,6 +148,20 @@ class galaxyCatalog(object):
         for k in range(0,nGal):
             gal = galaxy()
             gal.load_row_mice(k,df.iloc[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+    
+    def load_SDDS_cluster_catalog(self):
+        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_clusters.dat"
+        self.catalog_file = catalog_data_path + "SDSS170818_clusters.dat"
+        t = Table.read(self.catalog_file,format=self.catalog_format)
+
+        galaxies={}
+        nGal = len(t)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_astropy_row_sdss_cluster(k,t[k])
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
