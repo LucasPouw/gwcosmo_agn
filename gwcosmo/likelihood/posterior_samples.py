@@ -54,8 +54,6 @@ class posterior_samples(object):
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
 
-        return self.distance, self.longitude, self.latitude
-
     def load_posterior_samples_hdf5(self, samples_file_path):
         """ Loads hdf5 posterior samples
         """
@@ -70,8 +68,6 @@ class posterior_samples(object):
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
         f1.close()
-
-        return self.distance, self.longitude, self.latitude
 
     def lineofsight_distance(self):
         """
@@ -143,33 +139,20 @@ class posterior_samples(object):
             radecdist_list.append([kde,kde_norm])
         return radecdist_list
 
-    def compute_3d_probability(self, t, kde, pdfnorm, zmax):        
-        ngalaxies = len(self.distance) - 1000
-        z_err_fraction = 0.06
-        a_err_fraction = 0.08
-        
-        nt = t[(np.where((t['z'] > 0) & (t['z'] < zmax)))]
+    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=1000, z_err_fraction=0.06, a_err_fraction=0.08):
+        nt = nt[(np.where((nt['z'] > 0) & (nt['z'] < zmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
-                          & (nt['RA'] < np.max(self.longitude ) +1.0)))]
+                          & (nt['RA'] < np.max(self.longitude ) + 1.0)))]
         nt = nt[(np.where((nt['Dec'] > np.min(self.latitude) - 1.0) \
-                          & (nt['Dec'] < np.max(self.latitude ) +1.0)))]
-        
-        ra = nt['RA']
-        dec = nt['Dec']
-        z = nt['z']
-        lumB = nt['lumB']
+                          & (nt['Dec'] < np.max(self.latitude ) + 1.0)))]
 
-        tmpra = np.transpose(np.tile(ra, (len(self.longitude[ngalaxies:]), 1))) - np.tile(self.longitude[ngalaxies:], (len(ra), 1))
-        tmpdec = np.transpose(np.tile(dec, (len(self.latitude[ngalaxies:]), 1))) - np.tile(self.latitude[ngalaxies:], (len(dec), 1))
-        tmpm = np.power(tmpra, 2.) + np.power(tmpdec, 2.)
+        tmpra = np.transpose(np.tile(nt['RA'], (len(self.longitude[:ngalaxies]), 1))) - np.tile(self.longitude[:ngalaxies], (len(nt['RA']), 1))
+        tmpdec = np.transpose(np.tile(nt['Dec'], (len(self.latitude[:ngalaxies]), 1))) - np.tile(self.latitude[:ngalaxies], (len(nt['Dec']), 1))
+        tmpm = tmpra**2. + tmpdec**2.
         mask1 = np.ma.masked_where(tmpm > (a_err_fraction**2), tmpm).filled(0)
         mask1 = np.max((mask1 > 0), 1)
-
-        ra = ra[mask1]
-        dec = dec[mask1]
-        z = z[mask1]
-        lumB = lumB[mask1]
+        nt = nt[mask1]
         
-        tmppdf = kde(np.vstack((ra, dec, z))) / pdfnorm
+        tmppdf = kde(np.vstack((nt['RA'], nt['Dec'], nt['z']))) / pdfnorm
 
-        return np.sum(tmppdf*lumB/(np.cos(dec)*z**2))
+        return np.sum(tmppdf*nt['lumB']/(np.cos(nt['Dec'])*nt['z']**2))
