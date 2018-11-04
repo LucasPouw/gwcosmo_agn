@@ -50,8 +50,6 @@ parser = OptionParser(
             help="MAXDIST: Set maximum value of luminosity distance"),
         Option("-f", "--bins_dist", metavar="BINSDIST", default='200', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
-        Option("-y", "--use_3d_kde", metavar="KDE", default='False',
-            help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-p", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
         Option("-s", "--save", metavar="SAVE", default='True',
@@ -87,7 +85,6 @@ outputfile = str(opts.outputfile)
 
 galaxy_weighting = False
 completion = True
-use_3d_kde = str2bool(opts.use_3d_kde)
 
 counterparts = np.loadtxt('/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mdc_counterparts.txt')
 def main():
@@ -116,7 +113,7 @@ def main():
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples_hdf5('/home/ignacio.magana/first2years-data/2016/lalinference_mcmc/' \
                                                                 +str(k+1)+'/posterior_samples.hdf5')
-        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde,counterparts=True)
+        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,linear=True,weighted=galaxy_weighting)
         likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
         likelihoods.append(likelihood)
 

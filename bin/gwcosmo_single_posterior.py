@@ -57,8 +57,6 @@ parser = OptionParser(
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
         Option("-t", "--mass_distribution", metavar="MASS_DISTRIBUTION", default=None,
             help="MASS_DISTRIBUTION: Choose between BNS or BBH mass distributions for Pdet calculation."),
-        Option("-y", "--use_3d_kde", metavar="KDE", default='True',
-            help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-i", "--skymap", metavar="SKYMAP", default=None,
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="GALAXY_CATALOG", default=None,
@@ -118,7 +116,6 @@ if opts.method == 'counterpart':
         
 if opts.posterior_samples is not None:
         posterior_samples = str(opts.posterior_samples)
-        use_3d_kde = str2bool(opts.use_3d_kde)
 if opts.skymap is not None:
         skymap_file_path = str(opts.skymap)
 
@@ -166,12 +163,12 @@ def main():
     dH0 = H0[1] - H0[0]
     
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-    if (posterior_samples is 'GW170817' or 'GW170814' or 'GW170818'):
-        samples.load_posterior_samples(event=posterior_samples)
-    else:    
+    if posterior_samples == ('GW170817' or 'GW170814' or 'GW170818'):
+        samples.load_posterior_samples(posterior_samples)
+    else:
         samples.load_posterior_samples_hdf5(posterior_samples)
     
-    catalog = gwcosmo.catalog.galaxyCatalog()
+    catalog = gwcosmo.prior.catalog.galaxyCatalog()
     if opts.method == 'counterpart':
         catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
         
@@ -192,7 +189,7 @@ def main():
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde)
+    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
     
     likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
 

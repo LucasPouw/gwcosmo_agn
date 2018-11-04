@@ -18,13 +18,10 @@ posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
     '''
-    def __init__(self, lalinference_path = "",lalinference_data=1,distance=1,
-                longitude=1,latitude=1,weight=1,nsamples=1,ngalaxies=1):
+    def __init__(self,distance=1,longitude=1,latitude=1,weight=1,nsamples=1,ngalaxies=1):
         """Posterior samples class... (empty by default)
         Parameters
         """
-        self.lalinference_path = lalinference_path
-        self.lalinference_data = lalinference_data
         self.distance = distance
         self.longitude = longitude
         self.latitude = latitude
@@ -33,24 +30,22 @@ class posterior_samples(object):
 
     def load_posterior_samples(self,event):
         """ Loads GW170817 posterior samples by default into class 
-            unless lalinference_path points to a samples files. 
             Currently it only supports .dat posterior samples format.
-            It also returns distance, ra and dec ...
         """
         if event == 'GW170817':
-        #https://git.ligo.org/publications/gw170817/parameter-estimation/blob/master/data/posterior_samples_RR0.dat
+            #https://git.ligo.org/publications/gw170817/parameter-estimation/blob/master/data/posterior_samples_RR0.dat
             lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"
         if event == 'GW170818':
-        #https://git.ligo.org/pe_event_samples/GW170818/blob/master/allIsp_post.dat    
+            #https://git.ligo.org/pe_event_samples/GW170818/blob/master/allIsp_post.dat    
             lalinference_path=posterior_data_path + "/allIsp_post.dat"
         if event == 'GW170814':
-        #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
+            #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
             lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
-        self.lalinference_path = lalinference_path
-        self.lalinference_data = np.genfromtxt(lalinference_path, names=True)
-        self.distance = self.lalinference_data['distance']
-        self.longitude = self.lalinference_data['ra']
-        self.latitude = self.lalinference_data['dec']
+
+        lalinference_data = np.genfromtxt(lalinference_path, names=True)
+        self.distance = lalinference_data['distance']
+        self.longitude = lalinference_data['ra']
+        self.latitude = lalinference_data['dec']
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
 
@@ -61,10 +56,11 @@ class posterior_samples(object):
         dataset_name = 'posterior_samples'
         f1 = h5py.File(samples_file_path, 'r')
         group = f1[group_name]
-        post = group[dataset_name]
-        self.distance = post['dist']
-        self.longitude = post['ra']
-        self.latitude = post['dec']
+
+        lalinference_data = group[dataset_name]
+        self.distance = lalinference_data['dist']
+        self.longitude = lalinference_data['ra']
+        self.latitude = lalinference_data['dec']
         self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
         self.nsamples = len(self.weight)
         f1.close()

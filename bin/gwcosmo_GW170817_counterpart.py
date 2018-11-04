@@ -50,8 +50,6 @@ parser = OptionParser(
             help="MAXDIST: Set maximum value of luminosity distance"),
         Option("-f", "--bins_dist", metavar="BINSDIST", default='200', type=int,
             help="BINSDIST: Set number of luminosity distance bins"),
-        Option("-y", "--use_3d_kde", metavar="KDE", default='False',
-            help="KDE: Specify if 3D KDE is to be used. True by default."),
         Option("-p", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
         Option("-s", "--save", metavar="SAVE", default='True',
@@ -87,7 +85,6 @@ outputfile = str(opts.outputfile)
 
 galaxy_weighting = False
 completion = True
-use_3d_kde = str2bool(opts.use_3d_kde)
 
 def main():
     "Compute P(H0)"
@@ -109,7 +106,7 @@ def main():
     # compute likelihood
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
     samples.load_posterior_samples('GW170817')
-    me = gwcosmo.master.MasterEquation(H0,counterpart,dp,linear=True,weighted=galaxy_weighting,use_3d_kde=use_3d_kde,counterparts=True)
+    me = gwcosmo.master.MasterEquation(H0,counterpart,dp,linear=True,weighted=galaxy_weighting,counterparts=True)
     likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
 
     prior = me.pH0(prior='log')
