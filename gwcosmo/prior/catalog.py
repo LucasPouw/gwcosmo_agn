@@ -7,43 +7,44 @@ from astropy.table import Table
 from scipy.stats import gaussian_kde
 import pandas as pd
 from astropy.io import fits
+from astropy import constants as const
+from astropy import units as u
 
 import pkg_resources
 
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
 
+def blue_luminosity_from_mag(m,z):
+    """
+    Returns the blue luminosity in units of L_10 given the apparent
+    magnitude and the luminosity distance
+    """
+    coverh = (const.c.to('km/s') / ( 70 * u.km / u.s / u.Mpc )).value
+    M_blue_solar = 5.48 # Binney & Tremaine
+    MB = m - 5.0 * np.log10( z*coverh / 10.0e-6 )
+    lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
+    return lumB
+
 class galaxy(object):
     ''' Class for galaxy objects
     '''
-    def __init__(self, index = 0, pgc_number = 0, galaxy_name = 0, cluster = 0, ra = 0, dec = 0,
-                z = 0, z_err = 0, distance = 0, distance_error = 0, lumB = 0, m = 0):
+    def __init__(self, index = 0, ra = 0, dec = 0, z = 0, m = 0, lumB = 1.0):
         """Galaxy catalog class... 
         Parameters
         """
         self.index = index
-        self.pgc_number = pgc_number
-        self.galaxy_name = galaxy_name
-        self.cluster = cluster
         self.ra = ra
         self.dec = dec
         self.z = z
-        self.z_err = z_err
-        self.distance = distance
-        self.distance_error = distance_error
-        self.lumB = lumB
         self.m = m
+        self.lumB = lumB
         
     def load_astropy_row_glade(self, index, row):
         self.index = index
-        self.pgc_number = row['PGC']
-        self.galaxy_name = row['Galaxy Name']
-        self.cluster = row['Cluster']
         self.ra = row['RA']*np.pi/180.
         self.dec = row['Dec']*np.pi/180.
         self.z = row['z']
-        self.distance = row['Distance']
-        self.distance_error = row['Distance Error']
         self.m = row['Bmag']
         self.lumB = row['lumB']
 
@@ -54,6 +55,7 @@ class galaxy(object):
         self.z = row['z']
         if version != "1.0":
             self.m = row['m']
+            self.lumB = blue_luminosity_from_mag(self.m,self.z)
             
     def load_counterpart(self, ra, dec, z):
         self.index = 0
@@ -67,17 +69,18 @@ class galaxy(object):
         self.dec = row.dec_gal*np.pi/180.
         self.z = row.z_cgal_v 
         self.m = row.des_asahi_full_r_true
+        self.lumB = blue_luminosity_from_mag(self.m,self.z)
 
     def load_astropy_row_sdss_cluster(self, index, row):
         self.index = index
         self.ra = row['RA']
         self.dec = row['Dec']
-        self.m = 1.0
-        self.lumB = 1.0
+        self.m = row['rmag']
         if row['zspec'] == -1.0:
             self.z = row['zphoto']
         else:
             self.z = row['zspec']
+        self.lumB = blue_luminosity_from_mag(self.m,self.z)
         
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
