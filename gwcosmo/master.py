@@ -424,15 +424,17 @@ class PixelBasedLikelihood(MasterEquation):
         den = np.zeros(len(H0))
         
         for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
-                temp = pz_nG(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                #temp = pz_nG(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                temp = pz_nG(z)*Schechter(M)*weight*((dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
             def Iden(z,M):
-                temp = SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                temp = Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -450,7 +452,7 @@ class PixelBasedLikelihood(MasterEquation):
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
         
-            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]/distnorm/np.sqrt(2*np.pi)/distsigma
             den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
             #num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]
             #den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]        
@@ -468,12 +470,13 @@ class PixelBasedLikelihood(MasterEquation):
         den = np.zeros(len(H0))
         
         for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
             else:
                 def I(z,M):
-                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -482,6 +485,7 @@ class PixelBasedLikelihood(MasterEquation):
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            # TODO: Factorise into 2 1D integrals
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         return num/den
@@ -505,12 +509,13 @@ class PixelBasedLikelihood(MasterEquation):
         num = np.zeros(len(H0))
         
         for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
             else:
                 def I(z,M):
-                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -518,6 +523,7 @@ class PixelBasedLikelihood(MasterEquation):
         
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
+            # TODO: Can this be factorised into 2 1D integrals?
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         return num
@@ -530,12 +536,13 @@ class PixelBasedLikelihood(MasterEquation):
         num = np.zeros(len(H0))
         
         for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
             else:
                 def I(z,M):
-                    return SchechterMagFunction(H0=h0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -543,6 +550,7 @@ class PixelBasedLikelihood(MasterEquation):
         
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
+            # TODO: Factorise into 2 1D integrals
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         return num
