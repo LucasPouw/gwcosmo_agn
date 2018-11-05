@@ -349,7 +349,7 @@ class PixelBasedLikelihood(MasterEquation):
         Event has a counterpart?
     """
     def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
-        super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,use_3d_kde=True,counterparts=counterparts)
+        super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,counterparts=counterparts)
         from ligo.skymap.bayestar import rasterize
         self.pixelmap = rasterize(skymap3d.as_healpix())
         self.skymap = skymap3d
