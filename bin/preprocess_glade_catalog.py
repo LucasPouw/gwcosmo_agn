@@ -107,8 +107,9 @@ def extract_galaxies(tt):
     angle_error = angle_error[nanidx]
     dist_err = dist_err[nanidx]
     z_err = z_err[nanidx]
+    B = B[nanidx]
     
-    return (pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,np.ones(len(lumB)))
+    return (pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,B,lumB)
 
 def group_velocity_corr(z,pgcCat):
     # group correction (from Maya)
@@ -147,11 +148,11 @@ def main():
     t.replace_column('Distance', cosmo.luminosity_distance(t['z']).value)
     t.sort('Distance')
 
-    (pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK) = extract_galaxies(t)
+    (pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,bmag,lumB) = extract_galaxies(t)
     z = group_velocity_corr(z,pgcCat)
 
-    data = Table([pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,lumB,lumK], \
-        names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','abs_mag_r','abs_mag_k'])
+    data = Table([pgcCat,galname,cluster_name,ra,dec,z,dist,dist_err,bmag,lumB], \
+        names=['PGC','Galaxy Name','Cluster','RA', 'Dec', 'z', 'Distance','Distance Error','Bmag','lumB'])
     astropy.io.ascii.write(data, 'gladecatalogv2.3_corrected.dat')
 
 if __name__ == "__main__":

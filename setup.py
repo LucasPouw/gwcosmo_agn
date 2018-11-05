@@ -21,6 +21,7 @@ setup(name='gwcosmo',
       license='GNU',
       packages=['gwcosmo', 'gwcosmo.likelihood', 'gwcosmo.prior', 'gwcosmo.utilities'],
       package_dir={'gwcosmo': 'gwcosmo'},
+      scripts=['bin/gwcosmo_single_posterior', 'bin/gwcosmo_mdc_counterparts', 'bin/gwcosmo_combined_posterior', 'bin/gwcosmo_GW170817_counterpart'],
       include_package_data=True,
       install_requires=[
           'numpy>=1.9',

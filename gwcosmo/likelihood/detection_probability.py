@@ -58,7 +58,7 @@ class DetectionProbability(object):
                 else:
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
-            self.m2 = np.random.uniform(low=5.0,high=self.m1)*1.988e30
+            self.m2 = np.random.uniform(low=5.0,high=self.m1)
             self.M_min = np.min(self.m1)+np.min(self.m2)
         # precompute values which will be called multiple times
         self.interp_average = self.__pD_dl(self.dl_array)
@@ -149,7 +149,7 @@ class DetectionProbability(object):
         self.spl = splrep(dl_array,prob)
         return splrep(dl_array,prob)
         
-       
+    
     def __pD_dlradec(self,Nside,dl_array):
         """
         Detection probability over a range of distances, at each pixel on a healpy map.
@@ -248,3 +248,9 @@ class DetectionProbability(object):
         """
         return self.pD_dl_eval(dl,self.interp_average)
     
+    
+    def pD_distmax(self):
+        """
+        Returns twice the maximum distance given Pdet(dl) = 0.01.
+        """
+        return 2.*self.dl_array[np.where(self(self.dl_array)>0.01)[0][-1]]
