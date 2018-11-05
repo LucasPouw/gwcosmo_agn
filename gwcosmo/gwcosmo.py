@@ -189,17 +189,23 @@ class pofH0(object):
             dec[i] = gal.dec
             z[i] = gal.z
             lumB[i] = gal.lumB
-            
-        nSplit = 100
-        ra = np.array_split(ra, nSplit)
-        dec = np.array_split(dec, nSplit)
-        z = np.array_split(z, nSplit)
-        lumB = np.array_split(lumB, nSplit)
-        
-        tables = []
-        for k in range(nSplit):
-            tables.append(Table([ra[k], dec[k], lumB[k], z[k]], names=('RA','Dec', 'lumB', 'z')))
-        return tables
+        print(lumB)
+        if nGal == 1:
+            tables = [Table([ra, dec, lumB, z], names=('RA','Dec', 'lumB', 'z'))]
+            print(tables)
+            print(len(tables))
+            return tables
+        else:
+            nSplit = 100
+            ra = np.array_split(ra, nSplit)
+            dec = np.array_split(dec, nSplit)
+            z = np.array_split(z, nSplit)
+            lumB = np.array_split(lumB, nSplit)
+
+            tables = []
+            for k in range(nSplit):
+                tables.append(Table([ra[k], dec[k], lumB[k], z[k]], names=('RA','Dec', 'lumB', 'z')))
+            return tables
 
     #place this somewhere specific to glade... preprocessing?       
     def pd(self,x,t):

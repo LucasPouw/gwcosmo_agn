@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/ python
 """
 This script combines individual H0 posteriors.
 Ignacio Magana, Rachel Gray
@@ -80,7 +80,7 @@ def main():
     max_H0 = H0[-1]
     dH0 = H0[1] - H0[0]
     
-    prior = np.load(dir_list[0])['arr_0'][2]
+    prior = 1./H0
     
     likelihoods=[]
     for path in dir_list:

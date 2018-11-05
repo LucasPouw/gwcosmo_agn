@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 This script computes H0 for the MDC using the counterparts.
 Ignacio Magana
@@ -86,6 +86,7 @@ outputfile = str(opts.outputfile)
 galaxy_weighting = False
 completion = True
 
+counterparts = np.loadtxt('/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mdc_counterparts.txt')
 def main():
     "Compute P(H0)"
     H0 = np.linspace(min_H0, max_H0, bins_H0)
@@ -97,42 +98,56 @@ def main():
     #set up detection probability for BNSs over the range dl
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability('BNS',dl)
     
-    counterpart = gwcosmo.catalog.galaxyCatalog()
-    counterpart.dictionary = {'0':gwcosmo.catalog.galaxy()}
-    counterpart.get_galaxy(0).ra = 197.4500*np.pi/180.
-    counterpart.get_galaxy(0).dec = -23.3839*np.pi/180.
-    counterpart.get_galaxy(0).z = 0.009727
+    galaxies_list = []
+    for k in range(0,250):
+        catalog = gwcosmo.catalog.galaxyCatalog()
+        catalog.dictionary = {'0':gwcosmo.catalog.galaxy()}
+        catalog.get_galaxy(0).ra = counterparts[k][2]
+        catalog.get_galaxy(0).dec = counterparts[k][3]
+        catalog.get_galaxy(0).z = counterparts[k][4]
+        galaxies_list.append(catalog)
     
     # compute likelihood
-    samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-    samples.load_posterior_samples('GW170817')
-    me = gwcosmo.master.MasterEquation(H0,counterpart,dp,linear=True,weighted=galaxy_weighting,counterparts=True)
-    likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
+    likelihoods = []
+    for k in range(0,250):
+        samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
+        samples.load_posterior_samples_hdf5('/home/ignacio.magana/first2years-data/2016/lalinference_mcmc/' \
+                                                                +str(k+1)+'/posterior_samples.hdf5')
+        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,linear=True,weighted=galaxy_weighting)
+        likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
+        likelihoods.append(likelihood)
 
     prior = me.pH0(prior='log')
     
-    posterior = prior*likelihood
-    posterior_norm = posterior/np.sum(posterior*dH0)
-    prior_norm = prior/np.sum(prior*dH0)
+    posteriors=[] 
+    posteriors_norm=[]
+    priors_norm=[]
+    for k in range(0,250):
+        posterior = prior*likelihoods[k]
+        posteriors.append(posterior)
+        posteriors_norm.append(posterior/np.sum(posterior*dH0))
+        priors_norm.append(prior/np.sum(prior*dH0))
 
     if plot == True:
-        plt.figure()
-        plt.plot(H0,prior_norm,ls=':', linewidth = 3.0, label='prior')
-        plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
-        plt.plot(H0,likelihood,linewidth = 3.0, ls = '--', label='likelihood')
-        plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-        plt.xlim(min_H0,max_H0)
-        plt.xticks(fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
-        plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
-        plt.legend(loc='best',fontsize=16)
-        plt.tight_layout()
-        plt.savefig(outputfile+'.png',dpi=400)
-        plt.close()
+        for k in range(0,250):
+            plt.figure()
+            plt.plot(H0,priors_norm[k],ls=':', linewidth = 3.0, label='prior')
+            plt.plot(H0,posteriors_norm[k],linewidth = 3.0, label='posterior')
+            plt.plot(H0,likelihoods[k],linewidth = 3.0, ls = '--', label='likelihood')
+            plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+            plt.xlim(min_H0,max_H0)
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
+            plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
+            plt.legend(loc='best',fontsize=16)
+            plt.tight_layout()
+            plt.savefig(outputfile+str(k+1)+'.png',dpi=400)
+            plt.close()
 
     if save == True:
-        np.savez(outputfile+'.npz',[H0,likelihood,prior,posterior_norm])
+        for k in range(0,250):
+            np.savez(outputfile+str(k+1)+'.npz',[H0,likelihoods[k],prior,posteriors_norm[k]])
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 This script computes H0 as a function of H0 bins.
 Ignacio Magana, Rachel Gray, Ankan Sur
@@ -41,6 +41,8 @@ parser = OptionParser(
     option_list = [
         Option("-m", "--method", metavar="METHOD", default=None,
             help="METHOD: Select counterpart/statistical (required)"),
+        Option("-l", "--implementation", metavar="IMPLEMENTATION", default='master',
+            help="IMPLEMENTATION: Choose master or pofH0"),
         Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
         Option("-v", "--max_H0", metavar="MAXH0", default='210.0', type=float,
@@ -142,6 +144,8 @@ if opts.method == 'counterpart':
         counterpart_z = float(opts.counterpart_z)
         
 # Set command line arguments
+implementation = str(opts.implementation)
+
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
@@ -163,7 +167,7 @@ def main():
     dH0 = H0[1] - H0[0]
     
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-    if posterior_samples == ('GW170817' or 'GW170814' or 'GW170818'):
+    if posterior_samples in ('GW170817', 'GW170814', 'GW170818'):
         samples.load_posterior_samples(posterior_samples)
     else:
         samples.load_posterior_samples_hdf5(posterior_samples)
@@ -189,22 +193,28 @@ def main():
     dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution,dl)
     
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
+    if implementation == 'master':
+        me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
+        likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
+        prior = me.pH0_D(prior='jeffreys')
+        posterior = prior*likelihood
+
+    if implementation == 'pofH0':
+        me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion)
+        likelihood = me.likelihood(samples)
+        prior = me.prior()
+        norm = me.psiH0()/me.normalization()
+        posterior=likelihood*prior*norm
     
-    likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
-
-    prior = me.pH0_D(prior='jeffreys')
-
-    posterior = prior*likelihood
-
-    posterior_norm = posterior/np.sum(posterior*dH0)
+    likelihood_norm = likelihood/np.sum(likelihood*dH0)
     prior_norm = prior/np.sum(prior*dH0)
+    posterior_norm = posterior/np.sum(posterior*dH0)
 
     if plot == True:
         plt.figure()
         plt.plot(H0,prior_norm,ls=':', linewidth = 3.0, label='prior')
         plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
-        plt.plot(H0,likelihood,linewidth = 3.0, ls = '--', label='likelihood')
+        plt.plot(H0,likelihood_norm,linewidth = 3.0, ls = '--', label='likelihood')
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         plt.xlim(min_H0,max_H0)
         plt.xticks(fontsize=14)
