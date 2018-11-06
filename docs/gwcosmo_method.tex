@@ -291,6 +291,37 @@ where $G$ now indicates that the source host is inside the galaxy catalogue.
 
 
 
+
+\section{The pixel-based method}
+In order to take into account the fact that galaxy catalogues have varying levels of completeness across the sky, we consider a method in which the sky is gridded up into equally-sized pieces, which are later summed.
+
+\begin{equation}
+\begin{aligned}
+p(x|H_0,D,I) &= \int p(x,\Omega|H_0,D,I) d\Omega
+\\ & = \int p(x|H_0,D,\Omega,I) p(\Omega|H_0,D,I) d\Omega
+\\ & = \int p(x|H_0,D,\Omega,I) \dfrac{p(D|H_0,\Omega,I)p(\Omega|H_0,I)}{p(D|H_0,I)}  d\Omega
+\\ &= \dfrac{1}{p(D|H_0,I)} \int p(x|H_0,D,\Omega,I) p(D|H_0,\Omega,I)p(\Omega|I) d\Omega
+\\ &= \dfrac{1}{p(D|H_0,I)} \sum^{N_{\text{pix}}}_i \bigg[p(x|H_0,D,\Omega_i,I) p(D|H_0,\Omega_i,I)p(\Omega_i|I)\bigg]
+\end{aligned} 
+\end{equation}
+
+Looking specifically at $p(x|H_0,D,\Omega_i,I)$ and expanding as in previous sections:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,D,\Omega_i,I) &= \dfrac{p(x|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) + \dfrac{p(x|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I),
+\end{aligned}
+\end{equation}
+and so the final expression becomes:
+\begin{equation}
+\begin{aligned}
+p(x|H_0,D,I) = \dfrac{1}{p(D|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) \\ &+ \dfrac{p(x|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I) \bigg) \times p(D|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
+\end{aligned} 
+\end{equation}
+
+It is also worth noting that, for a suitably fine grid, the choice of 3D vs 2+1D for dealing with GW data is removed, as for every position in the sky a single distance posterior is used, and so this method is inherently ``3D''.
+
+
+
 \section{Converting from maths to code}
 There are several things to bear in mind when moving from the maths shown above, to actually doing the calculations in python.
 

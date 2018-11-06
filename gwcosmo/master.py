@@ -10,11 +10,15 @@ import sys
 import matplotlib 
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import healpy as hp
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 from astropy import constants as const
 from astropy import units as u
+
+from ligo.skymap.moc import nest2uniq,uniq2nest,uniq2ang
+
 import gwcosmo
 
 from .utilities.standard_cosmology import *
@@ -26,14 +30,13 @@ class MasterEquation(object):
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,mth=18.0,linear=False,weighted=False,use_3d_kde=True,counterparts=False):
+    def __init__(self,H0,galaxy_catalog,pdet,linear=False,weighted=False,counterparts=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
-        self.mth = mth # TODO: get this from galaxy_catalog, not explicitly
+        self.mth = galaxy_catalog.mth()
         self.linear = linear
         self.weighted = weighted
-        self.use_3d_kde = use_3d_kde
         self.counterparts = counterparts
         
         self.pDG = None
@@ -45,8 +48,8 @@ class MasterEquation(object):
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
-        self.zmax = 1.0 # TODO: change so that this is set by some property of pdet
-        self.distmax = 400.0
+        self.distmax = pdet.pD_distmax()
+        self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear) 
 
     def px_H0G(self,event_data,skymap2d=None):
         """
@@ -61,33 +64,27 @@ class MasterEquation(object):
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(self.H0))
         
-        if self.use_3d_kde == True:
-            ra, dec, z, lumB = self.extract_galaxies()
-            for k, x in enumerate(self.H0):
-                coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-                num[k] = event_data.compute_3d_probability(ra, dec, z, lumB, coverh, self.distmax) # TODO: lumB does the weighting here in the "trivial" way...
+        # loop over all possible galaxies
+        skykernel = event_data.compute_2d_kde()
+        distkernel = event_data.lineofsight_distance()
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
 
-        else: # loop over all possible galaxies
-            skykernel = event_data.compute_2d_kde()
-            distkernel = event_data.lineofsight_distance()
-            for i in range(nGal):
-                gal = self.galaxy_catalog.get_galaxy(i)
+            if self.weighted:
+                weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+            else:
+                weight = 1.0
 
-                if self.weighted:
-                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                else:
-                    weight = 1.0
+            # TODO: add possibility of using skymaps/other ways of using gw data
+            if skymap2d is not None:
+                tempsky = skymap2d.skyprob(gal.ra,gal.dec) # TODO: test fully and integrate into px_H0nG
+            else:
+                tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
 
-                # TODO: add possibility of using skymaps/other ways of using gw data
-                if skymap2d is not None:
-                    tempsky = skymap2d.skyprob(gal.ra,gal.dec) # TODO: test fully and integrate into px_H0nG
-                else:
-                    tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+            tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
 
-                tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
-                
-                num += tempdist*tempsky*weight
-    
+            num += tempdist*tempsky*weight
+        
         return num
 
 
@@ -101,16 +98,13 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         nGal = self.galaxy_catalog.nGal()
-
-        if self.use_3d_kde == True:
-            den = np.ones(len(self.H0))
         
         if self.counterparts == True:
             print('counterparts')
             
             den = np.zeros(len(self.H0))
             catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_mdc_catalog('1.0')
+            catalog.load_glade_catalog()
             nGal = catalog.nGal()
             for i in range(nGal):
                 gal = catalog.get_galaxy(i)
@@ -196,32 +190,23 @@ class MasterEquation(object):
         """
         num = np.zeros(len(self.H0))
         
-        if self.use_3d_kde == True:
-            ra, dec, z, lumB = self.extract_galaxies()
-            for k, x in enumerate(self.H0):
-                coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-                completion = self.pd( event_data.distance / coverh, lumB, z*coverh) / ( 4.0 * np.pi )
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
-                num[k] = np.mean( (completion ) / ((event_data.distance/coverh)**2) ) 
+        distkernel = event_data.lineofsight_distance()
 
-        else:
-            distkernel = event_data.lineofsight_distance()
+        for i in range(len(self.H0)):
 
-            for i in range(len(self.H0)):
+            def Inum(z,M):
+                temp = distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
+            *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
 
-                def Inum(z,M):
-                    temp = distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
-                *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
-                    if self.weighted:
-                        return temp*L_M(M)
-                    else:
-                        return temp
+            Mmin = M_Mobs(self.H0[i],-22.96)
+            Mmax = M_Mobs(self.H0[i],-12.96)
 
-                Mmin = M_Mobs(self.H0[i],-22.96)
-                Mmax = M_Mobs(self.H0[i],-12.96)
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-                num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        
         return num
 
 
@@ -233,27 +218,22 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """  
-        
-        if self.use_3d_kde == True:
-            den = np.ones(len(self.H0))
-        
-        else:
-            # TODO: same fixes as for pG_H0D 
-            den = np.zeros(len(self.H0))
+        # TODO: same fixes as for pG_H0D 
+        den = np.zeros(len(self.H0))
 
-            for i in range(len(self.H0)):
+        for i in range(len(self.H0)):
 
-                def I(z,M):
-                    temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-                    if self.weighted:
-                        return temp*L_M(M)
-                    else:
-                        return temp
+            def I(z,M):
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
 
-                Mmin = M_Mobs(self.H0[i],-22.96)
-                Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(self.H0[i],-22.96)
+            Mmax = M_Mobs(self.H0[i],-12.96)
 
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pDnG = den   
         return self.pDnG
@@ -267,25 +247,38 @@ class MasterEquation(object):
         Integrates p(D|dL(z,H0))*p(z) over z
         Returns an array of values corresponding to different values of H0.
         """
-        nGal = self.galaxy_catalog.nGal()
+        pH0 = np.zeros(len(self.H0))
+        for i in range(len(self.H0)):
+            def I(z):
+                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-        if int(nGal) == 1:
+        if prior == 'jeffreys':
+            return pH0/self.H0  
+        else:
+            return pH0
+            
+    def pH0(self,prior='log'):
+        """
+        The prior probability of H0 independent of detection
+        
+        Takes an array of H0 values and a choice of prior.
+        """
+        if prior == 'uniform':
+            return np.ones(len(self.H0))
+        if prior == 'log':
             return 1./self.H0
-        else:    
-            pH0 = np.zeros(len(self.H0))
-            for i in range(len(self.H0)):
-                def I(z):
-                    return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-                pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-
-            if prior == 'jeffreys':
-                return pH0/self.H0  
-            else:
-                return pH0
         
     def likelihood(self,event_data,complete=False,skymap2d=None):
         """
         The likelihood for a single event
+        
+        Parameters
+        ----
+        event_data : posterior samples (distance, ra, dec)
+        complete : boolean
+                    Is catalogue complete?
+        skymap2d : KDe for skymap
         """    
         dH0 = self.H0[1]-self.H0[0]
         
@@ -333,244 +326,328 @@ class MasterEquation(object):
         tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
         return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
 
-class pofH0(object):
+class PixelBasedLikelihood(MasterEquation):
     """
-    Class that contains ingredients necessary to compute P(H0) in a different way.
+    Likelihood for a single event, evaluated using a pixel based sky map
+    p(x|D, H0, I)
+    Parameters
+    ----
+    H0 : np.ndarray
+        Vector of H0 values
+    catalogue : gwcosmo.prior.galaxyCatalog
+        Galaxy catalogue
+    skymap3d  : ligo.skymap.kde.SkyKDE
+        Skymap for this event
+    pdet      : gwcosmo.likelihood.detection_probability.DetectionProbability
+        Detection probability class
+    GMST      : float
+        Greenwich Mean Sidereal Time for this event
+    Optional Arguments
+    ----
+    linear : boolean
+        Use linear cosmology?
+    weighted : boolean
+        Use luminosity weighting?
+    counterparts : boolean
+        Event has a counterpart?
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0,cfactor=1.0, option='GW170817'):
-        self.H0 = H0
-        self.galaxy_catalog = galaxy_catalog
-        self.pdet = pdet
-        self.linear = linear
-        self.dmax = dmax
-        self.zmax = zmax
-        self.cfactor = cfactor
+    def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
+        super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,counterparts=counterparts)
+        from ligo.skymap.bayestar import rasterize
+        from ligo.skymap.moc import nest2uniq,uniq2nest
+        self.moc_map = skymap3d.as_healpix()
+        self.pixelmap = rasterize(skymap3d.as_healpix())
+        self.skymap = skymap3d
+        self.npix = len(self.pixelmap)
+        self.nside = hp.npix2nside(self.npix)
+        self.gmst = GMST
         
-        self.post = None
-        self.like = None
-        self.norm = None
-        self.psi = None
-        self.prior_ = None
+        # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
+        self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
+        ra, dec, _, _ = self.extract_galaxies()
+        gal_idx = np.array(range(len(ra)),dtype=np.uint64)
+        theta = np.pi/2.0 - dec
+        # Find the NEST index for each galaxy
+        pix_idx = np.array(hp.ang2pix(self.nside, theta, ra,nest=True),dtype=np.uint64)
+        # Find the order and nest_idx for each pixel in the UNIQ map
+        order, nest_idx = uniq2nest(self.moc_map['UNIQ'])
+        # For each order present in the UNIQ map
+        for o in np.unique(order):
+            # Find the UNIQ pixel for each galaxy at this order
+            uniq_idx = nest2uniq(o, pix_idx)
+            # For each such pixel, if it is in the moc_map then store the galaxies
+            for uidx in self.moc_map['UNIQ'][order==o]:
+                self.pixel_cats[uidx]=[self.galaxy_catalog.get_galaxy(j) \
+                                           for j in gal_idx[uniq_idx==uidx]]
         
-        self.prior_type = None
-        self.dH0 = self.H0[1] - self.H0[0]
-        self.option = option
-    
-    def prior(self, prior_type='log'):
-        self.prior_type = prior_type
-        if prior_type == 'log':
-            self.prior_ = 1./self.H0
-            return self.prior_
-        if prior_type == 'uniform':
-            self.prior_ = np.ones(len(self.H0))
-            return self.prior_
+        self.mths = {x:18 for x in self.moc_map['UNIQ']} # just for testing
         
-    def psiH0(self):
+    def likelihood(self, H0, cum_prob=1.0):
         """
-        The infamous H0**3 term.
-        """
-        pH0 = np.zeros(len(self.H0))
-        for i in range(len(self.H0)):
-            def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
-        pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        #self.psi = pH0/(np.sum(pH0)*self.dH0)
-        #return pH0/(np.sum(pH0)*self.dH0)
-        self.psi = self.H0**3
-        return self.psi
-    
-    def likelihood(self,event_data):
-        """
-        The likelihood for a single event.
-        """
-        ra, dec, dist, z, lumB = self.extract_galaxies()
+        Return likelihood of this event, given H0.
+        
+        Parameters
+        ----
+        H0 : float or ndarray
+            Value of H0
             
-        ph = np.zeros(len(self.H0))
-        for k, x in enumerate(self.H0):
-            coverh = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
-            ph[k] = event_data.compute_3d_probability(ra, dec, dist, z, lumB, coverh)
-            completion = self.cfactor * self.pd( event_data.distance / coverh, lumB, dist, self.option ) / ( 4.0 * np.pi )
-            if self.option == 'GW170817':
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(event_data.distance/80.)))
-            if self.option == 'MDC1':
-                epsilon = 0.5*(1 - np.tanh(2.8*np.log(event_data.distance/90.)))
-            ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh)**2) ) )
-            print(ph[k])
-        self.like = ph
-        return self.like
-    
-    def normalization(self):
+        cum_prob : float (default = 1.0)
+            Only use pixels within the cum_prob credible interval
         """
-        The normalization for a single event.
-        """
-        ra, dec, dist, z, lumB = self.extract_galaxies()
+        from ligo.skymap.moc import uniq2pixarea
+
+        moc_areas = uniq2pixarea(self.moc_map['UNIQ'])
+        moc_probs = moc_areas * self.moc_map['PROBDENSITY']
         
-        normalization = np.ones(len(self.H0))
-        for k, x in enumerate(self.H0):
-            zmax = ( (self.dmax * u.Mpc) * (x * u.km / u.s / u.Mpc) / const.c.to('km/s') ).value
-            tmpz = np.linspace(0.00001,zmax,100)
-            coverh = (const.c.to('km/s') / ( x * u.km / u.s / u.Mpc )).value
-            tmpr = z * coverh
-            epsilon = 0.5*(1 - np.tanh(3.3*np.log(tmpr/80.)))
-            epLumB = lumB * epsilon
-            dz = tmpz[1]-tmpz[0]
-            completion = self.cfactor*self.pd(tmpz,lumB,dist,self.option)
-            if self.option == 'GW170817':
-                epsilon = 0.5*(1 - np.tanh(3.3*np.log(coverh*tmpz/80.)))
-            if self.option == 'MDC1':
-                epsilon = 0.5*(1 - np.tanh(2.8*np.log(coverh*tmpz/90.)))
-            tmpnorm = 0.0
-            tmpnorm = np.sum(epLumB) + np.sum(epsilon*completion)*dz
-            normalization[k] = tmpnorm
-        self.norm = normalization
-        return self.norm
-    
-    def posterior(self, event_data, prior_type='log'):
-        """
-        The posterior for a single event.
-        """
-        if self.like is None:
-            print("Calculating aofh")
-            norm = self.normalization()
-            psi = self.psiH0()
-            if prior_type == 'log':
-                prior = self.prior('log')
-            if prior_type == 'uniform':
-                prior = self.prior('uniform')
-            print("Setting up" + str(prior_type) + "prior")
-            print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
-            like = self.likelihood(event_data)
-
-            self.like = like
-            self.norm = norm
-            self.psi = psi
-            self.prior_ = prior
-            self.prior_type = prior_type
-
-        posterior=self.like*self.prior_*self.psi/self.norm
-        self.post = posterior/np.sum(posterior*self.dH0)
-        return self.post
-    
-    def plot(self,fname='posterior.pdf'):
-        """
-        Make plot of P(H0).
-        """
-        if self.post is None:
-            print("Calculate posterior first fool...")
-            return 0
+        if cum_prob==1.0:
+            moc_map = self.moc_map
         else:
-            fig, ax = plt.subplots()
-            ax.plot(self.H0,self.post,linewidth=2,color='orange',label='Posterior')
-            if self.prior_type == 'log':
-                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Log Prior')
-            if self.prior_type == 'uniform':
-                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Uniform Prior')
-            ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
-            ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
-            ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
-            legend = ax.legend(loc='upper right', shadow=True, fontsize='medium')
-            legend.get_frame().set_facecolor('#FFFFFF')
-            fig.savefig(fname,format='pdf')
-            plt.show()
-            
-    #place this somewhere in catalog modules..
-    def extract_galaxies(self):
-        nGal = self.galaxy_catalog.nGal()
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        dist = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            dist[i] = gal.distance
-            z[i] = gal.z
-            lumB[i] = gal.lumB
-        return ra, dec, dist, z, lumB
 
-    #place this somewhere specific to glade... preprocessing?       
-    def pd(self,x,lumB,dist,option):
-        option = self.option
-        if option == 'GW170817':
-            blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-            return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
-        if option == 'MDC1':
-            blue_luminosity_density = 0.00013501121143
-            coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-            tmpd = coverh * x
-            tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-0.0)**2)
-            return ma.masked_where(tmpd<435.,tmpp).filled(0)
 
-class PRB(object):
-    """
-    Class that contains ingredients necessary to compute P(H0) in a PRB way.
-    """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,zmax=1.0,dmax=400.0):
-        self.H0 = H0
-        self.galaxy_catalog = galaxy_catalog
-        self.pdet = pdet
-        self.linear = linear
-        self.dmax = dmax
-        self.zmax = zmax        
+            densort = np.argsort(moc_probs)[::-1]
+            selection = np.cumsum(moc_probs[densort])<cum_prob
+            moc_map = self.moc_map[densort[selection]]
+            print('Integrating over {0} pixels containing {1} probability and {2} galaxies, covering {3} sq. deg.'\
+                  .format(len(moc_map),np.sum(moc_probs[densort[selection]]),
+                          np.sum([len(self.pixel_cats[x]) for x in moc_map['UNIQ'] ]),
+                          np.sum([uniq2pixarea(x) for x in moc_map['UNIQ']])*(180/np.pi)**2
+                          )
+                  )
 
-    def p_G(self):
-        """
-        The prior probability that a galaxy is in the catalog.
-        """
-        L0 = 1.98e-2 # Kopparapu et al
-        #def I(z):
-        #    return L0*z**2
-        I = lambda x: L0*x**2
+        result = 0.0
+        # Iterate over the UNIQ pixels and add up their contributions
+        from tqdm import tqdm
+        with tqdm(total=len(moc_map),unit='pix',position=1) as pbar: # For displaying progress info
+            for NUNIQ in moc_map['UNIQ']:
+                result += self.pixel_likelihood(H0, NUNIQ) * uniq2pixarea(NUNIQ) \
+                    * moc_map[moc_map['UNIQ']==NUNIQ]['PROBDENSITY'] * self.pixel_pD(H0,NUNIQ)
+                pbar.update()
+        return result
         
-        nGal = self.galaxy_catalog.nGal()
-        zgal = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            zgal[i] = gal.z
-        zgal = np.sort(zgal)
-        zs = max(zgal)
+    def pixel_likelihood(self, H0, pixel):
+        """
+        Compute the likelihood for a given pixel
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        pG = self.pixel_pG_D(H0,pixel)
+        pnG = self.pixel_pnG_D(H0,pixel,pG=pG)
+        return self.pixel_pD(H0,pixel)*(self.pixel_likelihood_G(H0,pixel)*pG \
+                + self.pixel_likelihood_notG(H0,pixel)*pnG)      
+        #return self.pixel_likelihood_G(H0,pixel)*self.pixel_pG_D(H0,pixel) \
+        #        + self.pixel_likelihood_notG(H0,pixel)*self.pixel_pnG_D(H0,pixel)
         
-        dl = np.linspace(0.1,self.dmax,20)
-        zH0 = dl*self.H0/const.c.to('km/s').value
+    def pixel_likelihood_G(self,H0,pixel):
+        """
+        p(x | H0, D, G, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        theta, ra = uniq2ang(pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
+        
+        val = np.zeros(len(H0))
+        for i,h0 in enumerate(H0):
+            for gal in self.pixel_cats[pixel]:
+                dl = dl_zH0(gal.z,h0, linear=self.linear)
+                #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
+                galprob = weight*norm.pdf(dl,distmu,distsigma)/distnorm
+                detprob = self.pdet.pD_dl_eval(dl, spl)
+                val[i] += galprob/detprob
+        return val
+        
     
-        zG = np.zeros(len(self.H0))
-        znG = np.zeros(len(self.H0))
-        for i in range(len(self.H0)):
-            if zH0[i] < zs:
-                zG[i] = zH0[i]
-            else: 
-                znG[i] = zH0[i]
+    def pixel_likelihood_notG(self,H0,pixel):
+        """
+        p(x | H0, D, notG, pix)
         
-        LG = L0*pz_nG(zG)/quad(I, 0., zs)[0]
-        LnG = L0*pz_nG(znG)/quad(I, zs, self.zmax)[0]
-        return LG/(LG + LnG)
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        theta, ra = uniq2ang(pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
+        
+        #FIXME: Get correct mth
+        mth = self.mths[pixel]
+        
+        num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
+            def Inum(z,M):
+                #temp = pz_nG(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                temp = pz_nG(z)*Schechter(M)*weight*((dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
 
-    def p_nG(self):
-        """
-        The prior probability that a galaxy is not in the catalog.
+            def Iden(z,M):
+                temp = Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
         
-        Returns the complement of pG.
+        #def dentemp(z,M):
+        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*pz_nG(z)
+        #if self.weighted:
+        #    def Iden(z,M):
+        #        return dentemp(z,M)*L_M(M)
+        #else:
+        #    def Iden(z,M):
+        #        return dentemp(z,M)
+               
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+        
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]/distnorm/np.sqrt(2*np.pi)/distsigma
+            den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=1.49e-9,epsrel=1.49e-9)[0]
+            #num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]
+            #den[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-3)[0]        
+        return num/den
+
+    def pixel_pG_D(self,H0,pixel):
         """
-        return 1.0 - self.p_G()
+        p(G|D, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        theta, ra = uniq2ang(pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        mth = self.mths[pixel]
+        num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            # TODO: Factorise into 2 1D integrals
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        return num/den
     
-    def likelihood_PRB(self,event_data):
+    def pixel_pnG_D(self, H0, pixel,pG=None):
         """
-        The likelihood for a single event
-        """ 
-        pG = self.p_G()
-        pnG = self.p_nG()
+        p(notG | D, pix)
         
-        dH0 = self.H0[1]-self.H0[0]
-        
-        #pxG = self.px_H0G(event_data)
-        pxG = self.px_H0G3D(event_data)
-        pxnG = self.px_H0nG(event_data)
-
-        likelihood_prb = pG*pxG + pnG*pxnG
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        if all(pG) != None:
+            return 1.0 - pG
+        else:
+            return 1.0 - self.pixel_pG_D(H0,pixel)
             
-        return likelihood_prb
+    def pixel_pD(self,H0,pixel):
+        """
+        p(D|H0,pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
+        """
+        theta, ra = uniq2ang(pixel)
+        dec = np.pi/2.0 - theta
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        num = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            # TODO: Can this be factorised into 2 1D integrals?
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        return num
+        
+    def pD(self,H0):
+        """
+        p(D|H0)
+        """
+        spl = self.pdet.interp_average
+        num = np.zeros(len(H0))
+        
+        for i,h0 in enumerate(H0):
+            Schechter=SchechterMagFunction(H0=h0)
+            if self.weighted:
+                def I(z,M):
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+            else:
+                def I(z,M):
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+        
+        # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
+        # Will want to change in future.
+        # TODO: test how sensitive this result is to changing Mmin and Mmax.
+        
+            Mmin = M_Mobs(h0,-22.96)
+            Mmax = M_Mobs(h0,-12.96)
+            # TODO: Factorise into 2 1D integrals
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        return num
+    
+
+class PixelCatalog(object):
+    """
+    Data for each pixel
+    """
+    galaxies=None
+    mth = None
+

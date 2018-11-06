@@ -5,7 +5,7 @@ Rachel Gray, John Veitch, Ignacio Magana
 import lal
 from   lal import ComputeDetAMResponse
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d,splev,splrep
 from scipy.integrate import quad
 from scipy.stats import ncx2
 import healpy as hp
@@ -58,13 +58,13 @@ class DetectionProbability(object):
                 else:
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
-            self.m2 = np.random.uniform(low=5.0,high=self.m1)*1.988e30
+            self.m2 = np.random.uniform(low=5.0,high=self.m1)
             self.M_min = np.min(self.m1)+np.min(self.m2)
         # precompute values which will be called multiple times
-        self.interp_dist = self.__pD_dl(self.dl_array)
-        self.interp_map = None
-       
-        
+        self.interp_average = self.__pD_dl(self.dl_array)
+        self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
+    
+    
     def __snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
         """
         the optimal snr squared for one detector, for a specific DL, RA, Dec, m1, m2, inc, psi, gmst
@@ -146,10 +146,10 @@ class DetectionProbability(object):
         survival = ncx2.sf(effective_threshold**2,4,survival)
 
         prob = np.sum(survival,0)/self.Nsamps
+        self.spl = splrep(dl_array,prob)
+        return splrep(dl_array,prob)
         
-        return interp1d(dl_array,prob,bounds_error=False,fill_value=1e-10)
-        
-       
+    
     def __pD_dlradec(self,Nside,dl_array):
         """
         Detection probability over a range of distances, at each pixel on a healpy map.
@@ -161,7 +161,8 @@ class DetectionProbability(object):
         Dec_map = np.pi/2.0 - theta
         interpolnum = self.__numfmax_fmax(self.M_min)
         
-        pofd_dLRADec = np.zeros([no_pix,dl_array.size])
+        #pofd_dLRADec = np.zeros([no_pix,dl_array.size])
+        pofd_dLRADec = []
         for k in range(no_pix):
             rho = np.zeros((self.Nsamps,1))
             for n in range(self.Nsamps):
@@ -176,9 +177,11 @@ class DetectionProbability(object):
             survival = np.matmul(rho, DLcopy)
             survival = ncx2.sf(effective_threshold**2,4,survival)
 
-            pofd_dLRADec[k,:] = np.sum(survival,0)/self.Nsamps
+            norm = np.sum(survival,0)/self.Nsamps
+            pofd_dLRADec.append(splrep(dl_array,norm))
 
-        return interp1d(dl_array,pofd_dLRADec,bounds_error=False,fill_value=1e-10)
+        #return interp1d(dl_array,pofd_dLRADec,bounds_error=False,fill_value=1e-10)
+        return pofd_dLRADec
         
 
     def pD_event(self, dl, ra, dec, m1, m2, inc, psi, gmst):
@@ -201,19 +204,28 @@ class DetectionProbability(object):
             )
             
         
-    def pD_dl_eval(self,dl):
+#    def pD_dl_eval(self,dl):
+#        """
+#        Returns a probability for a given distance dl from the interpolated function.
+#        Or an array of probabilities for an array of distances.
+#        """
+#        return self.interp_dist(dl)
+
+
+    def pD_dl_eval(self,dl,spl):
         """
         Returns a probability for a given distance dl from the interpolated function.
         Or an array of probabilities for an array of distances.
         """
-        return self.interp_dist(dl)
+        return splev(dl,spl,ext=3)
         
         
     def pD_dlradec_eval(self,dl,RA,Dec,gmst):
         """
+        OBSOLETE?
         detection probability evaluated at a specific dl,ra,dec and gmst.
         """
-        if self.interp_map == None:
+        if all(self.interp_map) == None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
         no_pix = hp.pixelfunc.nside2npix(self.Nside)
         pix_ind = range(0,no_pix)
@@ -222,9 +234,23 @@ class DetectionProbability(object):
         return hp.get_interp_val(hpxmap,np.pi/2.0-Dec,RA-gmst)
         
         
+    def pDdl_radec(self,RA,Dec,gmst):
+        """
+        Returns the probability of detection function for a specific ra, dec, and time.
+        """
+        ipix = hp.ang2pix(self.Nside,np.pi/2.0-Dec,RA-gmst)
+        return self.interp_map[ipix]
+        
+        
     def __call__(self, dl):
         """
         To call as function of dl
         """
-        return self.pD_dl_eval(dl)
+        return self.pD_dl_eval(dl,self.interp_average)
     
+    
+    def pD_distmax(self):
+        """
+        Returns twice the maximum distance given Pdet(dl) = 0.01.
+        """
+        return 2.*self.dl_array[np.where(self(self.dl_array)>0.01)[0][-1]]
