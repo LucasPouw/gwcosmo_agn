@@ -42,6 +42,8 @@ class posterior_samples(object):
             #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
             lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
 
+        else:
+            lalinference_path=event
         lalinference_data = np.genfromtxt(lalinference_path, names=True)
         self.distance = lalinference_data['distance']
         self.longitude = lalinference_data['ra']

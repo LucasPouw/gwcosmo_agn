@@ -64,16 +64,18 @@ class MasterEquation(object):
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(self.H0))
         
-        # loop over all possible galaxies
         skykernel = event_data.compute_2d_kde()
         distkernel = event_data.lineofsight_distance()
+        skypdf = skykernel.evaluate([event_data.longitude,event_data.latitude])
+        skypdf.sort()
+        sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
+        minskypdf = skypdf[sampno]
+        #print(minskypdf)
+        count = 0
+        data = []
+        # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-
-            if self.weighted:
-                weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-            else:
-                weight = 1.0
 
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
@@ -81,10 +83,20 @@ class MasterEquation(object):
             else:
                 tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
 
-            tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
+            if tempsky >= minskypdf:
+                count += 1
 
-            num += tempdist*tempsky*weight
-        
+                if self.weighted:
+                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                else:
+                    weight = 1.0
+
+                tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
+                num += tempdist*tempsky*weight
+                
+            else:
+                continue
+        print(count)        
         return num
 
 
