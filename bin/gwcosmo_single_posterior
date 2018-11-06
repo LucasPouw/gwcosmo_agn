@@ -184,7 +184,9 @@ def main():
         if galaxy_catalog == 'mice':
             catalog.load_mice_catalog()
         if galaxy_catalog == 'sdss_clusters':
-            catalog.load_SDDS_cluster_catalog()
+            catalog.load_SDSS_cluster_catalog()
+        if galaxy_catalog == 'sdss':
+            catalog.load_SDSS_catalog()
             
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)

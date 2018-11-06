@@ -82,6 +82,14 @@ class galaxy(object):
             self.z = row['zspec']
         self.lumB = blue_luminosity_from_mag(self.m,self.z)
         
+    def load_astropy_row_sdss(self, index, row):
+            self.index = index
+            self.ra = row['RA']*np.pi/180.
+            self.dec = row['Dec']*np.pi/180.
+            self.z = row['z']
+            self.m = row['abs_mag_r']
+            self.lumB = blue_luminosity_from_mag(self.m,self.z)
+        
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
     '''
@@ -151,7 +159,7 @@ class galaxyCatalog(object):
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
     
-    def load_SDDS_cluster_catalog(self):
+    def load_SDSS_cluster_catalog(self):
         "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_clusters.dat"
         self.catalog_file = catalog_data_path + "SDSS170818_clusters.dat"
         t = Table.read(self.catalog_file,format='ascii')
@@ -161,6 +169,20 @@ class galaxyCatalog(object):
         for k in range(0,nGal):
             gal = galaxy()
             gal.load_astropy_row_sdss_cluster(k,t[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+
+    def load_SDSS_catalog(self):
+        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_BLUE.dat"
+        self.catalog_file = catalog_data_path + "SDSS170818_BLUE.dat"
+        t = Table.read(self.catalog_file,format='ascii')
+
+        galaxies={}
+        nGal = len(t)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_astropy_row_sdss(k,t[k])
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
