@@ -63,8 +63,8 @@ class DetectionProbability(object):
         # precompute values which will be called multiple times
         self.interp_average = self.__pD_dl(self.dl_array)
         self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
-       
-        
+    
+    
     def __snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
         """
         the optimal snr squared for one detector, for a specific DL, RA, Dec, m1, m2, inc, psi, gmst
