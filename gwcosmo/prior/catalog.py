@@ -85,15 +85,11 @@ class galaxy(object):
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
     '''
-    def __init__(self, catalog_file = "",
-                catalog_format = 'ascii',
-                indexes = 0, 
-                dictionary = {}):
+    def __init__(self, catalog_file = "", indexes=0, dictionary={}):
         """Galaxy catalog class... 
         Parameters
         """
         self.catalog_file = catalog_file
-        self.catalog_format = catalog_format
         self.indexes = indexes
         self.dictionary = dictionary
         
@@ -108,7 +104,7 @@ class galaxyCatalog(object):
         
     def load_glade_catalog(self):
         self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
-        t = Table.read(self.catalog_file,format=self.catalog_format)
+        t = Table.read(self.catalog_file,format='ascii')
         galaxies={}
         nGal = len(t)
         for k in range(0,nGal):
@@ -130,7 +126,7 @@ class galaxyCatalog(object):
         if version == '3.1':
             self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
 
-        t = Table.read(self.catalog_file,format=self.catalog_format)
+        t = Table.read(self.catalog_file,format='ascii')
         galaxies={}
         nGal = len(t)
         for k in range(0,nGal):
@@ -158,7 +154,7 @@ class galaxyCatalog(object):
     def load_SDDS_cluster_catalog(self):
         "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_clusters.dat"
         self.catalog_file = catalog_data_path + "SDSS170818_clusters.dat"
-        t = Table.read(self.catalog_file,format=self.catalog_format)
+        t = Table.read(self.catalog_file,format='ascii')
 
         galaxies={}
         nGal = len(t)
@@ -183,8 +179,5 @@ class galaxyCatalog(object):
         if sum(m) == 0:
             mth = 25.0
         else:
-            kde_m = gaussian_kde(m)
-            m_array = np.linspace(15,25,4000)
-            m_kde = kde_m.evaluate(m_array)
-            mth=m_array[np.where(m_kde==max(m_kde))]
+            mth = np.median(m)
         return mth
