@@ -407,8 +407,7 @@ class PixelBasedLikelihood(MasterEquation):
             densort = np.argsort(moc_probs)[::-1]
             selection = np.cumsum(moc_probs[densort])<cum_prob
             moc_map = self.moc_map[densort[selection]]
-            print('Integrating over {0} pixels containing {1} probability \
-                  and {2} galaxies, covering {3} sq. deg.'\
+            print('Integrating over {0} pixels containing {1} probability and {2} galaxies, covering {3} sq. deg.'\
                   .format(len(moc_map),np.sum(moc_probs[densort[selection]]),
                           np.sum([len(self.pixel_cats[x]) for x in moc_map['UNIQ'] ]),
                           np.sum([uniq2pixarea(x) for x in moc_map['UNIQ']])*(180/np.pi)**2
