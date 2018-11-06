@@ -16,6 +16,9 @@ from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
 from astropy import constants as const
 from astropy import units as u
+
+from ligo.skymap.moc import nest2uniq,uniq2nest,uniq2ang
+
 import gwcosmo
 
 from .utilities.standard_cosmology import *
@@ -351,6 +354,8 @@ class PixelBasedLikelihood(MasterEquation):
     def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
         super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,counterparts=counterparts)
         from ligo.skymap.bayestar import rasterize
+        from ligo.skymap.moc import nest2uniq,uniq2nest
+        self.moc_map = skymap3d.as_healpix()
         self.pixelmap = rasterize(skymap3d.as_healpix())
         self.skymap = skymap3d
         self.npix = len(self.pixelmap)
@@ -358,17 +363,26 @@ class PixelBasedLikelihood(MasterEquation):
         self.gmst = GMST
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
-        self.pixel_cats = [ [] for _ in range(self.galaxy_catalog.nGal()) ]
+        self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
         ra, dec, _, _ = self.extract_galaxies()
+        gal_idx = np.array(range(len(ra)),dtype=np.uint64)
         theta = np.pi/2.0 - dec
-        pix_idx = hp.ang2pix(self.nside, theta, ra,nest=True)
-        for j in pix_idx:
-            self.pixel_cats[j].append(self.galaxy_catalog.get_galaxy(j))
-        #for pix in range(self.npix):
-        #    self.mths[pix] = np.max([g.lumB for g in self.pixel_cats[pix]])
-        self.mths = np.full((self.npix),18.0) # just for testing
+        # Find the NEST index for each galaxy
+        pix_idx = np.array(hp.ang2pix(self.nside, theta, ra,nest=True),dtype=np.uint64)
+        # Find the order and nest_idx for each pixel in the UNIQ map
+        order, nest_idx = uniq2nest(self.moc_map['UNIQ'])
+        # For each order present in the UNIQ map
+        for o in np.unique(order):
+            # Find the UNIQ pixel for each galaxy at this order
+            uniq_idx = nest2uniq(o, pix_idx)
+            # For each such pixel, if it is in the moc_map then store the galaxies
+            for uidx in self.moc_map['UNIQ'][order==o]:
+                self.pixel_cats[uidx]=[self.galaxy_catalog.get_galaxy(j) \
+                                           for j in gal_idx[uniq_idx==uidx]]
         
-    def likelihood(self, H0):
+        self.mths = {x:18 for x in self.moc_map['UNIQ']} # just for testing
+        
+    def likelihood(self, H0, cum_prob=1.0):
         """
         Return likelihood of this event, given H0.
         
@@ -376,12 +390,50 @@ class PixelBasedLikelihood(MasterEquation):
         ----
         H0 : float or ndarray
             Value of H0
+            
+        cum_prob : float (default = 1.0)
+            Only use pixels within the cum_prob credible interval
         """
-        return np.sum([self.pixel_likelihood(H0, i) for i in range(self.npix)])*self.pixel_pD(H0)
+        from ligo.skymap.moc import uniq2pixarea
+
+        moc_areas = uniq2pixarea(self.moc_map['UNIQ'])
+        moc_probs = moc_areas * self.moc_map['PROBDENSITY']
+        
+        if cum_prob==1.0:
+            moc_map = self.moc_map
+        else:
+
+
+            densort = np.argsort(moc_probs)[::-1]
+            selection = np.cumsum(moc_probs[densort])<cum_prob
+            moc_map = self.moc_map[densort[selection]]
+            print('Integrating over {0} pixels containing {1} probability \
+                  and {2} galaxies, covering {3} sq. deg.'\
+                  .format(len(moc_map),np.sum(moc_probs[densort[selection]]),
+                          np.sum([len(self.pixel_cats[x]) for x in moc_map['UNIQ'] ]),
+                          np.sum([uniq2pixarea(x) for x in moc_map['UNIQ']])*(180/np.pi)**2
+                          )
+                  )
+
+        result = 0.0
+        # Iterate over the UNIQ pixels and add up their contributions
+        from tqdm import tqdm
+        with tqdm(total=len(moc_map),unit='pix',position=1) as pbar: # For displaying progress info
+            for NUNIQ in moc_map['UNIQ']:
+                result += self.pixel_likelihood(H0, NUNIQ) * uniq2pixarea(NUNIQ) \
+                    * moc_map[moc_map['UNIQ']==NUNIQ]['PROBDENSITY'] * self.pixel_pD(H0,NUNIQ)
+                pbar.update()
+        return result
         
     def pixel_likelihood(self, H0, pixel):
         """
         Compute the likelihood for a given pixel
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
         pG = self.pixel_pG_D(H0,pixel)
         pnG = self.pixel_pnG_D(H0,pixel,pG=pG)
@@ -393,8 +445,15 @@ class PixelBasedLikelihood(MasterEquation):
     def pixel_likelihood_G(self,H0,pixel):
         """
         p(x | H0, D, G, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
-        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
+        theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
@@ -413,11 +472,20 @@ class PixelBasedLikelihood(MasterEquation):
     def pixel_likelihood_notG(self,H0,pixel):
         """
         p(x | H0, D, notG, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
-        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
+        theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         weight,distmu,distsigma,distnorm = self.skymap(np.array([[ra,dec]]),distances=True)
+        
+        #FIXME: Get correct mth
         mth = self.mths[pixel]
         
         num = np.zeros(len(H0))
@@ -461,8 +529,15 @@ class PixelBasedLikelihood(MasterEquation):
     def pixel_pG_D(self,H0,pixel):
         """
         p(G|D, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
-        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
+        theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         mth = self.mths[pixel]
@@ -493,6 +568,13 @@ class PixelBasedLikelihood(MasterEquation):
     def pixel_pnG_D(self, H0, pixel,pG=None):
         """
         p(notG | D, pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
         if all(pG) != None:
             return 1.0 - pG
@@ -502,8 +584,15 @@ class PixelBasedLikelihood(MasterEquation):
     def pixel_pD(self,H0,pixel):
         """
         p(D|H0,pix)
+        
+        Parameters
+        ----
+        H0 : np.ndarray
+            0 values to compute for
+        pixel : np.uint64
+            UNIQ pixel index
         """
-        theta, ra = hp.pix2ang(self.nside,pixel,nest=True)
+        theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
         num = np.zeros(len(H0))

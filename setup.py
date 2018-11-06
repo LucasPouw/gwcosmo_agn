@@ -27,6 +27,8 @@ setup(name='gwcosmo',
           'numpy>=1.9',
           'matplotlib>=2.0',
           'pandas',
-          'scipy'],
+          'scipy',
+          'tqdm'],
       setup_requires=setup_requires,
       zip_safe=False)
+
