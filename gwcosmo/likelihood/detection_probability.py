@@ -212,12 +212,12 @@ class DetectionProbability(object):
 #        return self.interp_dist(dl)
 
 
-    def pD_dl_eval(self,dl,spl):
+    def pD_dl_eval(self,dl):
         """
         Returns a probability for a given distance dl from the interpolated function.
         Or an array of probabilities for an array of distances.
         """
-        return splev(dl,spl,ext=3)
+        return splev(dl,self.interp_average,ext=3)
         
         
     def pD_dlradec_eval(self,dl,RA,Dec,gmst):
@@ -246,11 +246,11 @@ class DetectionProbability(object):
         """
         To call as function of dl
         """
-        return self.pD_dl_eval(dl,self.interp_average)
+        return self.pD_dl_eval(dl)
     
     
     def pD_distmax(self):
         """
         Returns twice the maximum distance given Pdet(dl) = 0.01.
         """
-        return 2.*self.dl_array[np.where(self(self.dl_array)>0.01)[0][-1]]
+        return 2.*self.dl_array[np.where(self.pD_dl_eval(self.dl_array)>0.01)[0][-1]]
