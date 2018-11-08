@@ -89,6 +89,14 @@ class galaxy(object):
             self.z = row['z']
             self.m = row['abs_mag_r']
             self.lumB = blue_luminosity_from_mag(self.m,self.z)
+            
+    def load_row_DES_cluster(self, index, row):
+        self.index = index
+        self.ra = row.RA*np.pi/180.
+        self.dec = row.DEC*np.pi/180.
+        self.z = row.ZREDMAGIC 
+        self.m = 0
+        self.lumB = 1
         
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
@@ -146,8 +154,8 @@ class galaxyCatalog(object):
         
     def load_mice_catalog(self):
         "MICE catalog: /home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mice.fits"
-        self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
-        with fits.open('mice_test.fits') as data:
+        self.catalog_file = catalog_data_path + "mice.fits"
+        with fits.open(self.catalog_file) as data:
             df = pd.DataFrame(np.array(data[1].data).byteswap().newbyteorder())
 
         galaxies={}
@@ -183,6 +191,20 @@ class galaxyCatalog(object):
         for k in range(0,nGal):
             gal = galaxy()
             gal.load_astropy_row_sdss(k,t[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+        
+    def load_DES_cluster_catalog(self):
+        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/DES_Y1A1_3x2pt_redMaGiC_zerr_CATALOG.fits"
+        self.catalog_file = catalog_data_path + "DES_Y1A1_3x2pt_redMaGiC_zerr_CATALOG.fits"
+        with fits.open(self.catalog_file) as data:
+            df = pd.DataFrame(np.array(data[1].data).byteswap().newbyteorder())
+        galaxies={}
+        nGal = len(df)
+        for k in range(0,nGal):
+            gal = galaxy()
+            gal.load_row_DES_cluster(k,df.iloc[k])
             galaxies[str(k)]= gal
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)

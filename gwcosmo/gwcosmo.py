@@ -38,8 +38,9 @@ class pofH0(object):
         else:
             self.cfactor = 1.0
         
-        self.post = None
-        self.like = None
+        self.likeG = None
+        self.likenG = None
+
         self.norm = None
         self.psi = None
         self.prior_ = None
@@ -68,11 +69,10 @@ class pofH0(object):
         self.psi = pH0/np.sum(pH0*self.dH0)
         return self.psi
     
-    def likelihood(self,event_data):
+    def likelihoodG(self,event_data):
         """
-        The likelihood for a single event.
+        The likelihood for a single event P(x|G)
         """
-        print('gwcosmo')
         tables = self.extract_galaxies()
             
         coverh_x = np.ones(len(self.H0))
@@ -80,23 +80,51 @@ class pofH0(object):
             coverh_x[k] = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
         
         kde_list = event_data.compute_3d_kde(coverh_x)
-        epsilon = self.pdet(event_data.distance)
 
         ph_list = []
+        i0 = 0
         for t in tables:
+            i0=i0+1
+            print("processing chunk " + str(i0) + " out of " + str(len(tables)))
             ph = np.zeros(len(self.H0))
             for k, x in enumerate(self.H0):
                 ph[k] = event_data.compute_3d_probability(t, kde_list[k][0], kde_list[k][1], self.zmax)
-                completion = self.cfactor * self.pd( event_data.distance / coverh_x[k], t ) / ( 4.0 * np.pi )
-                ph[k] = ( ph[k] + np.mean( (completion ) / ((event_data.distance/coverh_x[k])**2) ) )
             ph_list.append(ph)
 
         ph = np.zeros(len(self.H0))
         for j in range(0,len(tables)):
             ph += ph_list[j]
             
-        self.like = ph
-        return self.like
+        self.likeG = ph
+        return self.likeG
+    
+    def likelihoodnG(self,event_data):
+        """
+        The likelihood for a single event P(x|notG)
+        """
+        tables = self.extract_galaxies()
+            
+        coverh_x = np.ones(len(self.H0))
+        for k, x in enumerate(self.H0):
+            coverh_x[k] = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
+        
+        epsilon = self.pdet(event_data.distance)
+
+        ph_list = []
+        for t in tables:
+            ph = np.zeros(len(self.H0))
+            for k, x in enumerate(self.H0):
+                completion = self.cfactor * self.pd( event_data.distance / coverh_x[k], t ) / ( 4.0 * np.pi )
+                ph[k] = np.mean( (completion ) / ((event_data.distance/coverh_x[k])**2) ) 
+            ph_list.append(ph)
+
+        ph = np.zeros(len(self.H0))
+        for j in range(0,len(tables)):
+            ph += ph_list[j]
+            
+        self.likenG = ph
+        return self.likenG
+    
     
     def normalization(self):
         """
@@ -128,54 +156,7 @@ class pofH0(object):
             
         self.norm = normalization
         return self.norm
-    
-    def posterior(self, event_data, prior_type='uniform'):
-        """
-        The posterior for a single event.
-        """
-        if self.like is None:
-            print("Calculating aofh")
-            norm = self.normalization()
-            psi = self.psiH0()
-            if prior_type == 'log':
-                prior = self.prior('log')
-            if prior_type == 'uniform':
-                prior = self.prior('uniform')
-            print("Setting up" + str(prior_type) + "prior")
-            print("Calculating likelihood from H0 = " + str(self.H0[0]) + " to " + str(self.H0[-1]) + ", " + str(len(self.H0)) + " bins...")
-            like = self.likelihood(event_data)
-            self.like = like
-            self.norm = norm
-            self.psi = psi
-            self.prior_ = prior
-            self.prior_type = prior_type
 
-        posterior=self.like*self.prior_*self.psi/self.norm
-        self.post = posterior/np.sum(posterior*self.dH0)
-        return self.post
-    
-    def plot(self,fname='posterior.pdf'):
-        """
-        Make plot of P(H0).
-        """
-        if self.post is None:
-            print("Calculate posterior first fool...")
-            return 0
-        else:
-            fig, ax = plt.subplots()
-            ax.plot(self.H0,self.post,linewidth=2,color='orange',label='Posterior')
-            if self.prior_type == 'log':
-                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Log Prior')
-            if self.prior_type == 'uniform':
-                ax.plot(self.H0,self.prior_/np.sum(self.prior_*self.dH0),'g-.',linewidth=2,label='Uniform Prior')
-            ax.axvline(70.,0.0, 1,color='r', label='$H_0$ = 70 (km s$^{-1}$ Mpc$^{-1}$)')
-            ax.set_xlabel('$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',size='large')
-            ax.set_ylabel('$p(H_0|data)$ (km$^{-1}$ s Mpc)',size='large')
-            legend = ax.legend(loc='upper right', shadow=True, fontsize='medium')
-            legend.get_frame().set_facecolor('#FFFFFF')
-            fig.savefig(fname,format='pdf')
-            plt.show()
-            
     #place this somewhere in catalog modules..
     def extract_galaxies(self):
         nGal = self.galaxy_catalog.nGal()
@@ -189,11 +170,8 @@ class pofH0(object):
             dec[i] = gal.dec
             z[i] = gal.z
             lumB[i] = gal.lumB
-        print(lumB)
         if nGal == 1:
             tables = [Table([ra, dec, lumB, z], names=('RA','Dec', 'lumB', 'z'))]
-            print(tables)
-            print(len(tables))
             return tables
         else:
             nSplit = 100

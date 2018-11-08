@@ -187,7 +187,9 @@ def main():
             catalog.load_SDSS_cluster_catalog()
         if galaxy_catalog == 'sdss':
             catalog.load_SDSS_catalog()
-            
+        if galaxy_catalog == 'des_clusters':
+            catalog.load_DES_cluster_catalog()
+
     #set up array of luminosity distance values
     dl = np.linspace(min_dist,max_dist,bins_dist)
     
@@ -203,7 +205,9 @@ def main():
 
     if implementation == 'pofH0':
         me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion)
-        likelihood = me.likelihood(samples)
+        likelihoodG = me.likelihoodG(samples)
+        likelihoodnG = me.likelihoodnG(samples)
+        likelihood = likelihoodG + likelihoodnG
         prior = me.prior()
         norm = me.psiH0()/me.normalization()
         posterior=likelihood*prior*norm

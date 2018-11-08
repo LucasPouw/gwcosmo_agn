@@ -330,14 +330,6 @@ class MasterEquation(object):
             lumB = np.ones(nGal)
         return ra, dec, z, lumB
 
-    #Completion specific to catalog #TODO: Figure out place where to put this.   
-    def pd(self,x,lumB,dist):
-        blue_luminosity_density = np.cumsum(lumB)[np.argmax(dist>73.)]/(4.0*np.pi*0.33333*np.power(73.0,3))
-        coverh = (const.c.to('km/s') / (70 * u.km / u.s / u.Mpc)).value
-        tmpd = coverh * x
-        tmpp = (3.0*coverh*4.0*np.pi*0.33333*blue_luminosity_density*(tmpd-50.0)**2)
-        return np.ma.masked_where(tmpd<50.,tmpp).filled(0)
-
 class PixelBasedLikelihood(MasterEquation):
     """
     Likelihood for a single event, evaluated using a pixel based sky map
