@@ -35,10 +35,10 @@ class posterior_samples(object):
         if event == 'GW170817':
             #https://git.ligo.org/publications/gw170817/parameter-estimation/blob/master/data/posterior_samples_RR0.dat
             lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"
-        if event == 'GW170818':
+        elif event == 'GW170818':
             #https://git.ligo.org/pe_event_samples/GW170818/blob/master/allIsp_post.dat    
             lalinference_path=posterior_data_path + "/allIsp_post.dat"
-        if event == 'GW170814':
+        elif event == 'GW170814':
             #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
             lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
 
