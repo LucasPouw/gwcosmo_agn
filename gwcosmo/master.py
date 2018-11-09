@@ -14,6 +14,7 @@ import healpy as hp
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
+from scipy.interpolate import splev,splrep
 from astropy import constants as const
 from astropy import units as u
 
@@ -73,6 +74,19 @@ class MasterEquation(object):
         #print(minskypdf)
         count = 0
         data = []
+        
+        distmax = 2.0*np.amax(event_data.distance)
+        distmin = 0.5*np.amin(event_data.distance)
+        dl_array = np.linspace(distmin,distmax,500)
+        vals = distkernel(dl_array)
+        temp = splrep(dl_array,vals)
+        
+        def px_dl(dl):
+            """
+            Returns a probability for a given distance dl from the interpolated function.
+            """
+            return splev(dl,temp,ext=3)
+        
         # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
@@ -91,7 +105,7 @@ class MasterEquation(object):
                 else:
                     weight = 1.0
 
-                tempdist = distkernel(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
+                tempdist = px_dl(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
                 num += tempdist*tempsky*weight
                 
             else:
@@ -203,11 +217,23 @@ class MasterEquation(object):
         num = np.zeros(len(self.H0))
         
         distkernel = event_data.lineofsight_distance()
+        
+        distmax = 2.0*np.amax(event_data.distance)
+        distmin = 0.5*np.amin(event_data.distance)
+        dl_array = np.linspace(distmin,distmax,500)
+        vals = distkernel(dl_array)
+        temp = splrep(dl_array,vals)
+        
+        def px_dl(dl):
+            """
+            Returns a probability for a given distance dl from the interpolated function.
+            """
+            return splev(dl,temp,ext=3)
 
         for i in range(len(self.H0)):
 
             def Inum(z,M):
-                temp = distkernel(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
+                temp = px_dl(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
             *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
