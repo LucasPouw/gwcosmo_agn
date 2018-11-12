@@ -65,16 +65,23 @@ class MasterEquation(object):
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(self.H0))
         
-        skykernel = event_data.compute_2d_kde()
-        distkernel = event_data.lineofsight_distance()
-        skypdf = skykernel.evaluate([event_data.longitude,event_data.latitude])
-        skypdf.sort()
-        sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
-        minskypdf = skypdf[sampno]
-        #print(minskypdf)
+        if skymap2d is not None:
+            prob_sorted = np.sort(skymap2d.prob)[::-1]
+            prob_sorted_cum = np.cumsum(prob_sorted)
+            idx = np.searchsorted(prob_sorted_cum,0.999) # find index of array which bounds the 99.9% confidence interval
+            minskypdf = prob_sorted[idx]*skymap2d.npix
+        
+        else:    
+            skykernel = event_data.compute_2d_kde()
+            skypdf = skykernel.evaluate([event_data.longitude,event_data.latitude])
+            skypdf.sort()
+            sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
+            minskypdf = skypdf[sampno]
+        print(minskypdf)
         count = 0
         data = []
         
+        distkernel = event_data.lineofsight_distance()
         distmax = 2.0*np.amax(event_data.distance)
         distmin = 0.5*np.amin(event_data.distance)
         dl_array = np.linspace(distmin,distmax,500)
@@ -93,7 +100,7 @@ class MasterEquation(object):
 
             # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
-                tempsky = skymap2d.skyprob(gal.ra,gal.dec) # TODO: test fully and integrate into px_H0nG
+                tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix # TODO: test fully and integrate into px_H0nG
             else:
                 tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
 
@@ -104,10 +111,17 @@ class MasterEquation(object):
                     weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
-
-                tempdist = px_dl(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
-                num += tempdist*tempsky*weight
                 
+                if gal.z == 0:
+                    tempdist = 0.0
+                else:
+                    tempdist = px_dl(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
+                num += tempdist*tempsky*weight
+                #print(gal.z,dl_zH0(gal.z,self.H0,linear=self.linear),tempdist,tempsky)
+                #if count >= 5:
+                #    break
+                #else:
+                #    continue
             else:
                 continue
         print(count)        

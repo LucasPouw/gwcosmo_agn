@@ -46,6 +46,14 @@ class FITSkernel(object):
         p_ra_dec = np.sum( weights * probvals * skyprob )
         
         return(p_ra_dec)
+
+    def skyprob(self,ra,dec):
+        """
+        Return the probability of a given sky location
+        ra, dec: radians
+        """
+        ipix_gal = hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=self.nested)
+        return self.prob[ipix_gal]
     
     def __call__(self, ra, dec, dist):
         return self.probability(ra, dec, dist)
