@@ -15,6 +15,8 @@ from scipy import integrate
 from scipy.interpolate import splrep, splev
 import lal
 
+from .standard_cosmology import *
+
 c = lal.C_SI/1000. #2.99792458e+05 # in km/s
 Omega_m = 0.3 # 0.3175 # PLANCK best fit
 H0 = 70 # 67.11 # in km/s/Mpc
