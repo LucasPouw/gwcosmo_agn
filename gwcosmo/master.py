@@ -53,6 +53,7 @@ class MasterEquation(object):
         self.distmax = pdet.pD_distmax()
         self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
+        self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
     def px_H0G(self,event_data,skymap2d=None):
         """
@@ -79,7 +80,7 @@ class MasterEquation(object):
             skypdf.sort()
             sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
             minskypdf = skypdf[sampno]
-        print(minskypdf)
+
         count = 0
         data = []
         
@@ -110,20 +111,15 @@ class MasterEquation(object):
                 count += 1
 
                 if self.weighted:
-                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
                 
                 if gal.z == 0:
                     tempdist = 0.0
                 else:
-                    tempdist = px_dl(dl_zH0(gal.z,self.H0,linear=self.linear))/dl_zH0(gal.z,self.H0,linear=self.linear)**2 # remove dl^2 prior from samples
+                    tempdist = px_dl(self.cosmo.dl_zH0(gal.z,self.H0))/self.cosmo.dl_zH0(gal.z,self.H0)**2 # remove dl^2 prior from samples
                 num += tempdist*tempsky*weight
-                #print(gal.z,dl_zH0(gal.z,self.H0,linear=self.linear),tempdist,tempsky)
-                #if count >= 5:
-                #    break
-                #else:
-                #    continue
             else:
                 continue
         print(count)        
@@ -152,11 +148,11 @@ class MasterEquation(object):
                 gal = catalog.get_galaxy(i)
 
                 if self.weighted:
-                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
 
-                den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight            
+                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight            
 
         else:
             den = np.zeros(len(self.H0))       
@@ -164,11 +160,11 @@ class MasterEquation(object):
                 gal = self.galaxy_catalog.get_galaxy(i)
 
                 if self.weighted:
-                    weight = L_mdl(gal.m,dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
 
-                den += self.pdet.pD_dl_eval(dl_zH0(gal.z,self.H0,linear=self.linear))*weight
+                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight
 
         self.pDG = den
         return self.pDG
@@ -190,7 +186,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -249,8 +245,8 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
 
             def Inum(z,M):
-                temp = px_dl(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -278,7 +274,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -304,7 +300,7 @@ class MasterEquation(object):
         pH0 = np.zeros(len(self.H0))
         for i in range(len(self.H0)):
             def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
+                return self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         if prior == 'jeffreys':
@@ -506,7 +502,7 @@ class PixelBasedLikelihood(MasterEquation):
         val = np.zeros(len(H0))
         for i,h0 in enumerate(H0):
             for gal in self.pixel_cats[pixel]:
-                dl = dl_zH0(gal.z,h0, linear=self.linear)
+                dl = self.cosmo.dl_zH0(gal.z,h0, linear=self.linear)
                 #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
                 galprob = weight*norm.pdf(dl,distmu,distsigma)/distnorm
                 detprob = self.pdet.pD_dl_eval(dl, spl)
@@ -539,22 +535,22 @@ class PixelBasedLikelihood(MasterEquation):
         for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
-                #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
-                temp = self.zprior(z)*Schechter(M)*weight*((dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
+                #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(self.cosmo.dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                temp = self.zprior(z)*Schechter(M)*weight*((self.cosmo.dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
             def Iden(z,M):
-                temp = Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                temp = Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
         
         #def dentemp(z,M):
-        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*self.zprior(z)
+        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,H0,linear=self.linear),spl)*self.zprior(z)
         #if self.weighted:
         #    def Iden(z,M):
         #        return dentemp(z,M)*L_M(M)
@@ -593,10 +589,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -646,10 +642,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -673,10 +669,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.

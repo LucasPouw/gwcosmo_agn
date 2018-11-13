@@ -258,6 +258,43 @@ class redshift_prior(object):
             return self.p_z(z)
         
     
+class fast_cosmology(object):
+    """
+    Precompute things which rely on choice of Omega_m in order to speed things up
     
+    Parameters
+    ----------
+    Omega_m : matter fraction (default=0.3)
+    zmax : upper limit for redshift (default=4.0)
+    linear : assumes local cosmology and suppresses non-linear effects (default=False)
+
+    """
+    def __init__(self,Omega_m=0.3,zmax=4.0,linear=False):
+        self.Omega_m = Omega_m
+        self.linear = linear
+        self.zmax = zmax
+        z_array = np.linspace(0.0,self.zmax,100)
+        lookup = np.array([dLH0overc(z, Omega_m=self.Omega_m) for z in z_array])
+        self.interp = splrep(z_array,lookup)
+        
+    def dl_zH0(self, z, H0):
+        """
+        Returns luminosity distance given distance and cosmological parameters
     
+        Parameters
+        ----------
+        z : redshift
+        H0 : Hubble parameter in km/s/Mpc
+        
+        Returns
+        -------
+        luminosity distance, dl (in Mpc)
+        """
+        if self.linear:
+            # Local cosmology
+            return z*c/H0
+        else:
+            # Standard cosmology
+            return splev(z,self.interp,ext=3)*c/H0 
+
     
