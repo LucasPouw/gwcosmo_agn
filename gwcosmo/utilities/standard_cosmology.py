@@ -12,6 +12,7 @@ H0 : Hubble parameter
 
 import numpy as np
 from scipy import integrate
+from scipy.interpolate import splrep, splev
 import lal
 
 c = lal.C_SI/1000. #2.99792458e+05 # in km/s
@@ -77,7 +78,7 @@ def volume_z(z, Omega_m=Omega_m):
   
   Returns
   -------
-  volume (\int_0^z dz'/h(z'))^2 / h(z)
+  volume element (\int_0^z dz'/h(z'))^2 / h(z): dimensionless
   """
   return dcH0overc(z, Omega_m)**2/h(z, Omega_m)  
 
@@ -233,4 +234,30 @@ def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
     else:
         # Standard cosmology
         return redshift(dl*H0/c, Omega_m=Omega_m)
-  
+        
+
+class redshift_prior(object):
+    """
+    p(z|Omega_m)
+    """
+    def __init__(self,Omega_m=0.3,zmax=4.0,linear=False):
+        self.Omega_m = Omega_m
+        self.linear = linear
+        self.zmax = zmax
+        z_array = np.linspace(0.0,self.zmax,100)
+        lookup = np.array([volume_z(z, Omega_m=self.Omega_m) for z in z_array])
+        self.interp = splrep(z_array,lookup)
+
+    def p_z(self,z):
+        return splev(z,self.interp,ext=3)
+    
+    def __call__(self,z):
+        if self.linear:
+            return z*z
+        else:
+            return self.p_z(z)
+        
+    
+    
+    
+    

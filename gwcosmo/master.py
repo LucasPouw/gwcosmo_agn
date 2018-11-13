@@ -31,11 +31,12 @@ class MasterEquation(object):
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,weighted=False,counterparts=False):
+    def __init__(self,H0,galaxy_catalog,pdet,Omega_m=0.3,linear=False,weighted=False,counterparts=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
         self.mth = galaxy_catalog.mth()
+        self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
         self.counterparts = counterparts
@@ -50,7 +51,8 @@ class MasterEquation(object):
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         self.distmax = pdet.pD_distmax()
-        self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear) 
+        self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
+        self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
 
     def px_H0G(self,event_data,skymap2d=None):
         """
@@ -188,7 +190,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -247,7 +249,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
 
             def Inum(z,M):
-                temp = px_dl(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z) \
+                temp = px_dl(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z) \
             *SchechterMagFunction(H0=self.H0[i])(M)/dl_zH0(z,self.H0[i],linear=self.linear)**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
@@ -276,7 +278,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -302,7 +304,7 @@ class MasterEquation(object):
         pH0 = np.zeros(len(self.H0))
         for i in range(len(self.H0)):
             def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*self.zprior(z)
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         if prior == 'jeffreys':
@@ -537,22 +539,22 @@ class PixelBasedLikelihood(MasterEquation):
         for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
-                #temp = pz_nG(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
-                temp = pz_nG(z)*Schechter(M)*weight*((dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
+                #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
+                temp = self.zprior(z)*Schechter(M)*weight*((dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
             def Iden(z,M):
-                temp = Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                temp = Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
         
         #def dentemp(z,M):
-        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*pz_nG(z)
+        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(dl_zH0(z,H0,linear=self.linear),spl)*self.zprior(z)
         #if self.weighted:
         #    def Iden(z,M):
         #        return dentemp(z,M)*L_M(M)
@@ -591,10 +593,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -644,10 +646,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -671,10 +673,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*pz_nG(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
