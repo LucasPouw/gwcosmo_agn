@@ -25,13 +25,13 @@ class pofH0(object):
     """
     Class that contains ingredients necessary to compute P(H0) in a different way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,linear=False,complete=False):
+    def __init__(self,H0,galaxy_catalog,pdet,Omega_m=0.3,linear=False,weighted=True,complete=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
         self.pdet = pdet
+        self.Omega_m = Omega_m
         self.linear = linear
-        self.dmax = pdet.pD_distmax()
-        self.zmax = z_dlH0(self.dmax,H0=max(self.H0),linear=self.linear) 
+        self.weighted = weighted
         
         if complete == True:
             self.cfactor = 0
@@ -46,7 +46,11 @@ class pofH0(object):
         self.prior_ = None
         
         self.prior_type = None
-        self.dH0 = self.H0[1] - self.H0[0]
+        
+        self.dmax = pdet.pD_distmax()
+        self.zmax = z_dlH0(self.dmax,H0=max(self.H0),linear=self.linear)
+        self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
+        self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
     
     def prior(self, prior_type='uniform'):
         self.prior_type = prior_type
@@ -61,12 +65,13 @@ class pofH0(object):
         """
         The infamous H0**3 term.
         """
+        dH0 = self.H0[1] - self.H0[0]
         pH0 = np.zeros(len(self.H0))
         for i in range(len(self.H0)):
             def I(z):
                 return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        self.psi = pH0/np.sum(pH0*self.dH0)
+        self.psi = pH0/np.sum(pH0*dH0)
         return self.psi
     
     def likelihoodG(self,event_data):
@@ -170,6 +175,8 @@ class pofH0(object):
             dec[i] = gal.dec
             z[i] = gal.z
             lumB[i] = gal.lumB
+        if self.weighted == False:
+            lumB = np.ones(nGal)
         if nGal == 1:
             tables = [Table([ra, dec, lumB, z], names=('RA','Dec', 'lumB', 'z'))]
             return tables

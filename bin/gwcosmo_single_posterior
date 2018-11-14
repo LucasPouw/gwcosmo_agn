@@ -204,7 +204,7 @@ def main():
         posterior = prior*likelihood
 
     if implementation == 'pofH0':
-        me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion)
+        me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion,weighted=galaxy_weighting)
         likelihoodG = me.likelihoodG(samples)
         likelihoodnG = me.likelihoodnG(samples)
         likelihood = likelihoodG + likelihoodnG
