@@ -2,13 +2,15 @@
 Detection probability
 Rachel Gray, John Veitch, Ignacio Magana
 """
+#from __future__ import absolute_import
 import lal
 from   lal import ComputeDetAMResponse
 import numpy as np
-from scipy.interpolate import interp1d,splev,splrep
+from scipy.interpolate import interp1d,splev,splrep,interp2d
 from scipy.integrate import quad
 from scipy.stats import ncx2
 import healpy as hp
+from gwcosmo.utilities.standard_cosmology import *
 
 import pkg_resources
 """
@@ -21,7 +23,7 @@ class DetectionProbability(object):
     Class to compute p(det | d_L, detectors, m1, m2, ...)
     TODO: Allow choices of distributions for intrinsic params
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None):
+    def __init__(self, mass_distribution, H0vec, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -36,7 +38,13 @@ class DetectionProbability(object):
         self.Nsamps = Nsamps
         self.Nside = Nside
         self.mass_distribution = mass_distribution
-        self.H0 = H0
+        self.Omega_m = Omega_m
+        self.linear = linear
+        self.H0vec = H0vec
+        self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
+        self.z_array = np.logspace(-4.0,0.0,50)
+        self.cosmo=fast_cosmology()
+        #self.dl_array = cosmo.dl_zH0(self.z_array,self.H0) # TODO: fix this
         
         # set up the samples for monte carlo integral
         N=self.Nsamps
@@ -46,13 +54,12 @@ class DetectionProbability(object):
         q = np.random.rand(N)
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
-        self.zeds = 
         if self.mass_distribution == 'BNS':
-            self.dl_array = np.linspace(0.1,400,100)
+            #self.dl_array = np.linspace(0.1,400,100)
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
         if self.mass_distribution == 'BBH':
-            self.dl_array = np.linspace(0.1,3000,100)
+            #self.dl_array = np.linspace(0.1,3000,100)
             #Based on Maya's notebook
             def inv_cumulative_power_law(u,mmin,mmax,alpha):
                 if alpha != -1:
@@ -66,9 +73,11 @@ class DetectionProbability(object):
         self.__interpolnum = self.__numfmax_fmax(self.M_min)
         
         # precompute values which will be called multiple times
-        self.interp_average = self.__pD_dl(self.dl_array)
+        #self.interp_average = self.__pD_dl()
+        self.interp_average = self.__pD_zH0_loop(self.H0vec)
         if Nside != None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
+
     
     
     def mchirp(self,m1,m2):
@@ -237,7 +246,7 @@ class DetectionProbability(object):
         return interp1d(arr_fmax, num_fmax)
 
         
-    def __snr_squared(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z=0):
+    def __snr_squared(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z,H0):
         """
         the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
         
@@ -256,7 +265,7 @@ class DetectionProbability(object):
         """
         mtot = self.__mtot_obs(m1,m2,z)
         mc = self.mchirp_obs(m1,m2,z)
-        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0) (DL*lal.PC_SI*1e6)
+        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0)/ (self.cosmo.dl_zH0(z,H0)*lal.PC_SI*1e6)
         
         fmax = self.__fmax(mtot)
         num = self.__interpolnum(fmax)
@@ -265,27 +274,104 @@ class DetectionProbability(object):
 
         
         
-    def __pD_dl(self,dl_array):
+    def __pD_zH0(self,H0):
         """
         Detection probability over a range of distances, returned as an interpolated function.
+        
+        Parameters
+        ----------
+        H0 : value of Hubble constant in kms-1Mpc-1
+        
+        Returns
+        -------
+        interpolated probabilities of detection over an array of luminosity distances, for a specific value of H0
         """
         rho = np.zeros((self.Nsamps,1))
-        for n in range(self.Nsamps):
-            rhosqs = [ self.__snr_squared(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0) for det in self.__lal_detectors]
-            rho[n] = np.sum(rhosqs)
+        prob = np.zeros(len(self.z_array))
+        for i in range(len(self.z_array)):
+            for n in range(self.Nsamps):
+                rhosqs = [ self.__snr_squared(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0, self.z_array[i],H0) for det in self.__lal_detectors]
+                rho[n] = np.sum(rhosqs)
 
-        DLcopy = dl_array.reshape((dl_array.size, 1))
-        DLcopy = DLcopy.transpose()
-        DLcopy = 1/(DLcopy*lal.PC_SI*1e6)**2
-
-        effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
-        survival = np.matmul(rho, DLcopy)
-        survival = ncx2.sf(effective_threshold**2,4,survival)
-
-        prob = np.sum(survival,0)/self.Nsamps
-        self.spl = splrep(dl_array,prob)
-        return splrep(dl_array,prob)
+            effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
+            survival = ncx2.sf(effective_threshold**2,4,rho)
+            prob[i] = np.sum(survival,0)/self.Nsamps
         
+        #dl_array = self.cosmo.dl_zH0(self.z_array,H0)  
+        #return splrep(dl_array,prob)
+        return prob
+    
+    
+    def __pD_dlH0_loop(self,H0vec):
+        """
+        Function which calculates p(D|H0) for a range of distance and H0 values
+        
+        Parameters
+        ----------
+        H0vec : numpy array of H0 values in kms-1Mpc-1
+        
+        Returns
+        -------
+        Massive interpolation thing
+        """
+        #lookup = np.array([self.__pD_dl(H0) for H0 in H0vec])
+        dl_array = np.array([self.cosmo.dl_zH0(self.z_array,H0) for H0 in H0vec])
+        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        #H0_array = 
+        print(np.shape(H0vec),np.shape(dl_array),np.shape(prob))
+        return interp2d(self.z_array,H0vec,prob)
+        
+        
+    def __pD_zH0_loop(self,H0vec):
+        """
+        Function which calculates p(D|H0) for a range of redshift and H0 values
+        
+        Parameters
+        ----------
+        H0vec : numpy array of H0 values in kms-1Mpc-1
+        
+        Returns
+        -------
+        2D interpolation object over z and H0
+        """
+        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        return interp2d(self.z_array,H0vec,prob)
+        
+
+    def pD_dlH0_eval(self,dl,H0):
+        """
+        Returns the probability of detection at a given value of luminosity distance and H0.
+        
+        Parameters
+        ----------
+        dl : value or numpy array of luminosity distances in Mpc
+        H0 : H0 value in kms-1Mpc-1
+        
+        Returns
+        -------
+        Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
+        Returns an array if dl is an array
+        """
+        z = np.array([z_dlH0(x,H0) for x in dl])
+        return self.interp_average(z,H0)
+        
+        
+    def pD_zH0_eval(self,z,H0):
+        """
+        Returns the probability of detection at a given value of redshift and H0.
+        
+        Parameters
+        ----------
+        z : value or numpy array of redshifts
+        H0 : H0 value in kms-1Mpc-1
+        
+        Returns
+        -------
+        Probability of detection at the given redshift and H0, marginalised over masses, inc, pol, and sky location
+        Returns an array if z is an array
+        """
+        return self.interp_average(z,H0)
+
         
     def __snr_squared_old(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z=0):
         """
@@ -347,7 +433,6 @@ class DetectionProbability(object):
         RA_map = phi
         Dec_map = np.pi/2.0 - theta
         
-        #pofd_dLRADec = np.zeros([no_pix,dl_array.size])
         pofd_dLRADec = []
         for k in range(no_pix):
             rho = np.zeros((self.Nsamps,1))
@@ -410,7 +495,7 @@ class DetectionProbability(object):
             )
             
 
-    def pD_dl_eval(self,dl):
+    def pD_dl_eval_old(self,dl):
         """
         Returns a probability for a given distance dl from the interpolated function.
         Or an array of probabilities for an array of distances.
