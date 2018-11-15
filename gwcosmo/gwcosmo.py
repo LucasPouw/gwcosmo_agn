@@ -19,7 +19,6 @@ import gwcosmo
 
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
-from .utilities.basic import *
 
 class pofH0(object):
     """
