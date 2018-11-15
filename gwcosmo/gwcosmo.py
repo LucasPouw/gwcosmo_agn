@@ -69,7 +69,7 @@ class pofH0(object):
         pH0 = np.zeros(len(self.H0))
         for i in range(len(self.H0)):
             def I(z):
-                return self.pdet.pD_dl_eval(dl_zH0(z,self.H0[i],linear=self.linear))*pz_nG(z)
+                return self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
         self.psi = pH0/np.sum(pH0*dH0)
         return self.psi
