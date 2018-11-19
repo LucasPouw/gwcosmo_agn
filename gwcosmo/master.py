@@ -19,6 +19,7 @@ from astropy import constants as const
 from astropy import units as u
 
 from ligo.skymap.moc import nest2uniq,uniq2nest,uniq2ang
+from ligo.skymap.bayestar import rasterize
 
 import gwcosmo
 
@@ -350,22 +351,7 @@ class MasterEquation(object):
             likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
-    
-    def extract_galaxies(self):
-        nGal = self.galaxy_catalog.nGal()
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            z[i] = gal.z
-            lumB[i] = gal.lumB
-        if all(lumB) == 0: #for mdc1 and mdc2
-            lumB = np.ones(nGal)
-        return ra, dec, z, lumB
+
 
 class PixelBasedLikelihood(MasterEquation):
     """
@@ -394,33 +380,15 @@ class PixelBasedLikelihood(MasterEquation):
     """
     def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
         super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,counterparts=counterparts)
-        from ligo.skymap.bayestar import rasterize
-        from ligo.skymap.moc import nest2uniq,uniq2nest
         self.moc_map = skymap3d.as_healpix()
-        self.pixelmap = rasterize(skymap3d.as_healpix())
+        self.pixelmap = rasterize(self.moc_map)
         self.skymap = skymap3d
         self.npix = len(self.pixelmap)
         self.nside = hp.npix2nside(self.npix)
         self.gmst = GMST
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
-        self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
-        ra, dec, _, _ = self.extract_galaxies()
-        gal_idx = np.array(range(len(ra)),dtype=np.uint64)
-        theta = np.pi/2.0 - dec
-        # Find the NEST index for each galaxy
-        pix_idx = np.array(hp.ang2pix(self.nside, theta, ra,nest=True),dtype=np.uint64)
-        # Find the order and nest_idx for each pixel in the UNIQ map
-        order, nest_idx = uniq2nest(self.moc_map['UNIQ'])
-        # For each order present in the UNIQ map
-        for o in np.unique(order):
-            # Find the UNIQ pixel for each galaxy at this order
-            uniq_idx = nest2uniq(o, pix_idx)
-            # For each such pixel, if it is in the moc_map then store the galaxies
-            for uidx in self.moc_map['UNIQ'][order==o]:
-                self.pixel_cats[uidx]=[self.galaxy_catalog.get_galaxy(j) \
-                                           for j in gal_idx[uniq_idx==uidx]]
-        
+        self.pixel_cats = catalog.pixelCatalogs(skymap3d)# dict of list of galaxies, indexed by NUNIQ
         self.mths = {x:18 for x in self.moc_map['UNIQ']} # just for testing
         
     def likelihood(self, H0, cum_prob=1.0):
@@ -684,11 +652,3 @@ class PixelBasedLikelihood(MasterEquation):
 
         return num
     
-
-class PixelCatalog(object):
-    """
-    Data for each pixel
-    """
-    galaxies=None
-    mth = None
-
