@@ -121,15 +121,17 @@ class galaxyCatalog(object):
         dec = np.zeros(nGal)
         z = np.zeros(nGal)
         m = np.zeros(nGal)
+        lumB = np.zeros(nGal)
         for i in range(nGal):
             gal = self.get_galaxy(i)
             ra[i] = gal.ra
             dec[i] = gal.dec
             z[i] = gal.z
             m[i] = gal.m
+            lumB[i] = gal.lumB
         if all(m) == 0: #for mdc1 and mdc2
             m = np.ones(nGal)
-        return ra, dec, z, m
+        return ra, dec, z, m, lumB
 
     def load_counterpart_catalog(self, ra, dec, z):   
         galaxies={}
@@ -254,7 +256,7 @@ class galaxyCatalog(object):
         nside = hp.npix2nside(len(pixelmap))
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
         self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
-        ra, dec, _, _ = self.extract_galaxies()
+        ra, dec, _, _, _ = self.extract_galaxies()
         gal_idx = np.array(range(len(ra)),dtype=np.uint64)
         theta = np.pi/2.0 - dec
         # Find the NEST index for each galaxy

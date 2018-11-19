@@ -137,7 +137,7 @@ class posterior_samples(object):
             radecdist_list.append([kde,kde_norm])
         return radecdist_list
 
-    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=1000, z_err_fraction=0.06, a_err_fraction=0.08):
+    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=10, z_err_fraction=0.01, a_err_fraction=0.01):
         nt = nt[(np.where((nt['z'] > 0) & (nt['z'] < zmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
                           & (nt['RA'] < np.max(self.longitude ) + 1.0)))]
