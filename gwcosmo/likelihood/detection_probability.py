@@ -11,6 +11,7 @@ from scipy.integrate import quad
 from scipy.stats import ncx2
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
+import pickle
 
 import pkg_resources
 """
@@ -21,9 +22,29 @@ a probability of detection is returned.  This involves marginalising over masses
 class DetectionProbability(object):
     """
     Class to compute p(det | d_L, detectors, m1, m2, ...)
-    TODO: Allow choices of distributions for intrinsic params
+    
+    Parameters
+    ----------
+    mass_distribution : str
+        choice of mass distribution ('BNS' or 'BBH')
+    detectors : list of str, optional
+        list of detector names (default=['H1','L1'])
+    psds : str, optional
+        path to file containing the relevant PSDs (default=None)
+    Nsamps : int, optional
+        Number of samples for monte carlo integration (default=1000)
+    snr_theshold : float, optional
+        snr threshold for an individual detector (default=8)
+    Nside : int, optional
+        If using variable pdet across the sky, specify the resolution of the healpy map
+    Omega_m : float, optional
+        matter fraction of the universe (default=0.3)
+    linear : boolean, optional
+        if True, use linear cosmology (default=False)
+    precomputed : boolean, optional
+        if True, use pickled version of pdet (default=True)
     """
-    def __init__(self, mass_distribution, H0vec, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -40,10 +61,11 @@ class DetectionProbability(object):
         self.mass_distribution = mass_distribution
         self.Omega_m = Omega_m
         self.linear = linear
-        self.H0vec = H0vec
+        self.H0vec = np.linspace(10,200,50)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
         self.z_array = np.logspace(-4.0,0.0,50)
         self.cosmo=fast_cosmology()
+        self.precomputed = precomputed
         #self.dl_array = cosmo.dl_zH0(self.z_array,self.H0) # TODO: fix this
         
         # set up the samples for monte carlo integral
@@ -58,6 +80,7 @@ class DetectionProbability(object):
             #self.dl_array = np.linspace(0.1,400,100)
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BNS_pD_zH0_interp.p')
         if self.mass_distribution == 'BBH':
             #self.dl_array = np.linspace(0.1,3000,100)
             #Based on Maya's notebook
@@ -68,13 +91,16 @@ class DetectionProbability(object):
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BBH_pD_zH0_interp.p')
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
-        self.__interpolnum = self.__numfmax_fmax(self.M_min)
-        
-        # precompute values which will be called multiple times
-        #self.interp_average = self.__pD_dl()
-        self.interp_average = self.__pD_zH0_loop(self.H0vec)
+        # precompute values which will be called multiple times, if not precomputed
+        if precomputed:
+            self.interp_average = pickle.load(open(interp_av_path,'rb'))
+            # TODO: add error message for if pickled file doesn't exist
+        else:
+            self.__interpolnum = self.__numfmax_fmax(self.M_min)
+            self.interp_average = self.__pD_zH0_loop(self.H0vec)
         if Nside != None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
 
@@ -86,7 +112,8 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        m1,m2 : source rest frame masses in kg
+        m1,m2 : float
+            source rest frame masses in kg
         
         Returns
         -------
@@ -101,12 +128,15 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        m1,m2 : source rest frame masses in kg
-        z : redshift (default=0)
+        m1,m2 : float
+            source rest frame masses in kg
+        z : float
+            redshift (default=0)
         
         Returns
         -------
-        Redshifted chirp mass in kg
+        float
+            Redshifted chirp mass in kg
         """
         return (1+z)*self.mchirp(m1,m2)
                 
@@ -117,11 +147,13 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        m1,m2 : source rest frame masses in kg
+        m1,m2 : float
+            source rest frame masses in kg
         
         Returns
         -------
-        Source total mass in kg        
+        float
+            Source total mass in kg        
         """
         return m1+m2
         
@@ -132,12 +164,15 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        m1,m2 : source rest frame masses in kg
-        z : redshift (default=0)
+        m1,m2 : float
+            source rest frame masses in kg
+        z : float
+            redshift (default=0)
         
         Returns
         -------
-        Observed total mass in kg        
+        float
+            Observed total mass in kg        
         """
         return (m1+m2)*(1+z)
         
@@ -148,14 +183,19 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        detector : name of detector in network as a string (eg 'H1', 'L1')
-        RA,Dec : sky location of the event in radians
-        psi : source polarisation in radians
-        gmst : Greenwich Mean Sidereal Time in seconds CHECK THIS
+        detector : str
+            name of detector in network(eg 'H1', 'L1')
+        RA,Dec : float
+            sky location of the event in radians
+        psi : float
+            source polarisation in radians
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
         
         Returns
         -------
-        F_+ antenna response
+        float
+            F_+ antenna response
         """
         return lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)[0]
         
@@ -166,14 +206,19 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        detector : name of detector in network as a string (eg 'H1', 'L1')
-        RA,Dec : sky location of the event in radians
-        psi : source polarisation in radians
-        gmst : Greenwich Mean Sidereal Time in seconds
+        detector : str
+            name of detector in network(eg 'H1', 'L1')
+        RA,Dec : float
+            sky location of the event in radians
+        psi : float
+            source polarisation in radians
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
         
         Returns
         -------
-        F_x antenna response
+        float
+            F_x antenna response
         """
         return lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)[1]
         
@@ -181,18 +226,25 @@ class DetectionProbability(object):
     def __reduced_amplitude(self,RA,Dec,inc,psi,detector,gmst):
         """
         Component of the Fourier amplitude, with redshift-dependent parts removed
+        computes: [F+^2*(1+cos(i)^2)^2 + Fx^2*4*cos(i)^2]^1/2 * [5*pi/96]^1/2 * pi^-7/6
         
         Parameters
         ----------
-        RA,Dec : sky location of the event in radians
-        inc : source inclination in radians
-        psi : source polarisation in radians
-        detector : name of detector in network as a string (eg 'H1', 'L1')
-        gmst : Greenwich Mean Sidereal Time in seconds 
+        RA,Dec : float
+            sky location of the event in radians
+        inc : float
+            source inclination in radians
+        psi : float
+            source polarisation in radians
+        detector : str
+            name of detector in network as a string (eg 'H1', 'L1')
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds 
         
         Returns
         -------
-        [F+^2*(1+cos(i)^2)^2 + Fx^2*4*cos(i)^2]^1/2 * [5*pi/96]^1/2 * pi^-7/6
+        float
+            Component of the Fourier amplitude, with redshift-dependent parts removed
         """
         Fplus = self.__Fplus(detector, RA, Dec, psi, gmst)
         Fcross = self.__Fcross(detector, RA, Dec, psi, gmst)
@@ -207,11 +259,13 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        M : total mass of the system in kg
+        M : float
+            total mass of the system in kg
         
         Returns
         -------
-        Maximum frequency in Hz
+        float
+            Maximum frequency in Hz
         """
         return 1/(np.power(6.0,3.0/2.0)*np.pi*M) * lal.C_SI**3/lal.G_SI
         
@@ -226,7 +280,8 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        M_min : total minimum mass of the distribution in kg
+        M_min : float
+            total minimum mass of the distribution in kg
         
         Returns
         -------
@@ -252,16 +307,23 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        RA,Dec : sky location of the event in radians
-        m1,m2 : source masses in kg
-        inc : source inclination in radians
-        psi : source polarisation in radians
-        detector : name of detector in network as a string (eg 'H1', 'L1')
-        gmst : Greenwich Mean Sidereal Time in seconds
-        
+        RA,Dec : float
+            sky location of the event in radians
+        m1,m2 : float
+            source masses in kg
+        inc : float
+            source inclination in radians
+        psi : float
+            source polarisation in radians
+        detector : str
+            name of detector in network as a string (eg 'H1', 'L1')
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+                    
         Returns
         -------
-        snr squared*dL^2 for given parameters at a single detector
+        float
+            snr squared*dL^2 for given parameters at a single detector
         """
         mtot = self.__mtot_obs(m1,m2,z)
         mc = self.mchirp_obs(m1,m2,z)
@@ -280,7 +342,8 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        H0 : value of Hubble constant in kms-1Mpc-1
+        H0 : float
+            value of Hubble constant in kms-1Mpc-1
         
         Returns
         -------
@@ -308,7 +371,8 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        H0vec : numpy array of H0 values in kms-1Mpc-1
+        H0vec : array_like
+            numpy array of H0 values in kms-1Mpc-1
         
         Returns
         -------
@@ -328,14 +392,18 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        H0vec : numpy array of H0 values in kms-1Mpc-1
+        H0vec : array_like
+            numpy array of H0 values in kms-1Mpc-1
         
         Returns
         -------
         2D interpolation object over z and H0
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        return interp2d(self.z_array,H0vec,prob)
+        interp = interp2d(self.z_array,H0vec,prob)
+        interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/pD_zH0_interp.p')
+        pickle.dump(interp,open(interp_av_path,'wb'))
+        return interp
         
 
     def pD_dlH0_eval(self,dl,H0):
@@ -344,13 +412,15 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        dl : value or numpy array of luminosity distances in Mpc
-        H0 : H0 value in kms-1Mpc-1
+        dl : float or array_like
+            value(s) of luminosity distances in Mpc
+        H0 : float
+            H0 value in kms-1Mpc-1
         
         Returns
         -------
-        Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
-        Returns an array if dl is an array
+        float or array_like
+            Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
         """
         z = np.array([z_dlH0(x,H0) for x in dl])
         return self.interp_average(z,H0)
@@ -362,16 +432,24 @@ class DetectionProbability(object):
         
         Parameters
         ----------
-        z : value or numpy array of redshifts
-        H0 : H0 value in kms-1Mpc-1
+        z : float or array_like
+            value(s) of redshift
+        H0 : float
+            H0 value in kms-1Mpc-1
         
         Returns
         -------
-        Probability of detection at the given redshift and H0, marginalised over masses, inc, pol, and sky location
-        Returns an array if z is an array
+        float or array_like
+            Probability of detection at the given redshift and H0, marginalised over masses, inc, pol, and sky location
         """
         return self.interp_average(z,H0)
 
+
+    def pD_H0_zinterp(self,H0):
+        """
+        Hopefully something faster than the other interpolations
+        """
+        pass
         
     def __snr_squared_old(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z=0):
         """
