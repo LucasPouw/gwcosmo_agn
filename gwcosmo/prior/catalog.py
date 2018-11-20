@@ -3,12 +3,17 @@ Ignacio Magana
 """
 
 import numpy as np
+import healpy as hp
+
 from astropy.table import Table
 from scipy.stats import gaussian_kde
 import pandas as pd
 from astropy.io import fits
 from astropy import constants as const
 from astropy import units as u
+
+from ligo.skymap.bayestar import rasterize
+from ligo.skymap.moc import nest2uniq,uniq2nest
 
 import pkg_resources
 
@@ -26,6 +31,7 @@ def blue_luminosity_from_mag(m,z):
     lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
     return lumB
 
+    
 class galaxy(object):
     ''' Class for galaxy objects
     '''
@@ -39,7 +45,7 @@ class galaxy(object):
         self.z = z
         self.m = m
         self.lumB = lumB
-        
+
     def load_astropy_row_glade(self, index, row):
         self.index = index
         self.ra = row['RA']*np.pi/180.
@@ -83,12 +89,12 @@ class galaxy(object):
         self.lumB = blue_luminosity_from_mag(self.m,self.z)
         
     def load_astropy_row_sdss(self, index, row):
-            self.index = index
-            self.ra = row['RA']*np.pi/180.
-            self.dec = row['Dec']*np.pi/180.
-            self.z = row['z']
-            self.m = row['abs_mag_r']
-            self.lumB = blue_luminosity_from_mag(self.m,self.z)
+        self.index = index
+        self.ra = row['RA']*np.pi/180.
+        self.dec = row['Dec']*np.pi/180.
+        self.z = row['z']
+        self.m = row['abs_mag_r']
+        self.lumB = blue_luminosity_from_mag(self.m,self.z)
             
     def load_row_DES_cluster(self, index, row):
         self.index = index
@@ -108,7 +114,25 @@ class galaxyCatalog(object):
         self.catalog_file = catalog_file
         self.indexes = indexes
         self.dictionary = dictionary
-        
+
+    def extract_galaxies(self):
+        nGal = self.nGal()
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        z = np.zeros(nGal)
+        m = np.zeros(nGal)
+        lumB = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            z[i] = gal.z
+            m[i] = gal.m
+            lumB[i] = gal.lumB
+        if all(m) == 0: #for mdc1 and mdc2
+            m = np.ones(nGal)
+        return ra, dec, z, m, lumB
+
     def load_counterpart_catalog(self, ra, dec, z):   
         galaxies={}
         nGal = 1
@@ -225,3 +249,26 @@ class galaxyCatalog(object):
         else:
             mth = np.median(m)
         return mth
+
+    def pixelCatalogs(self,skymap3d):
+        moc_map = skymap3d.as_healpix()
+        pixelmap = rasterize(moc_map)
+        nside = hp.npix2nside(len(pixelmap))
+        # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
+        self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
+        ra, dec, _, _, _ = self.extract_galaxies()
+        gal_idx = np.array(range(len(ra)),dtype=np.uint64)
+        theta = np.pi/2.0 - dec
+        # Find the NEST index for each galaxy
+        pix_idx = np.array(hp.ang2pix(nside, theta, ra,nest=True),dtype=np.uint64)
+        # Find the order and nest_idx for each pixel in the UNIQ map
+        order, nest_idx = uniq2nest(moc_map['UNIQ'])
+        # For each order present in the UNIQ map
+        for o in np.unique(order):
+            # Find the UNIQ pixel for each galaxy at this order
+            uniq_idx = nest2uniq(o, pix_idx)
+            # For each such pixel, if it is in the moc_map then store the galaxies
+            for uidx in moc_map['UNIQ'][order==o]:
+                self.pixel_cats[uidx]=[self.get_galaxy(j) \
+                                           for j in gal_idx[uniq_idx==uidx]]
+        return self.pixel_cats

@@ -119,7 +119,9 @@ def main():
 
     if implementation == 'pofH0':
         me = gwcosmo.gwcosmo.pofH0(H0,counterpart,dp,linear=False,complete=completion)
-        likelihood = me.likelihood(samples)
+        likelihoodG = me.likelihoodG(samples)
+        likelihoodnG = me.likelihoodnG(samples)
+        likelihood = likelihoodG + likelihoodnG
         prior = me.prior()
         norm = me.psiH0()/me.normalization()
         posterior=likelihood*prior*norm
