@@ -65,7 +65,6 @@ class DetectionProbability(object):
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
         # TODO: For higher values of z (z=10) this goes outside the range of the psds and gives an error
         self.z_array = np.logspace(-4.0,0.5,50)
-        self.cosmo=fast_cosmology()
         self.precomputed = precomputed
         
         # set up the samples for monte carlo integral
