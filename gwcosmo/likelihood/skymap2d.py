@@ -24,4 +24,8 @@ class skymap2d(object):
         # TODO: change this to interpolate between pixels
         ipix_gal = ipix_from_ra_dec(self.nside,ra,dec,nest=self.nested)
         return self.prob[ipix_gal]
-    
+
+
+def ipix_from_ra_dec(nside, ra, dec, nest=False):
+    (theta, phi) = (np.pi/2.-dec, ra)
+    return hp.ang2pix(nside, theta, phi, nest=nest)

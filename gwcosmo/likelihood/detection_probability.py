@@ -39,9 +39,9 @@ class DetectionProbability(object):
         If using variable pdet across the sky, specify the resolution of the healpy map
     Omega_m : float, optional
         matter fraction of the universe (default=0.3)
-    linear : boolean, optional
+    linear : bool, optional
         if True, use linear cosmology (default=False)
-    precomputed : boolean, optional
+    precomputed : bool, optional
         if True, use pickled version of pdet (default=True)
     """
     def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
@@ -63,10 +63,10 @@ class DetectionProbability(object):
         self.linear = linear
         self.H0vec = np.linspace(10,200,50)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
-        self.z_array = np.logspace(-4.0,0.0,50)
+        # TODO: For higher values of z (z=10) this goes outside the range of the psds and gives an error
+        self.z_array = np.logspace(-4.0,0.5,50)
         self.cosmo=fast_cosmology()
         self.precomputed = precomputed
-        #self.dl_array = cosmo.dl_zH0(self.z_array,self.H0) # TODO: fix this
         
         # set up the samples for monte carlo integral
         N=self.Nsamps
@@ -77,12 +77,10 @@ class DetectionProbability(object):
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS':
-            #self.dl_array = np.linspace(0.1,400,100)
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
-            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BNS_pD_zH0_interp.p')
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BNS_z_H0_pD_array.p')
         if self.mass_distribution == 'BBH':
-            #self.dl_array = np.linspace(0.1,3000,100)
             #Based on Maya's notebook
             def inv_cumulative_power_law(u,mmin,mmax,alpha):
                 if alpha != -1:
@@ -91,16 +89,18 @@ class DetectionProbability(object):
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
-            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BBH_pD_zH0_interp.p')
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BBH_z_H0_pD_array.p')
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
         # precompute values which will be called multiple times, if not precomputed
         if precomputed:
-            self.interp_average = pickle.load(open(interp_av_path,'rb'))
+            z,H0,prob = pickle.load(open(interp_av_path,'rb'))
             # TODO: add error message for if pickled file doesn't exist
         else:
             self.__interpolnum = self.__numfmax_fmax(self.M_min)
-            self.interp_average = self.__pD_zH0_loop(self.H0vec)
+            z,H0,prob = self.__pD_zH0_array(self.H0vec)
+        self.interp_average = interp2d(z,H0,prob,kind='cubic') 
+        # TODO: test how different interpolations and fill values effect results.  Do values go below 0 and above 1?
         if Nside != None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
 
@@ -184,7 +184,7 @@ class DetectionProbability(object):
         Parameters
         ----------
         detector : str
-            name of detector in network(eg 'H1', 'L1')
+            name of detector in network (eg 'H1', 'L1')
         RA,Dec : float
             sky location of the event in radians
         psi : float
@@ -207,7 +207,7 @@ class DetectionProbability(object):
         Parameters
         ----------
         detector : str
-            name of detector in network(eg 'H1', 'L1')
+            name of detector in network (eg 'H1', 'L1')
         RA,Dec : float
             sky location of the event in radians
         psi : float
@@ -360,55 +360,34 @@ class DetectionProbability(object):
             survival = ncx2.sf(effective_threshold**2,4,rho)
             prob[i] = np.sum(survival,0)/self.Nsamps
         
-        #dl_array = self.cosmo.dl_zH0(self.z_array,H0)  
-        #return splrep(dl_array,prob)
         return prob
-    
-    
-    def __pD_dlH0_loop(self,H0vec):
+        
+        
+    def __pD_zH0_array(self,H0vec):
         """
-        Function which calculates p(D|H0) for a range of distance and H0 values
+        Function which calculates p(D|z,H0) for a range of redshift and H0 values
         
         Parameters
         ----------
         H0vec : array_like
-            numpy array of H0 values in kms-1Mpc-1
+            array of H0 values in kms-1Mpc-1
         
         Returns
         -------
-        Massive interpolation thing
-        """
-        #lookup = np.array([self.__pD_dl(H0) for H0 in H0vec])
-        dl_array = np.array([self.cosmo.dl_zH0(self.z_array,H0) for H0 in H0vec])
-        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        #H0_array = 
-        print(np.shape(H0vec),np.shape(dl_array),np.shape(prob))
-        return interp2d(self.z_array,H0vec,prob)
-        
-        
-    def __pD_zH0_loop(self,H0vec):
-        """
-        Function which calculates p(D|H0) for a range of redshift and H0 values
-        
-        Parameters
-        ----------
-        H0vec : array_like
-            numpy array of H0 values in kms-1Mpc-1
-        
-        Returns
-        -------
-        2D interpolation object over z and H0
+        list of arrays?
+            redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        interp = interp2d(self.z_array,H0vec,prob)
-        interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/pD_zH0_interp.p')
-        pickle.dump(interp,open(interp_av_path,'wb'))
-        return interp
+        path = pkg_resources.resource_filename('gwcosmo', 'likelihood/z_H0_pD_array.p')
+        pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
+        return (self.z_array,H0vec,prob)
+        
         
 
     def pD_dlH0_eval(self,dl,H0):
         """
         Returns the probability of detection at a given value of luminosity distance and H0.
+        Note that this is slower than the function pD_zH0_eval(z,H0).
         
         Parameters
         ----------
@@ -447,12 +426,48 @@ class DetectionProbability(object):
 
     def pD_H0_zinterp(self,H0):
         """
-        Hopefully something faster than the other interpolations
+        Hopefully something faster than 2d interpolation over z and H0 and p(D|z,H0)
         """
+        # TODO: write this function, so that an integral for any given H0 over z is fast
         pass
+
+
+
+
+
+    ###### PLEASE NOTE FUNCTIONS BEYOND THIS POINT ARE OBSOLETE OR NEED REPAIR ######
+    # TODO: remove obsolete functions
+    # TODO: repair pixel-based functions
+    
+    
+    
         
+        
+    def __pD_zH0_interp(self,H0vec):
+        """
+        OBSOLETE
+        Function which calculates p(D|z,H0) for a range of redshift and H0 values
+        
+        Parameters
+        ----------
+        H0vec : array_like
+            numpy array of H0 values in kms-1Mpc-1
+        
+        Returns
+        -------
+        2D interpolation object over z and H0
+        """
+        # TODO pickle z,H0,prob without interp, and try different interp options
+        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        interp = interp2d(self.z_array,H0vec,prob)
+        interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/pD_zH0_interp.p')
+        pickle.dump(interp,open(interp_av_path,'wb'))
+        return interp
+
+    
     def __snr_squared_old(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z=0):
         """
+        OBSOLETE
         the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
         
         Parameters
@@ -481,6 +496,7 @@ class DetectionProbability(object):
         
     def __pD_dl_old(self,dl_array):
         """
+        OBSOLETE
         Detection probability over a range of distances, returned as an interpolated function.
         """
         rho = np.zeros((self.Nsamps,1))
@@ -503,6 +519,7 @@ class DetectionProbability(object):
     
     def __pD_dlradec(self,Nside,dl_array):
         """
+        NEEDS FIXING
         Detection probability over a range of distances, at each pixel on a healpy map.
         """
         no_pix = hp.pixelfunc.nside2npix(Nside)
@@ -555,6 +572,7 @@ class DetectionProbability(object):
 
     def pD_event(self, dl, ra, dec, m1, m2, inc, psi, gmst):
         """
+        UNUSED
         detection probability for a particular event (masses, distance, sky position, orientation and time)
         """
         rhosqs = [ self.snr_squared_single(dl, ra, dec, m1, m2, inc, psi, det, gmst) for det in self.__lal_detectors]
@@ -565,7 +583,7 @@ class DetectionProbability(object):
 
     def pD_dl_single(self, dl):
         """
-        OBSOLETE?
+        OBSOLETE
         Detection probability for a specific distance, averaged over all other parameters - without using interpolation
         """       
         return np.mean(
@@ -575,6 +593,7 @@ class DetectionProbability(object):
 
     def pD_dl_eval_old(self,dl):
         """
+        OBSOLETE
         Returns a probability for a given distance dl from the interpolated function.
         Or an array of probabilities for an array of distances.
         """
@@ -597,6 +616,7 @@ class DetectionProbability(object):
         
     def pDdl_radec(self,RA,Dec,gmst):
         """
+        NEEDS FIXING
         Returns the probability of detection function for a specific ra, dec, and time.
         """
         ipix = hp.ang2pix(self.Nside,np.pi/2.0-Dec,RA-gmst)
@@ -605,6 +625,7 @@ class DetectionProbability(object):
         
     def __call__(self, dl):
         """
+        NEEDS FIXING
         To call as function of dl
         """
         return self.pD_dl_eval(dl)
@@ -612,6 +633,7 @@ class DetectionProbability(object):
     
     def pD_distmax(self):
         """
+        NEEDS FIXING
         Returns twice the maximum distance given Pdet(dl) = 0.01.
         """
         return 2.*self.dl_array[np.where(self.pD_dl_eval(self.dl_array)>0.01)[0][-1]]

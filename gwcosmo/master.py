@@ -31,10 +31,11 @@ class MasterEquation(object):
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
     """
-    def __init__(self,H0,galaxy_catalog,pdet,Omega_m=0.3,linear=False,weighted=False,counterparts=False):
+    def __init__(self,H0,galaxy_catalog,event_type,Omega_m=0.3,linear=False,weighted=False,counterparts=False):
         self.H0 = H0
         self.galaxy_catalog = galaxy_catalog
-        self.pdet = pdet
+        self.event_type = event_type
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type)
         self.mth = galaxy_catalog.mth()
         self.Omega_m = Omega_m
         self.linear = linear
@@ -50,8 +51,12 @@ class MasterEquation(object):
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
-        self.distmax = pdet.pD_distmax()
-        self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
+        #self.distmax = self.pdet.pD_distmax()
+        #self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
+        if event_type == 'BNS':
+            self.zmax = 0.2
+        elif event_type == 'BBH':
+            self.zmax = 2.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
@@ -152,7 +157,8 @@ class MasterEquation(object):
                 else:
                     weight = 1.0
 
-                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight            
+                prob = self.pdet.pD_zH0_eval(gal.z,self.H0)
+                den += np.reshape(prob,len(self.H0))*weight            
 
         else:
             den = np.zeros(len(self.H0))       
@@ -163,8 +169,8 @@ class MasterEquation(object):
                     weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
-
-                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight
+                prob = self.pdet.pD_zH0_eval(gal.z,self.H0)
+                den += np.reshape(prob,len(self.H0))*weight
 
         self.pDG = den
         return self.pDG
@@ -186,7 +192,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_zH0_eval(z,self.H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -274,7 +280,7 @@ class MasterEquation(object):
         for i in range(len(self.H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_zH0_eval(z,self.H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -300,7 +306,7 @@ class MasterEquation(object):
         pH0 = np.zeros(len(self.H0))
         for i in range(len(self.H0)):
             def I(z):
-                return self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                return self.pdet.pD_zH0_eval(z,self.H0[i])*self.zprior(z)
             pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         if prior == 'jeffreys':
