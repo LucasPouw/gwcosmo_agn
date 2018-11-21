@@ -31,7 +31,6 @@ def blue_luminosity_from_mag(m,z):
     lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
     return lumB
 
-    
 class galaxy(object):
     ''' Class for galaxy objects
     '''
@@ -103,6 +102,14 @@ class galaxy(object):
         self.z = row.ZREDMAGIC 
         self.m = 0
         self.lumB = 1
+
+    def load_row_DES(self, index, row):
+        self.index = index
+        self.ra = row.RA*np.pi/180.
+        self.dec = row.Dec*np.pi/180.
+        self.z = row.z
+        self.m = row.rmag
+        self.lumB = blue_luminosity_from_mag(self.m,self.z)
         
 class galaxyCatalog(object):
     ''' Class for galaxy catalog objects
@@ -114,24 +121,6 @@ class galaxyCatalog(object):
         self.catalog_file = catalog_file
         self.indexes = indexes
         self.dictionary = dictionary
-
-    def extract_galaxies(self):
-        nGal = self.nGal()
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        z = np.zeros(nGal)
-        m = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            z[i] = gal.z
-            m[i] = gal.m
-            lumB[i] = gal.lumB
-        if all(m) == 0: #for mdc1 and mdc2
-            m = np.ones(nGal)
-        return ra, dec, z, m, lumB
 
     def load_counterpart_catalog(self, ra, dec, z):   
         galaxies={}
@@ -233,6 +222,21 @@ class galaxyCatalog(object):
         self.dictionary = galaxies
         self.indexes = np.arange(nGal)
         
+    def load_DES_catalog(self):
+        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/DES.dat"
+        self.catalog_file = catalog_data_path + "DES.dat"
+        print('loading DES')
+        df = pd.read_csv(self.catalog_file,delim_whitespace=True)
+        galaxies={}
+        nGal = len(df)
+        for k in range(0,nGal):
+            print(str(k))
+            gal = galaxy()
+            gal.load_row_DES(k,df.iloc[k])
+            galaxies[str(k)]= gal
+        self.dictionary = galaxies
+        self.indexes = np.arange(nGal)
+        
     def nGal(self):
         return len(self.dictionary)
 
@@ -249,6 +253,24 @@ class galaxyCatalog(object):
         else:
             mth = np.median(m)
         return mth
+
+    def extract_galaxies(self):
+        nGal = self.nGal()
+        ra = np.zeros(nGal)
+        dec = np.zeros(nGal)
+        z = np.zeros(nGal)
+        m = np.zeros(nGal)
+        lumB = np.zeros(nGal)
+        for i in range(nGal):
+            gal = self.get_galaxy(i)
+            ra[i] = gal.ra
+            dec[i] = gal.dec
+            z[i] = gal.z
+            m[i] = gal.m
+            lumB[i] = gal.lumB
+        if all(m) == 0: #for mdc1 and mdc2
+            m = np.ones(nGal)
+        return ra, dec, z, m, lumB
 
     def pixelCatalogs(self,skymap3d):
         moc_map = skymap3d.as_healpix()
