@@ -44,9 +44,9 @@ class posterior_samples(object):
         elif event == 'GW170608':
             lalinference_path=posterior_data_path + "/GW170608_allIMRPpv2_posterior_samples.dat"
         elif event == 'GW151226':
-            lalinference_path=posterior_data_path + "/GW151226_allIMRPPsp_O2cat_postt"
+            lalinference_path=posterior_data_path + "/GW151226_allIMRPPsp_O2cat_post.dat"
         elif event == 'GW151012':
-            lalinference_path=posterior_data_path + "/GW151012_allIMRPhenomPv2_post.datt"
+            lalinference_path=posterior_data_path + "/GW151012_allIMRPhenomPv2_post.dat"
         elif event == 'GW170104':
             lalinference_path=posterior_data_path + "/GW170104_allIMRPPsp_O2cat_post.dat"
         elif event == 'GW150914':
