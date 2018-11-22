@@ -63,7 +63,7 @@ class MasterEquation(object):
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         if event_type == 'BNS':
-            self.zmax = 0.2
+            self.zmax = 0.4
         elif event_type == 'BBH':
             self.zmax = 2.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
@@ -493,12 +493,12 @@ class MasterEquation(object):
         counterpart_case : str, optional
             Choice of counterpart analysis (default='direct')
             if 'direct', will assume the counterpart is correct with certainty
-            if 'pencilbeam', will assume the host galaxy is along the counterparts line of sight, but may be beyond it
+            if 'pencilbeam', will assume the host galaxy is along the counterpart's line of sight, but may be beyond it
             
         Returns
         -------
         float or array_like
-            p(x|H0)
+            p(x|H0,D)
         """    
         dH0 = H0[1]-H0[0]
         

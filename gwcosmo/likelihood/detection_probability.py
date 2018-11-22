@@ -377,8 +377,8 @@ class DetectionProbability(object):
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        path = pkg_resources.resource_filename('gwcosmo', 'likelihood/z_H0_pD_array.p')
-        pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
+        #path = pkg_resources.resource_filename('gwcosmo', 'likelihood/z_H0_pD_array.p')
+        #pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
         return (self.z_array,H0vec,prob)
         
         
