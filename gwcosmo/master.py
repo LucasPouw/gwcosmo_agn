@@ -351,25 +351,6 @@ class MasterEquation(object):
         self.pDnG = den   
         return self.pDnG
 
-
-    def pH0_D(self,H0,prior='uniform'):
-        """
-        The prior probability of H0 given a detection
-        
-        Takes an array of H0 values and a choice of prior.
-        Integrates p(D|dL(z,H0))*p(z) over z
-        Returns an array of values corresponding to different values of H0.
-        """
-        pH0 = np.zeros(len(H0))
-        for i in range(len(H0)):
-            def I(z):
-                return self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
-            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-
-        if prior == 'jeffreys':
-            return pH0/H0  
-        else:
-            return pH0
             
     def pH0(self,H0,prior='log'):
         """
