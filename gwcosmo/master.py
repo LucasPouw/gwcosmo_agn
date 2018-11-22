@@ -32,14 +32,13 @@ class MasterEquation(object):
     and methods to stitch them together in the right way.
     """
     def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False):
-        self.galaxy_catalog = galaxy_catalog
         self.event_type = event_type
+        self.galaxy_catalog = galaxy_catalog
         self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type)
         self.mth = galaxy_catalog.mth()
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
-        #self.counterparts = counterparts
         
         self.pDG = None
         self.pGD = None
@@ -84,7 +83,6 @@ class MasterEquation(object):
             minskypdf = skypdf[sampno]
 
         count = 0
-        data = []
         
         distkernel = GW_data.lineofsight_distance()
         distmax = 2.0*np.amax(GW_data.distance)
@@ -108,7 +106,7 @@ class MasterEquation(object):
                 tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
                 
             tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
-            num = tempdist*tempsky
+            numnorm = tempdist*tempsky
 
         else:
             # loop over all possible galaxies
@@ -135,8 +133,9 @@ class MasterEquation(object):
                     num += tempdist*tempsky*weight
                 else:
                     continue
-            print(count)        
-        return num
+            print(count)
+            numnorm = num/nGal      
+        return numnorm
 
 
     def pD_H0G(self,H0):
@@ -160,7 +159,7 @@ class MasterEquation(object):
             prob = self.pdet.pD_zH0_eval(gal.z,H0)
             den += np.reshape(prob,len(H0))*weight
 
-        self.pDG = den
+        self.pDG = den/nGal
         return self.pDG
 
 
@@ -292,6 +291,67 @@ class MasterEquation(object):
         return self.pDnG
 
 
+    def px_H0_counterpart(self,H0,GW_data,EM_counterpart,skymap2d):
+        """
+        The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+        
+        Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
+        Creates a likelihood using the samples/skymap.
+        Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
+        Sums over these values.
+        Returns an array of values corresponding to different values of H0.
+        """
+        num = np.zeros(len(H0))
+        
+        distkernel = GW_data.lineofsight_distance()
+        distmax = 2.0*np.amax(GW_data.distance)
+        distmin = 0.5*np.amin(GW_data.distance)
+        dl_array = np.linspace(distmin,distmax,500)
+        vals = distkernel(dl_array)
+        temp = splrep(dl_array,vals)
+        
+        def px_dl(dl):
+            """
+            Returns a probability for a given distance dl from the interpolated function.
+            """
+            return splev(dl,temp,ext=3)
+        
+        counterpart = EM_counterpart.get_galaxy(0)
+            
+        if skymap2d is not None:
+            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+        else:
+            tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
+                
+        tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+        numnorm = tempdist*tempsky
+        return numnorm
+
+
+    def pD_H0(self,H0):
+        """
+        Calculates probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
+        """
+        den = np.zeros(len(H0))
+
+        for i in range(len(H0)):
+
+            def I(z,M):
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
+
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        self.pDnG = den   
+        return self.pDnG
+
+
     def pH0_D(self,H0,prior='uniform'):
         """
         The prior probability of H0 given a detection
@@ -322,7 +382,7 @@ class MasterEquation(object):
         if prior == 'log':
             return 1./H0
         
-    def likelihood(self,H0,GW_data,EM_counterpart=None,complete=False,skymap2d=None):
+    def likelihood(self,H0,GW_data,EM_counterpart=None,complete=False,skymap2d=None,counterpart_case='direct'):
         """
         The likelihood for a single event
         
@@ -335,24 +395,52 @@ class MasterEquation(object):
         """    
         dH0 = H0[1]-H0[0]
         
-        pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
-        if all(self.pDG)==None:
-            self.pDG = self.pD_H0G(H0)
-        
-        if complete==True:
-            likelihood = pxG/self.pDG
-        
-        else:
-            if all(self.pGD)==None:
-                self.pGD = self.pG_H0D(H0)
-            if all(self.pnGD)==None:
-                self.pnGD = self.pnG_H0D(H0)
-            if all(self.pDnG)==None:
-                self.pDnG = self.pD_H0nG(H0)
+        if EM_counterpart != None:
+            
+            if counterpart_case == 'direct':
+                pxG = self.px_H0_counterpart(H0,GW_data,EM_counterpart,skymap2d)
+                pD_H0 = self.pD_H0(H0)
+                likelihood = pxG/pD_H0
                 
-            pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+            # The pencilbeam case is currently coded up along the line of sight of the counterpart
+            # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
+            # TODO: allow this to cover a small patch of sky
+            elif counterpart_case == 'pencilbeam':
+                pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+                if all(self.pDG)==None:
+                    self.pDG = self.pD_H0G(H0)
+                if all(self.pGD)==None:
+                    self.pGD = self.pG_H0D(H0)
+                if all(self.pnGD)==None:
+                    self.pnGD = self.pnG_H0D(H0)
+                if all(self.pDnG)==None:
+                    self.pDnG = self.pD_H0nG(H0)
+                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+                
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)            
+            else:
+                print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
-            likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+
+        else:
+            pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+            if all(self.pDG)==None:
+                self.pDG = self.pD_H0G(H0)
+        
+            if complete==True:
+                likelihood = pxG/self.pDG
+        
+            else:
+                if all(self.pGD)==None:
+                    self.pGD = self.pG_H0D(H0)
+                if all(self.pnGD)==None:
+                    self.pnGD = self.pnG_H0D(H0)
+                if all(self.pDnG)==None:
+                    self.pDnG = self.pD_H0nG(H0)
+                    
+                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+    
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
 
