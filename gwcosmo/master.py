@@ -54,7 +54,7 @@ class MasterEquation(object):
         #self.distmax = self.pdet.pD_distmax()
         #self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
         if event_type == 'BNS':
-            self.zmax = 0.2
+            self.zmax = 0.4
         elif event_type == 'BBH':
             self.zmax = 2.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
@@ -106,9 +106,8 @@ class MasterEquation(object):
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
 
-            # TODO: add possibility of using skymaps/other ways of using gw data
             if skymap2d is not None:
-                tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix # TODO: test fully and integrate into px_H0nG
+                tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
             else:
                 tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
 
@@ -144,21 +143,7 @@ class MasterEquation(object):
         
         if self.counterparts == True:
             print('counterparts')
-            
-            den = np.zeros(len(self.H0))
-            catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_glade_catalog()
-            nGal = catalog.nGal()
-            for i in range(nGal):
-                gal = catalog.get_galaxy(i)
-
-                if self.weighted:
-                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                else:
-                    weight = 1.0
-
-                prob = self.pdet.pD_zH0_eval(gal.z,self.H0)
-                den += np.reshape(prob,len(self.H0))*weight            
+            den = self.H0**3.0            
 
         else:
             den = np.zeros(len(self.H0))       
@@ -344,6 +329,10 @@ class MasterEquation(object):
         
         if complete==True:
             likelihood = pxG/self.pDG 
+            
+        elif self.counterparts==True:
+            likelihood = pxG/self.pDG
+        
         else:
             if all(self.pGD)==None:
                 self.pGD = self.pG_H0D()
