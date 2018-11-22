@@ -30,6 +30,19 @@ class MasterEquation(object):
     """
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
+    
+    Parameters
+    ----------
+    event_type : str
+        Type of gravitational wave event (either 'BNS' or 'BBH')
+    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
+        The relevant galaxy catalog
+    Omega_m : float, optional
+        The matter fraction of the universe (default=0.3)
+    linear : bool, optional
+        Use linear cosmology (default=False)
+    weighted : bool, optional
+        Use luminosity weighting (default=False)
     """
     def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False):
         self.event_type = event_type
@@ -58,13 +71,26 @@ class MasterEquation(object):
 
     def px_H0G(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
         """
-        The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+        Returns p(x|H0,G) for given values of H0.
+        The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
         
-        Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap.
-        Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,G)
         """
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
@@ -97,6 +123,7 @@ class MasterEquation(object):
             """
             return splev(dl,temp,ext=3)
         
+        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if EM_counterpart != None:
             counterpart = EM_counterpart.get_galaxy(0)
             
@@ -140,12 +167,18 @@ class MasterEquation(object):
 
     def pD_H0G(self,H0):
         """
-        The normalising factor for px_H0G.
+        Returns p(D|H0,G) (the normalising factor for px_H0G).
+        The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
         
-        Takes an array of H0 values and a galaxy catalogue.
-        Evaluates detection probability at the location of every galaxy in the catalogue.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,G)        
         """  
         nGal = self.galaxy_catalog.nGal()        
 
@@ -165,11 +198,18 @@ class MasterEquation(object):
 
     def pG_H0D(self,H0):
         """
+        Returns p(G|H0,D)
         The probability that the host galaxy is in the catalogue given detection and H0.
         
-        Takes an array of H0 values, and the apparent magnitude threshold of the galaxy catalogue.
-        Integrates p(M|H0)*p(z)*p(D|dL(z,H0)) over z and M, incorporating mth into limits.  Should be internally normalised.
-        Returns an array of probabilities corresponding to different H0s.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(G|H0,D) 
         """  
         # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
         num = np.zeros(len(H0)) 
@@ -200,9 +240,18 @@ class MasterEquation(object):
 
     def pnG_H0D(self,H0):
         """
+        Returns 1.0 - pG_H0D(H0).
         The probability that a galaxy is not in the catalogue given detection and H0
         
-        Returns the complement of pG_H0D.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(bar{G}|H0,D) 
         """
         if all(self.pGD)==None:
             self.pGD = self.pG_H0D(H0)
@@ -212,12 +261,26 @@ class MasterEquation(object):
         
     def px_H0nG(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
         """
-        The likelihood of the GW data given not in the catalogue and H0
+        Returns p(x|H0,bar{G}).
+        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
         
-        Takes an array of H0 values, an apparent magnitude threshold, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap: p(x|dL,Omega).
-        Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,bar{G})
         """
         num = np.zeros(len(H0))
         
@@ -249,7 +312,8 @@ class MasterEquation(object):
             Mmax = M_Mobs(H0[i],-12.96)
 
             num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            
+        
+        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
             counterpart = EM_counterpart.get_galaxy(0)
             
@@ -264,11 +328,18 @@ class MasterEquation(object):
 
     def pD_H0nG(self,H0):
         """
-        Normalising factor for px_H0nG
+        Returns p(D|H0,bar{G})
+        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
         
-        Takes an array of H0 values and an apparent magnitude threshold.
-        Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,bar{G})     
         """  
         # TODO: same fixes as for pG_H0D 
         den = np.zeros(len(H0))
@@ -293,13 +364,26 @@ class MasterEquation(object):
 
     def px_H0_counterpart(self,H0,GW_data,EM_counterpart,skymap2d):
         """
-        The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+        Returns p(x|H0,counterpart)
+        The likelihood of the GW data given H0 and direct counterpart.
         
-        Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap.
-        Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,counterpart)
         """
         num = np.zeros(len(H0))
         
@@ -330,7 +414,18 @@ class MasterEquation(object):
 
     def pD_H0(self,H0):
         """
-        Calculates probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
+        Returns p(D|H0).
+        The probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0)  
         """
         den = np.zeros(len(H0))
 
@@ -354,25 +449,56 @@ class MasterEquation(object):
             
     def pH0(self,H0,prior='log'):
         """
-        The prior probability of H0 independent of detection
+        Returns p(H0)
+        The prior probability of H0
         
-        Takes an array of H0 values and a choice of prior.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        prior : str, optional
+            The choice of prior (default='log')
+            if 'log' uses uniform in log prior
+            if 'uniform' uses uniform prior
+            
+        Returns
+        -------
+        float or array_like
+            p(H0)
         """
         if prior == 'uniform':
             return np.ones(len(H0))
         if prior == 'log':
             return 1./H0
-        
+
+
     def likelihood(self,H0,GW_data,EM_counterpart=None,complete=False,skymap2d=None,counterpart_case='direct'):
         """
         The likelihood for a single event
         
         Parameters
-        ----
-        GW_data : posterior samples (distance, ra, dec)
-        complete : boolean
-                    Is catalogue complete?
-        skymap2d : KDe for skymap
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to doing a counterpart analysis over statistical analysis
+        complete : bool, optional
+            Is the galaxy catalog complete to all relevant distances/redshifts? (default=False)
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+        counterpart_case : str, optional
+            Choice of counterpart analysis (default='direct')
+            if 'direct', will assume the counterpart is correct with certainty
+            if 'pencilbeam', will assume the host galaxy is along the counterparts line of sight, but may be beyond it
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0)
         """    
         dH0 = H0[1]-H0[0]
         
