@@ -19,6 +19,7 @@ from astropy import constants as const
 from astropy import units as u
 
 from ligo.skymap.moc import nest2uniq,uniq2nest,uniq2ang
+from ligo.skymap.bayestar import rasterize
 
 import gwcosmo
 
@@ -29,16 +30,29 @@ class MasterEquation(object):
     """
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
+    
+    Parameters
+    ----------
+    event_type : str
+        Type of gravitational wave event (either 'BNS' or 'BBH')
+    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
+        The relevant galaxy catalog
+    Omega_m : float, optional
+        The matter fraction of the universe (default=0.3)
+    linear : bool, optional
+        Use linear cosmology (default=False)
+    weighted : bool, optional
+        Use luminosity weighting (default=False)
     """
-    def __init__(self,H0,galaxy_catalog,pdet,Omega_m=0.3,linear=False,weighted=False,counterparts=False,whole_cat=True,radec_lim=None):
-        self.H0 = H0
+
+    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None):
+        self.event_type = event_type
         self.galaxy_catalog = galaxy_catalog
-        self.pdet = pdet
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type)
         self.mth = galaxy_catalog.mth()
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
-        self.counterparts = counterparts
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
         if whole_cat == False:
@@ -63,24 +77,38 @@ class MasterEquation(object):
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
-        self.distmax = pdet.pD_distmax()
-        #self.zmax = z_dlH0(self.distmax,H0=max(self.H0),linear=self.linear)
-        self.zmax = 4.0
+        if event_type == 'BNS':
+            self.zmax = 0.4
+        elif event_type == 'BBH':
+            self.zmax = 2.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
-    def px_H0G(self,event_data,skymap2d=None):
+    def px_H0G(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
         """
-        The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+        Returns p(x|H0,G) for given values of H0.
+        The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
         
-        Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap.
-        Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,G)
         """
         nGal = self.galaxy_catalog.nGal()
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         if skymap2d is not None:
             prob_sorted = np.sort(skymap2d.prob)[::-1]
@@ -89,18 +117,17 @@ class MasterEquation(object):
             minskypdf = prob_sorted[idx]*skymap2d.npix
         
         else:    
-            skykernel = event_data.compute_2d_kde()
-            skypdf = skykernel.evaluate([event_data.longitude,event_data.latitude])
+            skykernel = GW_data.compute_2d_kde()
+            skypdf = skykernel.evaluate([GW_data.longitude,GW_data.latitude])
             skypdf.sort()
             sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
             minskypdf = skypdf[sampno]
 
         count = 0
-        data = []
         
-        distkernel = event_data.lineofsight_distance()
-        distmax = 2.0*np.amax(event_data.distance)
-        distmin = 0.5*np.amin(event_data.distance)
+        distkernel = GW_data.lineofsight_distance()
+        distmax = 2.0*np.amax(GW_data.distance)
+        distmin = 0.5*np.amin(GW_data.distance)
         dl_array = np.linspace(distmin,distmax,500)
         vals = distkernel(dl_array)
         temp = splrep(dl_array,vals)
@@ -111,96 +138,103 @@ class MasterEquation(object):
             """
             return splev(dl,temp,ext=3)
         
-        # loop over all possible galaxies
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-
-            # TODO: add possibility of using skymaps/other ways of using gw data
-            if skymap2d is not None:
-                tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix # TODO: test fully and integrate into px_H0nG
-            else:
-                tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
-
-            if tempsky >= minskypdf:
-                count += 1
-
-                if self.weighted:
-                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                else:
-                    weight = 1.0
-                
-                if gal.z == 0:
-                    tempdist = 0.0
-                else:
-                    tempdist = px_dl(self.cosmo.dl_zH0(gal.z,self.H0))/self.cosmo.dl_zH0(gal.z,self.H0)**2 # remove dl^2 prior from samples
-                num += tempdist*tempsky*weight
-            else:
-                continue
-        print(count)        
-        return num
-
-
-    def pD_H0G(self):
-        """
-        The normalising factor for px_H0G.
-        
-        Takes an array of H0 values and a galaxy catalogue.
-        Evaluates detection probability at the location of every galaxy in the catalogue.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
-        """  
-        nGal = self.galaxy_catalog.nGal()
-        
-        if self.counterparts == True:
-            print('counterparts')
+        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
+        if EM_counterpart != None:
+            counterpart = EM_counterpart.get_galaxy(0)
             
-            den = np.zeros(len(self.H0))
-            catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_glade_catalog()
-            nGal = catalog.nGal()
-            for i in range(nGal):
-                gal = catalog.get_galaxy(i)
-
-                if self.weighted:
-                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                else:
-                    weight = 1.0
-
-                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight            
+            if skymap2d is not None:
+                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+            else:
+                tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
+                
+            tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+            numnorm = tempdist*tempsky
 
         else:
-            den = np.zeros(len(self.H0))       
+            # loop over all possible galaxies
             for i in range(nGal):
                 gal = self.galaxy_catalog.get_galaxy(i)
 
-                if self.weighted:
-                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                if skymap2d is not None:
+                    tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
                 else:
-                    weight = 1.0
+                    tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
+    
+                if tempsky >= minskypdf:
+                    count += 1
+    
+                    if self.weighted:
+                        weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                    else:
+                        weight = 1.0
+                    
+                    if gal.z == 0:
+                        tempdist = 0.0
+                    else:
+                        tempdist = px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
+                    num += tempdist*tempsky*weight
+                else:
+                    continue
+            print(count)
+            numnorm = num/nGal      
+        return numnorm
 
-                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight
 
-        self.pDG = den
+    def pD_H0G(self,H0):
+        """
+        Returns p(D|H0,G) (the normalising factor for px_H0G).
+        The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,G)        
+        """  
+        nGal = self.galaxy_catalog.nGal()        
+
+        den = np.zeros(len(H0))       
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            if self.weighted:
+                weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+            else:
+                weight = 1.0
+            prob = self.pdet.pD_zH0_eval(gal.z,H0)
+            den += np.reshape(prob,len(H0))*weight
+
+        self.pDG = den/nGal
         return self.pDG
 
 
-    def pG_H0D(self):
+    def pG_H0D(self,H0):
         """
+        Returns p(G|H0,D)
         The probability that the host galaxy is in the catalogue given detection and H0.
         
-        Takes an array of H0 values, and the apparent magnitude threshold of the galaxy catalogue.
-        Integrates p(M|H0)*p(z)*p(D|dL(z,H0)) over z and M, incorporating mth into limits.  Should be internally normalised.
-        Returns an array of probabilities corresponding to different H0s.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(G|H0,D) 
         """  
         # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
-        num = np.zeros(len(self.H0)) 
-        den = np.zeros(len(self.H0))
+        num = np.zeros(len(H0)) 
+        den = np.zeros(len(H0))
         
         # TODO: vectorize this if possible
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -209,43 +243,66 @@ class MasterEquation(object):
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
             # TODO: test how sensitive this result is to changing Mmin and Mmax.
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
             
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
         return self.pGD    
 
 
-    def pnG_H0D(self):
+    def pnG_H0D(self,H0):
         """
+        Returns 1.0 - pG_H0D(H0).
         The probability that a galaxy is not in the catalogue given detection and H0
         
-        Returns the complement of pG_H0D.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(bar{G}|H0,D) 
         """
         if all(self.pGD)==None:
-            self.pGD = self.pG_H0D()
+            self.pGD = self.pG_H0D(H0)
         self.pnGD = 1.0 - self.pGD
         return self.pnGD
        
         
-    def px_H0nG(self,event_data):
+    def px_H0nG(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
         """
-        The likelihood of the GW data given not in the catalogue and H0
+        Returns p(x|H0,bar{G}).
+        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
         
-        Takes an array of H0 values, an apparent magnitude threshold, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap: p(x|dL,Omega).
-        Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,bar{G})
         """
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
-        distkernel = event_data.lineofsight_distance()
+        distkernel = GW_data.lineofsight_distance()
         
-        distmax = 2.0*np.amax(event_data.distance)
-        distmin = 0.5*np.amin(event_data.distance)
+        distmax = 2.0*np.amax(GW_data.distance)
+        distmin = 0.5*np.amin(GW_data.distance)
         dl_array = np.linspace(distmin,distmax,500)
         vals = distkernel(dl_array)
         temp = splrep(dl_array,vals)
@@ -256,117 +313,258 @@ class MasterEquation(object):
             """
             return splev(dl,temp,ext=3)
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def Inum(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-
+            num[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        
+        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
+        if EM_counterpart != None:
+            counterpart = EM_counterpart.get_galaxy(0)
+            
+            if skymap2d is not None:
+                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+            else:
+                tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
+                
+            num = num*tempsky
         return num
 
 
-    def pD_H0nG(self):
+    def pD_H0nG(self,H0):
         """
-        Normalising factor for px_H0nG
+        Returns p(D|H0,bar{G})
+        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
         
-        Takes an array of H0 values and an apparent magnitude threshold.
-        Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,bar{G})     
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(self.H0))
+        den = np.zeros(len(H0))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pDnG = den   
         return self.pDnG
 
 
-    def pH0_D(self,prior='uniform'):
+    def px_H0_counterpart(self,H0,GW_data,EM_counterpart,skymap2d):
         """
-        The prior probability of H0 given a detection
+        Returns p(x|H0,counterpart)
+        The likelihood of the GW data given H0 and direct counterpart.
         
-        Takes an array of H0 values and a choice of prior.
-        Integrates p(D|dL(z,H0))*p(z) over z
-        Returns an array of values corresponding to different values of H0.
-        """
-        pH0 = np.zeros(len(self.H0))
-        for i in range(len(self.H0)):
-            def I(z):
-                return self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
-            pH0[i] = quad(I,0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-
-        if prior == 'jeffreys':
-            return pH0/self.H0  
-        else:
-            return pH0
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
             
-    def pH0(self,prior='log'):
+        Returns
+        -------
+        float or array_like
+            p(x|H0,counterpart)
         """
-        The prior probability of H0 independent of detection
+        num = np.zeros(len(H0))
         
-        Takes an array of H0 values and a choice of prior.
+        distkernel = GW_data.lineofsight_distance()
+        distmax = 2.0*np.amax(GW_data.distance)
+        distmin = 0.5*np.amin(GW_data.distance)
+        dl_array = np.linspace(distmin,distmax,500)
+        vals = distkernel(dl_array)
+        temp = splrep(dl_array,vals)
+        
+        def px_dl(dl):
+            """
+            Returns a probability for a given distance dl from the interpolated function.
+            """
+            return splev(dl,temp,ext=3)
+        
+        counterpart = EM_counterpart.get_galaxy(0)
+            
+        if skymap2d is not None:
+            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+        else:
+            tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
+                
+        tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+        numnorm = tempdist*tempsky
+        return numnorm
+
+
+    def pD_H0(self,H0):
+        """
+        Returns p(D|H0).
+        The probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0)  
+        """
+        den = np.zeros(len(H0))
+
+        for i in range(len(H0)):
+
+            def I(z,M):
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
+
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
+        self.pDnG = den   
+        return self.pDnG
+
+            
+    def pH0(self,H0,prior='log'):
+        """
+        Returns p(H0)
+        The prior probability of H0
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        prior : str, optional
+            The choice of prior (default='log')
+            if 'log' uses uniform in log prior
+            if 'uniform' uses uniform prior
+            
+        Returns
+        -------
+        float or array_like
+            p(H0)
         """
         if prior == 'uniform':
-            return np.ones(len(self.H0))
+            return np.ones(len(H0))
         if prior == 'log':
-            return 1./self.H0
-        
-    def likelihood(self,event_data,complete=False,skymap2d=None):
+            return 1./H0
+
+
+    def likelihood(self,H0,GW_data,EM_counterpart=None,complete=False,skymap2d=None,counterpart_case='direct'):
         """
         The likelihood for a single event
         
         Parameters
-        ----
-        event_data : posterior samples (distance, ra, dec)
-        complete : boolean
-                    Is catalogue complete?
-        skymap2d : KDe for skymap
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to doing a counterpart analysis over statistical analysis
+        complete : bool, optional
+            Is the galaxy catalog complete to all relevant distances/redshifts? (default=False)
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+        counterpart_case : str, optional
+            Choice of counterpart analysis (default='direct')
+            if 'direct', will assume the counterpart is correct with certainty
+            if 'pencilbeam', will assume the host galaxy is along the counterpart's line of sight, but may be beyond it
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,D)
         """    
-        dH0 = self.H0[1]-self.H0[0]
+        dH0 = H0[1]-H0[0]
         
-        pxG = self.px_H0G(event_data,skymap2d)
-        if all(self.pDG)==None:
-            self.pDG = self.pD_H0G()
-        
-        if complete==True:
-            likelihood = pxG/self.pDG 
-        else:
-            if all(self.pGD)==None:
-                self.pGD = self.pG_H0D()
-            if all(self.pnGD)==None:
-                self.pnGD = self.pnG_H0D()
-            if all(self.pDnG)==None:
-                self.pDnG = self.pD_H0nG()
+        if EM_counterpart != None:
+            
+            if counterpart_case == 'direct':
+                pxG = self.px_H0_counterpart(H0,GW_data,EM_counterpart,skymap2d)
+                pD_H0 = self.pD_H0(H0)
+                likelihood = pxG/pD_H0
                 
-            pxnG = self.px_H0nG(event_data)
+            # The pencilbeam case is currently coded up along the line of sight of the counterpart
+            # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
+            # TODO: allow this to cover a small patch of sky
+            elif counterpart_case == 'pencilbeam':
+                pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+                if all(self.pDG)==None:
+                    self.pDG = self.pD_H0G(H0)
+                if all(self.pGD)==None:
+                    self.pGD = self.pG_H0D(H0)
+                if all(self.pnGD)==None:
+                    self.pnGD = self.pnG_H0D(H0)
+                if all(self.pDnG)==None:
+                    self.pDnG = self.pD_H0nG(H0)
+                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+                
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)            
+            else:
+                print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
-            likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+
+        else:
+            pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+            if all(self.pDG)==None:
+                self.pDG = self.pD_H0G(H0)
+        
+            if complete==True:
+                likelihood = pxG/self.pDG
+        
+            else:
+                if all(self.pGD)==None:
+                    self.pGD = self.pG_H0D(H0)
+                if all(self.pnGD)==None:
+                    self.pnGD = self.pnG_H0D(H0)
+                if all(self.pDnG)==None:
+                    self.pDnG = self.pD_H0nG(H0)
+                    
+                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+    
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
-
-
 
 
     def px_H0G_patch(self,event_data,skymap2d=None):
@@ -944,24 +1142,6 @@ class MasterEquation(object):
         return likelihood/np.sum(likelihood)/dH0
 
 
-
-
-    def extract_galaxies(self):
-        nGal = self.galaxy_catalog.nGal()
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            z[i] = gal.z
-            lumB[i] = gal.lumB
-        if all(lumB) == 0: #for mdc1 and mdc2
-            lumB = np.ones(nGal)
-        return ra, dec, z, lumB
-
 class PixelBasedLikelihood(MasterEquation):
     """
     Likelihood for a single event, evaluated using a pixel based sky map
@@ -989,33 +1169,15 @@ class PixelBasedLikelihood(MasterEquation):
     """
     def __init__(self, H0, catalog, skymap3d, GMST, pdet, linear=False, weighted=False, counterparts=False):
         super(PixelBasedLikelihood,self).__init__(H0,catalog,pdet,linear=linear,weighted=weighted,counterparts=counterparts)
-        from ligo.skymap.bayestar import rasterize
-        from ligo.skymap.moc import nest2uniq,uniq2nest
         self.moc_map = skymap3d.as_healpix()
-        self.pixelmap = rasterize(skymap3d.as_healpix())
+        self.pixelmap = rasterize(self.moc_map)
         self.skymap = skymap3d
         self.npix = len(self.pixelmap)
         self.nside = hp.npix2nside(self.npix)
         self.gmst = GMST
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
-        self.pixel_cats = {} # dict of list of galaxies, indexed by NUNIQ
-        ra, dec, _, _ = self.extract_galaxies()
-        gal_idx = np.array(range(len(ra)),dtype=np.uint64)
-        theta = np.pi/2.0 - dec
-        # Find the NEST index for each galaxy
-        pix_idx = np.array(hp.ang2pix(self.nside, theta, ra,nest=True),dtype=np.uint64)
-        # Find the order and nest_idx for each pixel in the UNIQ map
-        order, nest_idx = uniq2nest(self.moc_map['UNIQ'])
-        # For each order present in the UNIQ map
-        for o in np.unique(order):
-            # Find the UNIQ pixel for each galaxy at this order
-            uniq_idx = nest2uniq(o, pix_idx)
-            # For each such pixel, if it is in the moc_map then store the galaxies
-            for uidx in self.moc_map['UNIQ'][order==o]:
-                self.pixel_cats[uidx]=[self.galaxy_catalog.get_galaxy(j) \
-                                           for j in gal_idx[uniq_idx==uidx]]
-        
+        self.pixel_cats = catalog.pixelCatalogs(skymap3d)# dict of list of galaxies, indexed by NUNIQ
         self.mths = {x:18 for x in self.moc_map['UNIQ']} # just for testing
         
     def likelihood(self, H0, cum_prob=1.0):
@@ -1096,10 +1258,10 @@ class PixelBasedLikelihood(MasterEquation):
         val = np.zeros(len(H0))
         for i,h0 in enumerate(H0):
             for gal in self.pixel_cats[pixel]:
-                dl = self.cosmo.dl_zH0(gal.z,h0, linear=self.linear)
+                dl = self.cosmo.dl_zH0(gal.z,h0)
                 #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
                 galprob = weight*norm.pdf(dl,distmu,distsigma)/distnorm
-                detprob = self.pdet.pD_dl_eval(dl, spl)
+                detprob = self.pdet.pD_dl_eval(dl)
                 val[i] += galprob/detprob
         return val
         
@@ -1129,22 +1291,22 @@ class PixelBasedLikelihood(MasterEquation):
         for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
-                #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(self.cosmo.dl_zH0(z,h0,linear=self.linear),distmu,distsigma)/distnorm
-                temp = self.zprior(z)*Schechter(M)*weight*((self.cosmo.dl_zH0(z,h0,linear=self.linear)-distmu)/distsigma)**2
+                #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(self.cosmo.dl_zH0(z,h0),distmu,distsigma)/distnorm
+                temp = self.zprior(z)*Schechter(M)*weight*((self.cosmo.dl_zH0(z,h0)-distmu)/distsigma)**2
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
             def Iden(z,M):
-                temp = Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                temp = Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
         
         #def dentemp(z,M):
-        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,H0,linear=self.linear),spl)*self.zprior(z)
+        #    return SchechterMagFunction(H0=H0)(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,H0))*self.zprior(z)
         #if self.weighted:
         #    def Iden(z,M):
         #        return dentemp(z,M)*L_M(M)
@@ -1183,10 +1345,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -1236,10 +1398,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -1263,10 +1425,10 @@ class PixelBasedLikelihood(MasterEquation):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0,linear=self.linear),spl)*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -1279,11 +1441,3 @@ class PixelBasedLikelihood(MasterEquation):
 
         return num
     
-
-class PixelCatalog(object):
-    """
-    Data for each pixel
-    """
-    galaxies=None
-    mth = None
-

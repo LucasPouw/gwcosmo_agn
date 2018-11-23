@@ -50,6 +50,24 @@ class pofH0(object):
         self.zmax = z_dlH0(self.dmax,H0=max(self.H0),linear=self.linear)
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
+        
+        ra,dec,z,m,lumB = self.galaxy_catalog.extract_galaxies()
+        nGal=galaxy_catalog.nGal()
+        if self.weighted == False:
+            lumB = np.ones(nGal)
+        if nGal == 1:
+            self.tables = [Table([ra, dec, lumB, z], names=('RA','Dec', 'lumB', 'z'))]
+        else:
+            nSplit = 100
+            ra = np.array_split(ra, nSplit)
+            dec = np.array_split(dec, nSplit)
+            z = np.array_split(z, nSplit)
+            lumB = np.array_split(lumB, nSplit)
+
+            tables = []
+            for k in range(nSplit):
+                tables.append(Table([ra[k], dec[k], lumB[k], z[k]], names=('RA','Dec', 'lumB', 'z')))
+            self.tables = tables
     
     def prior(self, prior_type='uniform'):
         self.prior_type = prior_type
@@ -76,9 +94,7 @@ class pofH0(object):
     def likelihoodG(self,event_data):
         """
         The likelihood for a single event P(x|G)
-        """
-        tables = self.extract_galaxies()
-            
+        """            
         coverh_x = np.ones(len(self.H0))
         for k, x in enumerate(self.H0):
             coverh_x[k] = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
@@ -87,16 +103,16 @@ class pofH0(object):
 
         ph_list = []
         i0 = 0
-        for t in tables:
+        for t in self.tables:
             i0=i0+1
-            print("processing chunk " + str(i0) + " out of " + str(len(tables)))
+            print("processing chunk " + str(i0) + " out of " + str(len(self.tables)))
             ph = np.zeros(len(self.H0))
             for k, x in enumerate(self.H0):
                 ph[k] = event_data.compute_3d_probability(t, kde_list[k][0], kde_list[k][1], self.zmax)
             ph_list.append(ph)
 
         ph = np.zeros(len(self.H0))
-        for j in range(0,len(tables)):
+        for j in range(0,len(self.tables)):
             ph += ph_list[j]
             
         self.likeG = ph
@@ -105,9 +121,7 @@ class pofH0(object):
     def likelihoodnG(self,event_data):
         """
         The likelihood for a single event P(x|notG)
-        """
-        tables = self.extract_galaxies()
-            
+        """            
         coverh_x = np.ones(len(self.H0))
         for k, x in enumerate(self.H0):
             coverh_x[k] = (const.c.to('km/s') / (x * u.km / u.s / u.Mpc)).value
@@ -115,7 +129,7 @@ class pofH0(object):
         epsilon = self.pdet(event_data.distance)
 
         ph_list = []
-        for t in tables:
+        for t in self.tables:
             ph = np.zeros(len(self.H0))
             for k, x in enumerate(self.H0):
                 completion = self.cfactor * self.pd( event_data.distance / coverh_x[k], t ) / ( 4.0 * np.pi )
@@ -123,7 +137,7 @@ class pofH0(object):
             ph_list.append(ph)
 
         ph = np.zeros(len(self.H0))
-        for j in range(0,len(tables)):
+        for j in range(0,len(self.tables)):
             ph += ph_list[j]
             
         self.likenG = ph
@@ -133,11 +147,9 @@ class pofH0(object):
     def normalization(self):
         """
         The normalization for a single event.
-        """
-        tables = self.extract_galaxies()
-        
+        """        
         normalization_list=[]
-        for t in tables:
+        for t in self.tables:
             normalization = np.ones(len(self.H0))
             for k, x in enumerate(self.H0):
                 zmax = ( (self.dmax * u.Mpc) * (x * u.km / u.s / u.Mpc) / const.c.to('km/s') ).value
@@ -155,41 +167,11 @@ class pofH0(object):
             normalization_list.append(normalization)
             
         normalization = np.ones(len(self.H0))
-        for j in range(0,len(tables)):
+        for j in range(0,len(self.tables)):
             normalization += normalization_list[j]
             
         self.norm = normalization
         return self.norm
-
-    #place this somewhere in catalog modules..
-    def extract_galaxies(self):
-        nGal = self.galaxy_catalog.nGal()
-        ra = np.zeros(nGal)
-        dec = np.zeros(nGal)
-        z = np.zeros(nGal)
-        lumB = np.zeros(nGal)
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            ra[i] = gal.ra
-            dec[i] = gal.dec
-            z[i] = gal.z
-            lumB[i] = gal.lumB
-        if self.weighted == False:
-            lumB = np.ones(nGal)
-        if nGal == 1:
-            tables = [Table([ra, dec, lumB, z], names=('RA','Dec', 'lumB', 'z'))]
-            return tables
-        else:
-            nSplit = 100
-            ra = np.array_split(ra, nSplit)
-            dec = np.array_split(dec, nSplit)
-            z = np.array_split(z, nSplit)
-            lumB = np.array_split(lumB, nSplit)
-
-            tables = []
-            for k in range(nSplit):
-                tables.append(Table([ra[k], dec[k], lumB[k], z[k]], names=('RA','Dec', 'lumB', 'z')))
-            return tables
 
     #place this somewhere specific to glade... preprocessing?       
     def pd(self,x,t):

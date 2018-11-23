@@ -3,7 +3,7 @@ import scipy.stats
 from astropy.io import fits
 import healpy as hp
 
-class FITSkernel(object):
+class skymap(object):
     """
     Read a FITS file and return interpolation kernels on the sky.
     TODO: Rework to use ligo.skymap

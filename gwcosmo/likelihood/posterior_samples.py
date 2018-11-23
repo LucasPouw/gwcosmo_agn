@@ -41,7 +41,22 @@ class posterior_samples(object):
         elif event == 'GW170814':
             #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
             lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
-
+        elif event == 'GW170608':
+            lalinference_path=posterior_data_path + "/GW170608_allIMRPpv2_posterior_samples.dat"
+        elif event == 'GW151226':
+            lalinference_path=posterior_data_path + "/GW151226_allIMRPPsp_O2cat_post.dat"
+        elif event == 'GW151012':
+            lalinference_path=posterior_data_path + "/GW151012_allIMRPhenomPv2_post.dat"
+        elif event == 'GW170104':
+            lalinference_path=posterior_data_path + "/GW170104_allIMRPPsp_O2cat_post.dat"
+        elif event == 'GW150914':
+            lalinference_path=posterior_data_path + "/GW150914_allIsp_post.dat"
+        elif event == 'GW170809':
+            lalinference_path=posterior_data_path + "/GW170809_posterior_samples_all_C02_Cleaned_HLV_IMRPhenomDpseudoFourPN_alignedspinzprior.dat"
+        elif event == 'GW170729':
+            lalinference_path=posterior_data_path + "/GW170729_posterior_samples_all_C02_Cleaned_HLV_IMRPhenomPv2pseudoFourPN_defaultprior.dat"
+        elif event == 'GW170823':
+            lalinference_path=posterior_data_path + "/GW170823_Jacob.Lange-G298936-IMRPv2-combined-samples-C02-cleaned-H1L1-uniform-spin-mag-prior-fmin10.dat"
         else:
             lalinference_path=event
         lalinference_data = np.genfromtxt(lalinference_path, names=True)
@@ -137,7 +152,7 @@ class posterior_samples(object):
             radecdist_list.append([kde,kde_norm])
         return radecdist_list
 
-    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=1000, z_err_fraction=0.06, a_err_fraction=0.08):
+    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=10, z_err_fraction=0.01, a_err_fraction=0.01):
         nt = nt[(np.where((nt['z'] > 0) & (nt['z'] < zmax)))]
         nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
                           & (nt['RA'] < np.max(self.longitude ) + 1.0)))]

@@ -2,13 +2,16 @@
 Detection probability
 Rachel Gray, John Veitch, Ignacio Magana
 """
+#from __future__ import absolute_import
 import lal
 from   lal import ComputeDetAMResponse
 import numpy as np
-from scipy.interpolate import interp1d,splev,splrep
+from scipy.interpolate import interp1d,splev,splrep,interp2d
 from scipy.integrate import quad
 from scipy.stats import ncx2
 import healpy as hp
+from gwcosmo.utilities.standard_cosmology import *
+import pickle
 
 import pkg_resources
 """
@@ -19,9 +22,29 @@ a probability of detection is returned.  This involves marginalising over masses
 class DetectionProbability(object):
     """
     Class to compute p(det | d_L, detectors, m1, m2, ...)
-    TODO: Allow choices of distributions for intrinsic params
+    
+    Parameters
+    ----------
+    mass_distribution : str
+        choice of mass distribution ('BNS' or 'BBH')
+    detectors : list of str, optional
+        list of detector names (default=['H1','L1'])
+    psds : str, optional
+        path to file containing the relevant PSDs (default=None)
+    Nsamps : int, optional
+        Number of samples for monte carlo integration (default=1000)
+    snr_theshold : float, optional
+        snr threshold for an individual detector (default=8)
+    Nside : int, optional
+        If using variable pdet across the sky, specify the resolution of the healpy map
+    Omega_m : float, optional
+        matter fraction of the universe (default=0.3)
+    linear : bool, optional
+        if True, use linear cosmology (default=False)
+    precomputed : bool, optional
+        if True, use pickled version of pdet (default=True)
     """
-    def __init__(self, mass_distribution, dl_array, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=8):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -34,9 +57,15 @@ class DetectionProbability(object):
             self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
-        self.dl_array = dl_array
         self.Nside = Nside
         self.mass_distribution = mass_distribution
+        self.Omega_m = Omega_m
+        self.linear = linear
+        self.H0vec = np.linspace(10,200,50)
+        self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
+        # TODO: For higher values of z (z=10) this goes outside the range of the psds and gives an error
+        self.z_array = np.logspace(-4.0,0.5,50)
+        self.precomputed = precomputed
         
         # set up the samples for monte carlo integral
         N=self.Nsamps
@@ -49,7 +78,7 @@ class DetectionProbability(object):
         if self.mass_distribution == 'BNS':
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
-            self.M_min = np.min(self.m1)+np.min(self.m2)
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BNS_z_H0_pD_array.p')
         if self.mass_distribution == 'BBH':
             #Based on Maya's notebook
             def inv_cumulative_power_law(u,mmin,mmax,alpha):
@@ -59,52 +88,203 @@ class DetectionProbability(object):
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
-            self.M_min = np.min(self.m1)+np.min(self.m2)
-        # precompute values which will be called multiple times
-        self.interp_average = self.__pD_dl(self.dl_array)
-        self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
-    
-    
-    def __snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
-        """
-        the optimal snr squared for one detector, for a specific DL, RA, Dec, m1, m2, inc, psi, gmst
-        """
-        mtot = m1+m2
-        mc = np.power(m1*m2,3.0/5.0)/np.power(m1+m2,1.0/5.0)
-        Fplus,Fcross = lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)
-        A = np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2) \
-        * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0) * np.power(mc,5.0/6.0) / (DL*lal.PC_SI*1e6)
+            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BBH_z_H0_pD_array.p')
+        self.M_min = np.min(self.m1)+np.min(self.m2)
         
-        PSD = self.psds
-        def I(f):
-            return np.power(f,-7.0/3.0)/(PSD(f)**2)
+        # precompute values which will be called multiple times, if not precomputed
+        if precomputed:
+            z,H0,prob = pickle.load(open(interp_av_path,'rb'))
+            # TODO: add error message for if pickled file doesn't exist
+        else:
+            self.__interpolnum = self.__numfmax_fmax(self.M_min)
+            z,H0,prob = self.__pD_zH0_array(self.H0vec)
+        self.interp_average = interp2d(z,H0,prob,kind='cubic') 
+        # TODO: test how different interpolations and fill values effect results.  Do values go below 0 and above 1?
+        if Nside != None:
+            self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
 
-        fmin = 10 # Hz
-        fmax = self.__fmax(mtot)
-        num = quad(I,fmin,fmax,epsabs=0,epsrel=1.49e-4)[0]
     
-        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
-        
-        
-    def __snr_squared(self,RA,Dec,m1,m2,inc,psi,detector,gmst,interpolnum):
-        """
-        the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
-        """
-        mtot = m1+m2
-        mc = np.power(m1*m2,3.0/5.0)/np.power(m1+m2,1.0/5.0)
-        Fplus,Fcross = lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)
-        A = np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2) \
-        * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0) * np.power(mc,5.0/6.0)
-        
-        fmax = self.__fmax(mtot)
-        num = interpolnum(fmax)
     
-        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
-
-
+    def mchirp(self,m1,m2):
+        """
+        Calculates the source chirp mass
+        
+        Parameters
+        ----------
+        m1,m2 : float
+            source rest frame masses in kg
+        
+        Returns
+        -------
+        Source chirp mass in kg
+        """
+        return np.power(m1*m2,3.0/5.0)/np.power(m1+m2,1.0/5.0)
+        
+        
+    def mchirp_obs(self,m1,m2,z=0):
+        """
+        Calculates the redshifted chirp mass from source masses and a redshift
+        
+        Parameters
+        ----------
+        m1,m2 : float
+            source rest frame masses in kg
+        z : float
+            redshift (default=0)
+        
+        Returns
+        -------
+        float
+            Redshifted chirp mass in kg
+        """
+        return (1+z)*self.mchirp(m1,m2)
+                
+        
+    def __mtot(self,m1,m2):
+        """
+        Calculates the total source mass of the system
+        
+        Parameters
+        ----------
+        m1,m2 : float
+            source rest frame masses in kg
+        
+        Returns
+        -------
+        float
+            Source total mass in kg        
+        """
+        return m1+m2
+        
+        
+    def __mtot_obs(self,m1,m2,z=0):
+        """
+        Calculates the total observed mass of the system
+        
+        Parameters
+        ----------
+        m1,m2 : float
+            source rest frame masses in kg
+        z : float
+            redshift (default=0)
+        
+        Returns
+        -------
+        float
+            Observed total mass in kg        
+        """
+        return (m1+m2)*(1+z)
+        
+        
+    def __Fplus(self,detector, RA, Dec, psi, gmst):
+        """
+        Computes the 'plus' antenna pattern
+        
+        Parameters
+        ----------
+        detector : str
+            name of detector in network (eg 'H1', 'L1')
+        RA,Dec : float
+            sky location of the event in radians
+        psi : float
+            source polarisation in radians
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+        
+        Returns
+        -------
+        float
+            F_+ antenna response
+        """
+        return lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)[0]
+        
+        
+    def __Fcross(self,detector, RA, Dec, psi, gmst):
+        """
+        Computes the 'plus' antenna pattern
+        
+        Parameters
+        ----------
+        detector : str
+            name of detector in network (eg 'H1', 'L1')
+        RA,Dec : float
+            sky location of the event in radians
+        psi : float
+            source polarisation in radians
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+        
+        Returns
+        -------
+        float
+            F_x antenna response
+        """
+        return lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)[1]
+        
+        
+    def __reduced_amplitude(self,RA,Dec,inc,psi,detector,gmst):
+        """
+        Component of the Fourier amplitude, with redshift-dependent parts removed
+        computes: [F+^2*(1+cos(i)^2)^2 + Fx^2*4*cos(i)^2]^1/2 * [5*pi/96]^1/2 * pi^-7/6
+        
+        Parameters
+        ----------
+        RA,Dec : float
+            sky location of the event in radians
+        inc : float
+            source inclination in radians
+        psi : float
+            source polarisation in radians
+        detector : str
+            name of detector in network as a string (eg 'H1', 'L1')
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds 
+        
+        Returns
+        -------
+        float
+            Component of the Fourier amplitude, with redshift-dependent parts removed
+        """
+        Fplus = self.__Fplus(detector, RA, Dec, psi, gmst)
+        Fcross = self.__Fcross(detector, RA, Dec, psi, gmst)
+        return np.sqrt(Fplus**2*(1.0+np.cos(inc)**2)**2 + Fcross**2*4.0*np.cos(inc)**2) \
+        * np.sqrt(5.0*np.pi/96.0)*np.power(np.pi,-7.0/6.0)
+        
+        
+    def __fmax(self,M):
+        """
+        Maximum frequency for integration, set by the frequency of the innermost stable orbit (ISO)
+        fmax(M) 2*f_ISO = (6^(3/2)*pi*M)^-1
+        
+        Parameters
+        ----------
+        M : float
+            total mass of the system in kg
+        
+        Returns
+        -------
+        float
+            Maximum frequency in Hz
+        """
+        return 1/(np.power(6.0,3.0/2.0)*np.pi*M) * lal.C_SI**3/lal.G_SI
+        
+        
     def __numfmax_fmax(self,M_min):
         """
         lookup table for snr as a function of max frequency
+        Calculates \int_fmin^fmax f'^(-7/3)/S_h(f') df over a range of values for fmax
+        fmin: 10 Hz
+        fmax(M): (6^(3/2)*pi*M)^-1
+        and fmax varies from fmin to fmax(M_min)
+        
+        Parameters
+        ----------
+        M_min : float
+            total minimum mass of the distribution in kg
+        
+        Returns
+        -------
+        Interpolated 1D array of \int_fmin^fmax f'^(-7/3)/S_h(f') for different fmax's
         """
         PSD = self.psds
         fmax = lambda m: self.__fmax(m)
@@ -118,23 +298,209 @@ class DetectionProbability(object):
             num_fmax[i] = quad(I, f_min, arr_fmax[i],epsabs=0,epsrel=1.49e-4)[0]
         
         return interp1d(arr_fmax, num_fmax)
+
         
-        
-    def __fmax(self,m):
+    def __snr_squared(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z,H0):
         """
-        Maximum frequency for integration
+        the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
+        
+        Parameters
+        ----------
+        RA,Dec : float
+            sky location of the event in radians
+        m1,m2 : float
+            source masses in kg
+        inc : float
+            source inclination in radians
+        psi : float
+            source polarisation in radians
+        detector : str
+            name of detector in network as a string (eg 'H1', 'L1')
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+                    
+        Returns
+        -------
+        float
+            snr squared*dL^2 for given parameters at a single detector
         """
-        return 1/(np.power(6.0,3.0/2.0)*np.pi*m) * lal.C_SI**3/lal.G_SI
+        mtot = self.__mtot_obs(m1,m2,z)
+        mc = self.mchirp_obs(m1,m2,z)
+        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0)/ (self.cosmo.dl_zH0(z,H0)*lal.PC_SI*1e6)
+        
+        fmax = self.__fmax(mtot)
+        num = self.__interpolnum(fmax)
+    
+        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
+
         
         
-    def __pD_dl(self,dl_array):
+    def __pD_zH0(self,H0):
         """
         Detection probability over a range of distances, returned as an interpolated function.
+        
+        Parameters
+        ----------
+        H0 : float
+            value of Hubble constant in kms-1Mpc-1
+        
+        Returns
+        -------
+        interpolated probabilities of detection over an array of luminosity distances, for a specific value of H0
         """
-        interpolnum = self.__numfmax_fmax(self.M_min)
+        rho = np.zeros((self.Nsamps,1))
+        prob = np.zeros(len(self.z_array))
+        for i in range(len(self.z_array)):
+            for n in range(self.Nsamps):
+                rhosqs = [ self.__snr_squared(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0, self.z_array[i],H0) for det in self.__lal_detectors]
+                rho[n] = np.sum(rhosqs)
+
+            effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
+            survival = ncx2.sf(effective_threshold**2,4,rho)
+            prob[i] = np.sum(survival,0)/self.Nsamps
+        
+        return prob
+        
+        
+    def __pD_zH0_array(self,H0vec):
+        """
+        Function which calculates p(D|z,H0) for a range of redshift and H0 values
+        
+        Parameters
+        ----------
+        H0vec : array_like
+            array of H0 values in kms-1Mpc-1
+        
+        Returns
+        -------
+        list of arrays?
+            redshift, H0 values, and the corresponding p(D|z,H0) for a grid
+        """
+        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        #path = pkg_resources.resource_filename('gwcosmo', 'likelihood/z_H0_pD_array.p')
+        #pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
+        return (self.z_array,H0vec,prob)
+        
+        
+
+    def pD_dlH0_eval(self,dl,H0):
+        """
+        Returns the probability of detection at a given value of luminosity distance and H0.
+        Note that this is slower than the function pD_zH0_eval(z,H0).
+        
+        Parameters
+        ----------
+        dl : float or array_like
+            value(s) of luminosity distances in Mpc
+        H0 : float
+            H0 value in kms-1Mpc-1
+        
+        Returns
+        -------
+        float or array_like
+            Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
+        """
+        z = np.array([z_dlH0(x,H0) for x in dl])
+        return self.interp_average(z,H0)
+        
+        
+    def pD_zH0_eval(self,z,H0):
+        """
+        Returns the probability of detection at a given value of redshift and H0.
+        
+        Parameters
+        ----------
+        z : float or array_like
+            value(s) of redshift
+        H0 : float
+            H0 value in kms-1Mpc-1
+        
+        Returns
+        -------
+        float or array_like
+            Probability of detection at the given redshift and H0, marginalised over masses, inc, pol, and sky location
+        """
+        return self.interp_average(z,H0)
+
+
+    def pD_H0_zinterp(self,H0):
+        """
+        Hopefully something faster than 2d interpolation over z and H0 and p(D|z,H0)
+        """
+        # TODO: write this function, so that an integral for any given H0 over z is fast
+        pass
+
+
+
+
+
+    ###### PLEASE NOTE FUNCTIONS BEYOND THIS POINT ARE OBSOLETE OR NEED REPAIR ######
+    # TODO: remove obsolete functions
+    # TODO: repair pixel-based functions
+    
+    
+    
+        
+        
+    def __pD_zH0_interp(self,H0vec):
+        """
+        OBSOLETE
+        Function which calculates p(D|z,H0) for a range of redshift and H0 values
+        
+        Parameters
+        ----------
+        H0vec : array_like
+            numpy array of H0 values in kms-1Mpc-1
+        
+        Returns
+        -------
+        2D interpolation object over z and H0
+        """
+        # TODO pickle z,H0,prob without interp, and try different interp options
+        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        interp = interp2d(self.z_array,H0vec,prob)
+        interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/pD_zH0_interp.p')
+        pickle.dump(interp,open(interp_av_path,'wb'))
+        return interp
+
+    
+    def __snr_squared_old(self,RA,Dec,m1,m2,inc,psi,detector,gmst,z=0):
+        """
+        OBSOLETE
+        the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
+        
+        Parameters
+        ----------
+        RA,Dec : sky location of the event in radians
+        m1,m2 : source masses in kg
+        inc : source inclination in radians
+        psi : source polarisation in radians
+        detector : name of detector in network as a string (eg 'H1', 'L1')
+        gmst : Greenwich Mean Sidereal Time in seconds
+        
+        Returns
+        -------
+        snr squared*dL^2 for given parameters at a single detector
+        """
+        mtot = self.__mtot_obs(m1,m2,z)
+        mc = self.mchirp_obs(m1,m2,z)
+        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0)
+        
+        fmax = self.__fmax(mtot)
+        num = self.__interpolnum(fmax)
+    
+        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
+
+        
+        
+    def __pD_dl_old(self,dl_array):
+        """
+        OBSOLETE
+        Detection probability over a range of distances, returned as an interpolated function.
+        """
         rho = np.zeros((self.Nsamps,1))
         for n in range(self.Nsamps):
-            rhosqs = [ self.__snr_squared(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0,interpolnum) for det in self.__lal_detectors]
+            rhosqs = [ self.__snr_squared_old(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0) for det in self.__lal_detectors]
             rho[n] = np.sum(rhosqs)
 
         DLcopy = dl_array.reshape((dl_array.size, 1))
@@ -152,6 +518,7 @@ class DetectionProbability(object):
     
     def __pD_dlradec(self,Nside,dl_array):
         """
+        NEEDS FIXING
         Detection probability over a range of distances, at each pixel on a healpy map.
         """
         no_pix = hp.pixelfunc.nside2npix(Nside)
@@ -159,14 +526,12 @@ class DetectionProbability(object):
         theta,phi = hp.pixelfunc.pix2ang(Nside,pix_ind)
         RA_map = phi
         Dec_map = np.pi/2.0 - theta
-        interpolnum = self.__numfmax_fmax(self.M_min)
         
-        #pofd_dLRADec = np.zeros([no_pix,dl_array.size])
         pofd_dLRADec = []
         for k in range(no_pix):
             rho = np.zeros((self.Nsamps,1))
             for n in range(self.Nsamps):
-                rhosqs = [ self.__snr_squared(RA_map[k],Dec_map[k],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0,interpolnum) for det in self.__lal_detectors]
+                rhosqs = [ self.__snr_squared(RA_map[k],Dec_map[k],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0) for det in self.__lal_detectors]
                 rho[n] = np.sum(rhosqs)
 
             DLcopy = dl_array.reshape((dl_array.size, 1))
@@ -180,15 +545,36 @@ class DetectionProbability(object):
             norm = np.sum(survival,0)/self.Nsamps
             pofd_dLRADec.append(splrep(dl_array,norm))
 
-        #return interp1d(dl_array,pofd_dLRADec,bounds_error=False,fill_value=1e-10)
         return pofd_dLRADec
         
 
+    def snr_squared_single(self,DL,RA,Dec,m1,m2,inc,psi,detector,gmst):
+        """
+        UNUSED
+        the optimal snr squared for one detector, for a specific DL, RA, Dec, m1, m2, inc, psi, gmst
+        """
+        mtot = m1+m2
+        mc = self.mchirp_obs(m1,m2)
+        Fplus,Fcross = lal.ComputeDetAMResponse(detector.response, RA, Dec, psi, gmst)
+        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0) / (DL*lal.PC_SI*1e6)
+        
+        PSD = self.psds
+        def I(f):
+            return np.power(f,-7.0/3.0)/(PSD(f)**2)
+
+        fmin = 10 # Hz
+        fmax = self.__fmax(mtot)
+        num = quad(I,fmin,fmax,epsabs=0,epsrel=1.49e-4)[0]
+    
+        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0
+
+
     def pD_event(self, dl, ra, dec, m1, m2, inc, psi, gmst):
         """
+        UNUSED
         detection probability for a particular event (masses, distance, sky position, orientation and time)
         """
-        rhosqs = [ self.__snr_squared_single(dl, ra, dec, m1, m2, inc, psi, det, gmst) for det in self.__lal_detectors]
+        rhosqs = [ self.snr_squared_single(dl, ra, dec, m1, m2, inc, psi, det, gmst) for det in self.__lal_detectors]
         combined_rhosq = np.sum(rhosqs)
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
         return ncx2.sf(effective_threshold**2 , 4, combined_rhosq)
@@ -196,24 +582,17 @@ class DetectionProbability(object):
 
     def pD_dl_single(self, dl):
         """
-        OBSOLETE?
+        OBSOLETE
         Detection probability for a specific distance, averaged over all other parameters - without using interpolation
         """       
         return np.mean(
             [ self.pD_event(dl, self.RAs[i], self.Decs[i], self.m1[i], self.m2[i], self.incs[i], self.psis[i], 0.0) for i in range(N)]
             )
             
-        
-#    def pD_dl_eval(self,dl):
-#        """
-#        Returns a probability for a given distance dl from the interpolated function.
-#        Or an array of probabilities for an array of distances.
-#        """
-#        return self.interp_dist(dl)
 
-
-    def pD_dl_eval(self,dl):
+    def pD_dl_eval_old(self,dl):
         """
+        OBSOLETE
         Returns a probability for a given distance dl from the interpolated function.
         Or an array of probabilities for an array of distances.
         """
@@ -236,6 +615,7 @@ class DetectionProbability(object):
         
     def pDdl_radec(self,RA,Dec,gmst):
         """
+        NEEDS FIXING
         Returns the probability of detection function for a specific ra, dec, and time.
         """
         ipix = hp.ang2pix(self.Nside,np.pi/2.0-Dec,RA-gmst)
@@ -244,6 +624,7 @@ class DetectionProbability(object):
         
     def __call__(self, dl):
         """
+        NEEDS FIXING
         To call as function of dl
         """
         return self.pD_dl_eval(dl)
@@ -251,6 +632,9 @@ class DetectionProbability(object):
     
     def pD_distmax(self):
         """
+        NEEDS FIXING
         Returns twice the maximum distance given Pdet(dl) = 0.01.
         """
         return 2.*self.dl_array[np.where(self.pD_dl_eval(self.dl_array)>0.01)[0][-1]]
+        
+

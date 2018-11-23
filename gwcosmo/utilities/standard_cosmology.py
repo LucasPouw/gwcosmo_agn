@@ -80,7 +80,22 @@ def volume_z(z, Omega_m=Omega_m):
     -------
     volume element (\int_0^z dz'/h(z'))^2 / h(z): dimensionless
     """
-    return dcH0overc(z, Omega_m)**2/h(z, Omega_m)  
+    return dcH0overc(z, Omega_m)**2/h(z, Omega_m)
+
+def volume_time_z(z, Omega_m=Omega_m):
+    """
+    Returns the cosmological volume time element at a given redshift.
+    
+    Parameters
+    ----------
+    z : redshift
+    Omega_m : matter fraction
+    
+    Returns
+    -------
+    volume time element (\int_0^z dz'/h(z'))^2 / (1+z)h(z)
+    """
+    return volume_z(z,Omega_m=Omega_m)/(1.0+z)
 
 def prefactor_volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     """
@@ -240,12 +255,12 @@ class redshift_prior(object):
     """
     p(z|Omega_m)
     """
-    def __init__(self,Omega_m=0.3,zmax=4.0,linear=False):
+    def __init__(self,Omega_m=0.3,zmax=10.0,linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
         z_array = np.linspace(0.0,self.zmax,100)
-        lookup = np.array([volume_z(z, Omega_m=self.Omega_m) for z in z_array])
+        lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m) for z in z_array])
         self.interp = splrep(z_array,lookup)
 
     def p_z(self,z):
@@ -269,7 +284,7 @@ class fast_cosmology(object):
     linear : assumes local cosmology and suppresses non-linear effects (default=False)
 
     """
-    def __init__(self,Omega_m=0.3,zmax=4.0,linear=False):
+    def __init__(self,Omega_m=0.3,zmax=10.0,linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
