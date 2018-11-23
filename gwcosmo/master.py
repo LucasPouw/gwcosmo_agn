@@ -567,7 +567,7 @@ class MasterEquation(object):
         return likelihood/np.sum(likelihood)/dH0
 
 
-    def px_H0G_patch(self,event_data,skymap2d=None):
+    def px_H0G_patch(self,H0,event_data,skymap2d=None):
         """
         The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
         
@@ -578,7 +578,7 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """
         nGal = self.galaxy_catalog.nGal()
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         if skymap2d is not None:
             prob_sorted = np.sort(skymap2d.prob)[::-1]
@@ -623,14 +623,14 @@ class MasterEquation(object):
                     count += 1
 
                     if self.weighted:
-                        weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                        weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                     else:
                         weight = 1.0
                     
                     if gal.z == 0:
                         tempdist = 0.0
                     else:
-                        tempdist = px_dl(self.cosmo.dl_zH0(gal.z,self.H0))/self.cosmo.dl_zH0(gal.z,self.H0)**2 # remove dl^2 prior from samples
+                        tempdist = px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
                     num += tempdist*tempsky*weight
                 else:
                     continue
@@ -640,7 +640,7 @@ class MasterEquation(object):
         return num
 
 
-    def pD_H0G_patch(self):
+    def pD_H0G_patch(self,H0):
         """
         The normalising factor for px_H0G.
         
@@ -649,43 +649,25 @@ class MasterEquation(object):
         Sums over these values.
         Returns an array of values corresponding to different values of H0.
         """  
-        nGal = self.galaxy_catalog.nGal()
-        
-        if self.counterparts == True:
-            print('counterparts')
-            
-            den = np.zeros(len(self.H0))
-            catalog = gwcosmo.catalog.galaxyCatalog()
-            catalog.load_glade_catalog()
-            nGal = catalog.nGal()
-            for i in range(nGal):
-                gal = catalog.get_galaxy(i)
+        nGal = self.galaxy_catalog.nGal()        
 
+        den = np.zeros(len(H0))       
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            if (self.ra_min <= gal.ra <= self.ra_max) and (self.dec_min <= gal.dec <= self.dec_max):
                 if self.weighted:
-                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
+                    weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
                     weight = 1.0
-
-                den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight            
-
-        else:
-            den = np.zeros(len(self.H0))       
-            for i in range(nGal):
-                gal = self.galaxy_catalog.get_galaxy(i)
-                if (self.ra_min <= gal.ra <= self.ra_max) and (self.dec_min <= gal.dec <= self.dec_max):
-                    if self.weighted:
-                        weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,self.H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
-                    else:
-                        weight = 1.0
-
-                    den += self.pdet.pD_dl_eval(self.cosmo.dl_zH0(gal.z,self.H0))*weight
-                else:
-                    continue
+                prob = self.pdet.pD_zH0_eval(gal.z,H0)
+                den += np.reshape(prob,len(H0))*weight
+            else:
+                continue
         self.pDG = den
         return self.pDG
 
 
-    def pG_H0D_patch(self):
+    def pG_H0D_patch(self,H0):
         """
         The probability that the host galaxy is in the catalogue given detection and H0.
         
@@ -694,22 +676,22 @@ class MasterEquation(object):
         Returns an array of probabilities corresponding to different H0s.
         """  
 
-        num = np.zeros(len(self.H0)) 
-        den = np.zeros(len(self.H0))
+        num = np.zeros(len(H0)) 
+        den = np.zeros(len(H0))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
             
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
             def Inorm(dec,ra):
@@ -721,19 +703,19 @@ class MasterEquation(object):
         return self.pGD    
 
 
-    def pnG_H0D_patch(self):
+    def pnG_H0D_patch(self,H0):
         """
         The probability that a galaxy is not in the catalogue given detection and H0
         
         Returns the complement of pG_H0D.
         """
         if all(self.pGD)==None:
-            self.pGD = self.pG_H0D_patch()
+            self.pGD = self.pG_H0D_patch(H0)
         self.pnGD = 1.0 - self.pGD
         return self.pnGD
        
         
-    def px_H0nG_whole_sky(self,event_data,skymap2d=None):
+    def px_H0nG_whole_sky(self,H0,event_data,skymap2d=None):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -742,7 +724,7 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         distkernel = event_data.lineofsight_distance()
         
@@ -758,14 +740,14 @@ class MasterEquation(object):
             """
             return splev(dl,temp,ext=3)
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
             
             def Iwhole(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -775,7 +757,7 @@ class MasterEquation(object):
         return num
 
 
-    def pD_H0nG_whole_sky(self):
+    def pD_H0nG_whole_sky(self,H0):
         """
         Normalising factor for px_H0nG
         
@@ -784,19 +766,19 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(self.H0))
+        den = np.zeros(len(H0))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
@@ -804,7 +786,7 @@ class MasterEquation(object):
         return self.pDnG_wholesky
 
 
-    def px_H0nG_catalog_patch(self,event_data,skymap2d=None):
+    def px_H0nG_catalog_patch(self,H0,event_data,skymap2d=None):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -813,7 +795,7 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         distkernel = event_data.lineofsight_distance()
         
@@ -836,26 +818,26 @@ class MasterEquation(object):
         skycat = skymap2d.prob[idx].sum()
         print("{}% of the event's probability is contained within the catalog".format(skycat*100))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def Icat(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            distcat = dblquad(Icat,Mmin,Mmax,lambda x: 0.0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            distcat = dblquad(Icat,Mmin,Mmax,lambda x: 0.0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             
             num[i] = distcat*skycat
         return num
 
 
-    def pD_H0nG_catalog_patch(self):
+    def pD_H0nG_catalog_patch(self,H0):
         """
         Normalising factor for px_H0nG
         
@@ -864,26 +846,26 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(self.H0))
+        den = np.zeros(len(H0))
         
         def Inorm(dec,ra):
             return np.cos(dec)
                 
         norm = dblquad(Inorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            num = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            num = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             
             den[i] = num*norm
             
@@ -891,7 +873,7 @@ class MasterEquation(object):
         return self.pDnG_catpatch
 
 
-    def px_H0nG_beyond_catalog(self,event_data,skymap2d=None):
+    def px_H0nG_beyond_catalog(self,H0,event_data,skymap2d=None):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -900,7 +882,7 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         distkernel = event_data.lineofsight_distance()
         
@@ -923,26 +905,26 @@ class MasterEquation(object):
         skycat = skymap2d.prob[idx].sum()
         print("{}% of the event's sky probability is contained within the patch covered by the catalog".format(skycat*100))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def Icat(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            distcat = dblquad(Icat,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            distcat = dblquad(Icat,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
             num[i] = distcat*skycat
         return num
 
 
-    def pD_H0nG_beyond_catalog(self):
+    def pD_H0nG_beyond_catalog(self,H0):
         """
         Normalising factor for px_H0nG
         
@@ -951,26 +933,26 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(self.H0))
+        den = np.zeros(len(H0))
         
         def Inorm(dec,ra):
             return np.cos(dec)
                 
         norm = dblquad(Inorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
-            num = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),self.H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
             den[i] = num*norm
             
@@ -978,7 +960,7 @@ class MasterEquation(object):
         return self.pDnG_beyond_catalog
 
 
-    def px_H0nG_rest_of_sky(self,event_data,skymap2d=None):
+    def px_H0nG_rest_of_sky(self,H0,event_data,skymap2d=None):
         """
         The likelihood of the GW data given not in the catalogue and H0
         
@@ -987,7 +969,7 @@ class MasterEquation(object):
         Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
         Returns an array of values corresponding to different values of H0.
         """
-        num = np.zeros(len(self.H0))
+        num = np.zeros(len(H0))
         
         distkernel = event_data.lineofsight_distance()
         
@@ -1010,18 +992,18 @@ class MasterEquation(object):
         skycat = 1.0 - skymap2d.prob[idx].sum()
         print("{}% of the event's sky probability is not inside the patch covered by the catalog".format(skycat*100))
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def Icat(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=self.H0[i])(M)/self.cosmo.dl_zH0(z,self.H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
             distcat = dblquad(Icat,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
@@ -1029,7 +1011,7 @@ class MasterEquation(object):
         return num
 
 
-    def pD_H0nG_rest_of_sky(self):
+    def pD_H0nG_rest_of_sky(self,H0):
         """
         Normalising factor for px_H0nG
         
@@ -1038,24 +1020,24 @@ class MasterEquation(object):
         Returns an array of values corresponding to different values of H0.
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(self.H0))
+        den = np.zeros(len(H0))
         
         def Inorm(dec,ra):
             return np.cos(dec)
                 
         norm = 1.0 - dblquad(Inorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
 
-        for i in range(len(self.H0)):
+        for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=self.H0[i])(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,self.H0[i]))*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
 
-            Mmin = M_Mobs(self.H0[i],-22.96)
-            Mmax = M_Mobs(self.H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
 
             num = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
@@ -1066,7 +1048,7 @@ class MasterEquation(object):
 
 
 
-    def likelihood_patch(self,event_data,complete=False,skymap2d=None):
+    def likelihood_patch(self,H0,event_data,complete=False,skymap2d=None):
         """
         The likelihood for a single event
         
@@ -1077,7 +1059,7 @@ class MasterEquation(object):
                     Is catalogue complete?
         skymap2d : KDe for skymap
         """    
-        dH0 = self.H0[1]-self.H0[0]
+        dH0 = H0[1]-H0[0]
         
         pxG = self.px_H0G_patch(event_data,skymap2d)
         if all(self.pDG)==None:
@@ -1103,7 +1085,7 @@ class MasterEquation(object):
         return likelihood/np.sum(likelihood)/dH0
         
         
-    def likelihood_patch_method2(self,event_data,complete=False,skymap2d=None):
+    def likelihood_patch_method2(self,H0,event_data,complete=False,skymap2d=None):
         """
         The likelihood for a single event
         
@@ -1114,26 +1096,26 @@ class MasterEquation(object):
                     Is catalogue complete?
         skymap2d : KDe for skymap
         """    
-        dH0 = self.H0[1]-self.H0[0]
+        dH0 = H0[1]-H0[0]
         
-        pxG = self.px_H0G_patch(event_data,skymap2d)
+        pxG = self.px_H0G_patch(H0,event_data,skymap2d)
         if all(self.pDG)==None:
-            self.pDG = self.pD_H0G_patch()
+            self.pDG = self.pD_H0G_patch(H0)
         
         if complete==True:
             likelihood = pxG/self.pDG 
         else:
             if all(self.pGD)==None:
-                self.pGD = self.pG_H0D()
+                self.pGD = self.pG_H0D(H0)
             if all(self.pnGD)==None:
-                self.pnGD = self.pnG_H0D()
+                self.pnGD = self.pnG_H0D(H0)
             if all(self.pDnG_beyond_catalog)==None:
-                self.pDnG_beyond_catalog = self.pD_H0nG_beyond_catalog()
+                self.pDnG_beyond_catalog = self.pD_H0nG_beyond_catalog(H0)
             if all(self.pDnG_rest_of_sky)==None:
-                self.pDnG_rest_of_sky = self.pD_H0nG_rest_of_sky()
+                self.pDnG_rest_of_sky = self.pD_H0nG_rest_of_sky(H0)
                                 
-            pxnG_beyond_catalog = self.px_H0nG_beyond_catalog(event_data,skymap2d)
-            pxnG_rest_of_sky = self.px_H0nG_rest_of_sky(event_data,skymap2d)
+            pxnG_beyond_catalog = self.px_H0nG_beyond_catalog(H0,event_data,skymap2d)
+            pxnG_rest_of_sky = self.px_H0nG_rest_of_sky(H0,event_data,skymap2d)
 
             likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG_beyond_catalog/self.pDnG_beyond_catalog) + (pxnG_rest_of_sky/self.pDnG_rest_of_sky)
             print("likelihood inside catalog: {}".format(pxG/self.pDG))
