@@ -569,13 +569,27 @@ class MasterEquation(object):
 
     def px_H0G_patch(self,H0,event_data,skymap2d=None):
         """
-        The likelihood of the GW data given the source is in the catalogue and given H0 (will eventually include luminosity weighting). 
+        FOR THE AREA OF SKY WITHIN THE RA AND DEC LIMITS, INSIDE THE CATALOG
+        Returns p(x|H0,G) for given values of H0.
+        The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
         
-        Takes an array of H0 values, a galaxy catalogue, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap.
-        Evaluates the likelihood at the location of every galaxy in 99% sky area of event.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
+            EM_counterpart data (default=None)
+            If not None, will default to using this over the galaxy_catalog 
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,G)
         """
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
@@ -642,12 +656,19 @@ class MasterEquation(object):
 
     def pD_H0G_patch(self,H0):
         """
-        The normalising factor for px_H0G.
+        FOR THE AREA OF SKY WITHIN THE RA AND DEC LIMITS, INSIDE THE CATALOG
+        Returns p(D|H0,G) (the normalising factor for px_H0G).
+        The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
         
-        Takes an array of H0 values and a galaxy catalogue.
-        Evaluates detection probability at the location of every galaxy in the catalogue.
-        Sums over these values.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,G)        
         """  
         nGal = self.galaxy_catalog.nGal()        
 
@@ -669,12 +690,24 @@ class MasterEquation(object):
 
     def px_H0nG_beyond_catalog(self,H0,event_data,skymap2d=None):
         """
-        The likelihood of the GW data given not in the catalogue and H0
+        FOR THE AREA OF SKY WITHIN THE RA DEC LIMITS BEYOND THE GALAXY CATALOG 
+        Returns p(x|H0,bar{G}).
+        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
         
-        Takes an array of H0 values, an apparent magnitude threshold, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap: p(x|dL,Omega).
-        Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,bar{G})
         """
         num = np.zeros(len(H0))
         
@@ -720,12 +753,20 @@ class MasterEquation(object):
 
     def pD_H0nG_beyond_catalog(self,H0):
         """
-        Normalising factor for px_H0nG
+        FOR THE AREA OF SKY WITHIN THE RA AND DEC LIMITS, BEYOND THE GALAXY CATALOG
+        Returns p(D|H0,bar{G})
+        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
         
-        Takes an array of H0 values and an apparent magnitude threshold.
-        Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
-        """  
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,bar{G})     
+        """   
         # TODO: same fixes as for pG_H0D 
         den = np.zeros(len(H0))
         
@@ -756,12 +797,24 @@ class MasterEquation(object):
 
     def px_H0nG_rest_of_sky(self,H0,event_data,skymap2d=None):
         """
-        The likelihood of the GW data given not in the catalogue and H0
+        FOR THE AREA OF SKY OUTSIDE THE RA AND DEC LIMITS 
+        Returns p(x|H0,bar{G}).
+        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
         
-        Takes an array of H0 values, an apparent magnitude threshold, and posterior samples/skymap for 1 event.
-        Creates a likelihood using the samples/skymap: p(x|dL,Omega).
-        Integrates p(x|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,bar{G})
         """
         num = np.zeros(len(H0))
         
@@ -807,11 +860,19 @@ class MasterEquation(object):
 
     def pD_H0nG_rest_of_sky(self,H0):
         """
-        Normalising factor for px_H0nG
+        FOR THE AREA OF SKY OUTSIDE THE RA AND DEC LIMITS
+        Returns p(D|H0,bar{G})
+        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
         
-        Takes an array of H0 values and an apparent magnitude threshold.
-        Integrates p(D|dL(z,H0))*p(z)*p(M|H0) over z and M, incorporating mth into limits.
-        Returns an array of values corresponding to different values of H0.
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        float or array_like
+            p(D|H0,bar{G})     
         """  
         # TODO: same fixes as for pG_H0D 
         den = np.zeros(len(H0))
@@ -843,15 +904,26 @@ class MasterEquation(object):
         
     def likelihood_patch(self,H0,event_data,complete=False,skymap2d=None):
         """
+        FOR THE CASE WHERE THE CATALOG ONLY COVERS PART OF THE SKY
         The likelihood for a single event
         
         Parameters
-        ----
-        event_data : posterior samples (distance, ra, dec)
-        complete : boolean
-                    Is catalogue complete?
-        skymap2d : KDe for skymap
-        """    
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
+            Gravitational wave event samples
+        complete : bool, optional
+            Is the galaxy catalog complete to all relevant distances/redshifts? (default=False)
+        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
+            Gravitational wave event skymap (default=None)
+            If not None, will default to using this over the GW_data
+            
+        Returns
+        -------
+        float or array_like
+            p(x|H0,D)
+        """   
         dH0 = H0[1]-H0[0]
         
         pxG = self.px_H0G_patch(H0,event_data,skymap2d)
