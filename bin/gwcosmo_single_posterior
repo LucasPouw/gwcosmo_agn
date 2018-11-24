@@ -23,7 +23,6 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 import numpy as np
-from scipy.stats import gaussian_kde
 import gwcosmo
 
 def str2bool(v):
@@ -49,12 +48,6 @@ parser = OptionParser(
             help="MAXH0: Set maximum value of H0 Posterior"),
         Option("-x", "--bins_H0", metavar="BINSH0", default='50', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
-        Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
-            help="MINDIST: Set minimum value of luminosity distance"),
-        Option("-e", "--max_dist", metavar="MAXDIST", default='400.0', type=float,
-            help="MAXDIST: Set maximum value of luminosity distance"),
-        Option("-f", "--bins_dist", metavar="BINSDIST", default='50', type=int,
-            help="BINSDIST: Set number of luminosity distance bins"),
         Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
         Option("-t", "--mass_distribution", metavar="MASS_DISTRIBUTION", default=None,
@@ -150,10 +143,6 @@ min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
 
-max_dist = float(opts.max_dist)
-min_dist = float(opts.min_dist)
-bins_dist = float(opts.bins_dist)
-
 options_string = opts.method
 
 plot = str2bool(opts.plot)
@@ -180,7 +169,7 @@ def main():
     else:
         #TODO: Implement 3D skymap here for pixel method
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
-    print(skymap3d)
+
     catalog = gwcosmo.prior.catalog.galaxyCatalog()
     if opts.method == 'counterpart':
         catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
@@ -200,21 +189,16 @@ def main():
             catalog.load_DES_cluster_catalog()
         if galaxy_catalog == 'des':
             catalog.load_DES_catalog()
-
-    #set up array of luminosity distance values
-    dl = np.linspace(min_dist,max_dist,bins_dist)
-    
-    #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution,dl)
     
     # compute likelihood
     if implementation == 'master':
-        me = gwcosmo.master.MasterEquation(H0,catalog,dp,linear=True,weighted=galaxy_weighting)
-        likelihood = me.likelihood(samples,complete=completion,skymap2d=skymap2d)
-        prior = me.pH0_D(prior='jeffreys')
+        me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
+        likelihood = me.likelihood(H0,samples,EM_counterpart=None,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
+        prior = me.pH0(H0,prior='log')
         posterior = prior*likelihood
 
     if implementation == 'pofH0':
+        dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution)
         me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion,weighted=galaxy_weighting)
         likelihoodG = me.likelihoodG(samples)
         likelihoodnG = me.likelihoodnG(samples)
