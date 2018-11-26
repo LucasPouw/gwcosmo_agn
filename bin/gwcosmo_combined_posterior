@@ -1,4 +1,4 @@
-#!/usr/bin/ python
+#!/usr/bin/env python
 """
 This script combines individual H0 posteriors.
 Ignacio Magana, Rachel Gray
@@ -103,7 +103,7 @@ def main():
         plt.plot(H0,prior_norm,ls=':',linewidth = 3.0, label='prior')
         plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
         plt.plot(H0,likelihood_comb,linewidth = 3.0, ls = '--', label='likelihood')
-        plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+        #plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         for n in range(Nevents):
             plt.plot(H0,likelihoods[n], alpha = 0.3)
         plt.xlim(min_H0,max_H0)
@@ -148,6 +148,9 @@ def main():
             sigma.append(np.mean(sigma_H0_vals))
         error=np.array(error)
         sigma=np.array(sigma)
+        mean = np.mean(H0[np.where(posterior_norm==max(posterior_norm))])
+        print('H0 = ' + str(mean) + "+-" + str(error[-1]/2.))
+        
         plt.figure()
         plt.errorbar(N, sigma, yerr=error, color='red', fmt='.', markersize='2', ecolor='red',capsize=1, elinewidth=1)
         plt.axhline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
