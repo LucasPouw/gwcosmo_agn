@@ -3,7 +3,6 @@ LALinference posterior samples class and methods
 Ignacio Magana, Ankan Sur
 """
 import numpy as np
-import pkg_resources
 import healpy as hp
 from scipy.stats import gaussian_kde
 from scipy import integrate, interpolate, random
@@ -12,8 +11,7 @@ from astropy import constants as const
 from astropy.table import Table
 import h5py
 
-# Global 
-posterior_data_path = pkg_resources.resource_filename('gwcosmo', 'data/posterior_samples')
+import pkg_resources
 
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
@@ -32,31 +30,13 @@ class posterior_samples(object):
         """ Loads GW170817 posterior samples by default into class 
             Currently it only supports .dat posterior samples format.
         """
-        if event == 'GW170817':
-            #https://git.ligo.org/publications/gw170817/parameter-estimation/blob/master/data/posterior_samples_RR0.dat
-            lalinference_path=posterior_data_path + "/posterior_samples_RR0.dat"
-        elif event == 'GW170818':
-            #https://git.ligo.org/pe_event_samples/GW170818/blob/master/allIsp_post.dat    
-            lalinference_path=posterior_data_path + "/allIsp_post.dat"
-        elif event == 'GW170814':
-            #https://git.ligo.org/pe_event_samples/GW170814/blob/master/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat
-            lalinference_path=posterior_data_path + "/Jacob.Lange-G297595-IMRPv2-combined-samples-C02-cleaned-H1L1V1-uniform-spin-mag-prior-fmin20.dat"
-        elif event == 'GW170608':
-            lalinference_path=posterior_data_path + "/GW170608_allIMRPpv2_posterior_samples.dat"
-        elif event == 'GW151226':
-            lalinference_path=posterior_data_path + "/GW151226_allIMRPPsp_O2cat_post.dat"
-        elif event == 'GW151012':
-            lalinference_path=posterior_data_path + "/GW151012_allIMRPhenomPv2_post.dat"
-        elif event == 'GW170104':
-            lalinference_path=posterior_data_path + "/GW170104_allIMRPPsp_O2cat_post.dat"
-        elif event == 'GW150914':
-            lalinference_path=posterior_data_path + "/GW150914_allIsp_post.dat"
-        elif event == 'GW170809':
-            lalinference_path=posterior_data_path + "/GW170809_posterior_samples_all_C02_Cleaned_HLV_IMRPhenomDpseudoFourPN_alignedspinzprior.dat"
-        elif event == 'GW170729':
-            lalinference_path=posterior_data_path + "/GW170729_posterior_samples_all_C02_Cleaned_HLV_IMRPhenomPv2pseudoFourPN_defaultprior.dat"
-        elif event == 'GW170823':
-            lalinference_path=posterior_data_path + "/GW170823_Jacob.Lange-G298936-IMRPv2-combined-samples-C02-cleaned-H1L1-uniform-spin-mag-prior-fmin10.dat"
+        event_data_path = pkg_resources.resource_filename('gwcosmo', 'data/event_data/')
+        O1_events = ['GW150914', 'GW151012', 'GW151226']
+        O2_events = ['GW170104', 'GW170608', 'GW170729', 'GW170809', 'GW170814', 'GW170817', 'GW170818', 'GW170823']
+        if event in O1_events:
+            lalinference_path = event_data_path + 'O1/' + event + '/' + event + '.dat'
+        elif event in O2_events:
+            lalinference_path = event_data_path + 'O2/' + event + '/' + event + '.dat'
         else:
             lalinference_path=event
         lalinference_data = np.genfromtxt(lalinference_path, names=True)
