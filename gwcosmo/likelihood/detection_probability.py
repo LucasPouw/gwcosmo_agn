@@ -49,11 +49,11 @@ class DetectionProbability(object):
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
         # Also techically ASDs - rename
+        data_path = pkg_resources.resource_filename('gwcosmo', 'data/other/')
         if psds is not None:
             self.psds = psds
         else:
-            PSD_path = pkg_resources.resource_filename('gwcosmo', 'data/other/PSD_L1_H1_mid.txt')
-            PSD_data = np.genfromtxt(PSD_path)
+            PSD_data = np.genfromtxt(data_path + 'PSD_L1_H1_mid.txt')
             self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
@@ -78,7 +78,7 @@ class DetectionProbability(object):
         if self.mass_distribution == 'BNS':
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
-            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BNS_z_H0_pD_array.p')
+            interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
         if self.mass_distribution == 'BBH':
             #Based on Maya's notebook
             def inv_cumulative_power_law(u,mmin,mmax,alpha):
@@ -88,7 +88,7 @@ class DetectionProbability(object):
                     return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
-            interp_av_path = pkg_resources.resource_filename('gwcosmo', 'likelihood/BBH_z_H0_pD_array.p')
+            interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
         # precompute values which will be called multiple times, if not precomputed
