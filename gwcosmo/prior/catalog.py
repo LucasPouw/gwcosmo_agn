@@ -4,17 +4,12 @@ Ignacio Magana
 
 import numpy as np
 import healpy as hp
-
-from astropy.table import Table
-from scipy.stats import gaussian_kde
 import pandas as pd
-from astropy.io import fits
-from astropy import constants as const
-from astropy import units as u
 
 from ligo.skymap.bayestar import rasterize
 from ligo.skymap.moc import nest2uniq,uniq2nest
 
+import pickle
 import pkg_resources
 
 # Global
@@ -32,211 +27,59 @@ def blue_luminosity_from_mag(m,z):
     return lumB
 
 class galaxy(object):
-    ''' Class for galaxy objects
-    '''
+    """
+    Class to store galaxy objects.
+    
+    Parameters
+    ----------
+    index : galaxy index 
+    ra : Right ascension in radians
+    dec : Declination in radians
+    z : redshift
+    m : Apparent blue magnitude
+    lumB : Blue luminiosity computed from m and a Hubble constant of 70 #TODO: Have as separate function.
+    """
     def __init__(self, index = 0, ra = 0, dec = 0, z = 0, m = 0, lumB = 1.0):
-        """Galaxy catalog class... 
-        Parameters
-        """
         self.index = index
         self.ra = ra
         self.dec = dec
         self.z = z
         self.m = m
         self.lumB = lumB
-
-    def load_astropy_row_glade(self, index, row):
-        self.index = index
-        self.ra = row['RA']*np.pi/180.
-        self.dec = row['Dec']*np.pi/180.
-        self.z = row['z']
-        self.m = row['Bmag']
-        self.lumB = row['lumB']
-
-    def load_astropy_row_mdc(self, index, row, version):
-        self.index = index
-        self.ra = row['RA']
-        self.dec = row['Dec']
-        self.z = row['z']
-        if version != "1.0":
-            self.m = row['m']
-            self.lumB = blue_luminosity_from_mag(self.m,self.z)
-            
-    def load_counterpart(self, ra, dec, z):
-        self.index = 0
-        self.ra = ra
-        self.dec = dec
-        self.z = z
-        
-    def load_row_mice(self, index, row):
-        self.index = index
-        self.ra = row.ra_gal*np.pi/180.
-        self.dec = row.dec_gal*np.pi/180.
-        self.z = row.z_cgal_v 
-        self.m = row.des_asahi_full_r_true
-        self.lumB = blue_luminosity_from_mag(self.m,self.z)
-
-    def load_astropy_row_sdss_cluster(self, index, row):
-        self.index = index
-        self.ra = row['RA']
-        self.dec = row['Dec']
-        self.m = row['rmag']
-        if row['zspec'] == -1.0:
-            self.z = row['zphoto']
-        else:
-            self.z = row['zspec']
-        self.lumB = blue_luminosity_from_mag(self.m,self.z)
-        
-    def load_astropy_row_sdss(self, index, row):
-        self.index = index
-        self.ra = row['RA']*np.pi/180.
-        self.dec = row['Dec']*np.pi/180.
-        self.z = row['z']
-        self.m = row['abs_mag_r']
-        self.lumB = blue_luminosity_from_mag(self.m,self.z)
-            
-    def load_row_DES_cluster(self, index, row):
-        self.index = index
-        self.ra = row.RA*np.pi/180.
-        self.dec = row.DEC*np.pi/180.
-        self.z = row.ZREDMAGIC 
-        self.m = 0
-        self.lumB = 1
-
-    def load_row_DES(self, index, row):
-        self.index = index
-        self.ra = row.RA*np.pi/180.
-        self.dec = row.Dec*np.pi/180.
-        self.z = row.z
-        self.m = row.rmag
-        self.lumB = blue_luminosity_from_mag(self.m,self.z)
         
 class galaxyCatalog(object):
-    ''' Class for galaxy catalog objects
-    '''
-    def __init__(self, catalog_file = "", indexes=0, dictionary={}):
-        """Galaxy catalog class... 
-        Parameters
-        """
-        self.catalog_file = catalog_file
-        self.indexes = indexes
-        self.dictionary = dictionary
-
-    def load_counterpart_catalog(self, ra, dec, z):   
-        galaxies={}
-        nGal = 1
-        gal = galaxy()
-        gal.load_counterpart(ra, dec, z)
-        galaxies[str(0)] = gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-        
-    def load_glade_catalog(self):
-        self.catalog_file = catalog_data_path + "gladecatalogv2.3_corrected.dat"
-        t = Table.read(self.catalog_file,format='ascii')
-        galaxies={}
-        nGal = len(t)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_astropy_row_glade(k,t[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-
-    def load_mdc_catalog(self,version='1.0'):
-        if version == '1.0':
-            self.catalog_file = catalog_data_path + "mdc_v1_cat.txt"
-        if version == '2.1':
-            self.catalog_file = catalog_data_path + "mdc_v2_lim_cat.txt"
-        if version == '2.2':
-            self.catalog_file = catalog_data_path + "mdc_v2-2_lim_cat.txt"
-        if version == '2.3':
-            self.catalog_file = catalog_data_path + "mdc_v2-3_lim_cat.txt"            
-        if version == '3.1':
-            self.catalog_file = catalog_data_path + "mdc_v3_lim_cat.txt"
-
-        t = Table.read(self.catalog_file,format='ascii')
-        galaxies={}
-        nGal = len(t)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_astropy_row_mdc(k,t[k],version)
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-        
-    def load_mice_catalog(self):
-        "MICE catalog: /home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/mice.fits"
-        self.catalog_file = catalog_data_path + "mice.fits"
-        with fits.open(self.catalog_file) as data:
-            df = pd.DataFrame(np.array(data[1].data).byteswap().newbyteorder())
-
-        galaxies={}
-        nGal = len(df)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_row_mice(k,df.iloc[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
+    """
+    Galaxy catalog class stores a dictionary of galaxy objects.
     
-    def load_SDSS_cluster_catalog(self):
-        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_clusters.dat"
-        self.catalog_file = catalog_data_path + "SDSS170818_clusters.dat"
-        t = Table.read(self.catalog_file,format='ascii')
+    Parameters
+    ----------
+    catalog_file : Path to catalog.p file
+    catalog_name : Name of stored catalog to be loaded
+    """
+    def __init__(self, catalog_file=None, catalog_name=None):
+        if catalog_file is not None:
+            self.catalog_file = catalog_file
+            self.dictionary = self.__load_catalog()
+        if catalog_name is not None:
+            self.catalog_name = catalog_name
+            self.dictionary = self.__load_stored_catalog()
+        if (catalog_file is None and catalog_name is None):
+            print("Making empty catalog")
+            self.catalog_name = ""
+            self.dictionary = {'0':galaxy()}
 
-        galaxies={}
-        nGal = len(t)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_astropy_row_sdss_cluster(k,t[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
+    def __load_catalog(self):
+        return pickle.load(open(self.catalog_file, "rb"))
+    
+    def __load_stored_catalog(self):
+        stored_catalogs = ['glade', 'sdss', 'des', 'mdc1.0', 'mdc2.1', 'mdc2.2', 'mdc2.3', \
+                           'mdc3.1','sdss_clusters', 'des_clusters']
+        if self.catalog_name in stored_catalogs:
+            self.catalog_file = catalog_data_path + self.catalog_name + ".p"
+            return pickle.load(open(self.catalog_file, "rb"))
+        else:
+            print("Provide the name of a default catalog")
 
-    def load_SDSS_catalog(self):
-        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/SDSS170818_BLUE.dat"
-        self.catalog_file = catalog_data_path + "SDSS170818_BLUE.dat"
-        t = Table.read(self.catalog_file,format='ascii')
-
-        galaxies={}
-        nGal = len(t)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_astropy_row_sdss(k,t[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-        
-    def load_DES_cluster_catalog(self):
-        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/DES_Y1A1_3x2pt_redMaGiC_zerr_CATALOG.fits"
-        self.catalog_file = catalog_data_path + "DES_Y1A1_3x2pt_redMaGiC_zerr_CATALOG.fits"
-        with fits.open(self.catalog_file) as data:
-            df = pd.DataFrame(np.array(data[1].data).byteswap().newbyteorder())
-        galaxies={}
-        nGal = len(df)
-        for k in range(0,nGal):
-            gal = galaxy()
-            gal.load_row_DES_cluster(k,df.iloc[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-        
-    def load_DES_catalog(self):
-        "/home/ignacio.magana/src/gwcosmo/gwcosmo/data/catalog_data/DES.dat"
-        self.catalog_file = catalog_data_path + "DES.dat"
-        print('loading DES')
-        df = pd.read_csv(self.catalog_file,delim_whitespace=True)
-        galaxies={}
-        nGal = len(df)
-        for k in range(0,nGal):
-            print(str(k))
-            gal = galaxy()
-            gal.load_row_DES(k,df.iloc[k])
-            galaxies[str(k)]= gal
-        self.dictionary = galaxies
-        self.indexes = np.arange(nGal)
-        
     def nGal(self):
         return len(self.dictionary)
 
