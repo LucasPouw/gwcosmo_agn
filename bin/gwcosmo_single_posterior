@@ -158,7 +158,8 @@ def main():
     if opts.posterior_samples is not None:
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         skymap3d = None
-        if posterior_samples in ('GW170817', 'GW170814', 'GW170818','GW170608','GW151226','GW151012','GW170104','GW150914','GW170809','GW170729','GW170823'):
+        if posterior_samples in ('GW170817', 'GW170814', 'GW170818', 'GW170608', 'GW151226', \
+                                 'GW151012', 'GW170104', 'GW150914', 'GW170809', 'GW170729', 'GW170823'):
             samples.load_posterior_samples(posterior_samples)
         else:
             samples.load_posterior_samples_hdf5(posterior_samples)
@@ -170,26 +171,20 @@ def main():
         #TODO: Implement 3D skymap here for pixel method
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
 
-    catalog = gwcosmo.prior.catalog.galaxyCatalog()
     if opts.method == 'counterpart':
         catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
         
     if opts.method == 'statistical':
-        if galaxy_catalog == 'glade':
-            catalog.load_glade_catalog()
-        if galaxy_catalog == 'mdc':
-            catalog.load_mdc_catalog(version=mdc_version)
-        if galaxy_catalog == 'mice':
-            catalog.load_mice_catalog()
-        if galaxy_catalog == 'sdss_clusters':
-            catalog.load_SDSS_cluster_catalog()
-        if galaxy_catalog == 'sdss':
-            catalog.load_SDSS_catalog()
-        if galaxy_catalog == 'des_clusters':
-            catalog.load_DES_cluster_catalog()
-        if galaxy_catalog == 'des':
-            catalog.load_DES_catalog()
-    
+        if galaxy_catalog in ('glade', 'sdss', 'des', 'sdss_clusters', 'des_clusters'):
+            print('blah')
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog)
+        elif galaxy_catalog == 'mdc':
+            print('mdc')
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog+mdc_version)
+        else:
+            print('try')
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+
     # compute likelihood
     if implementation == 'master':
         me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
