@@ -96,18 +96,11 @@ if (opts.posterior_samples is None and
 if opts.mass_distribution is None:
         parser.error('Provide a mass distribution to use for Pdet calculation.')
         
-if opts.method == 'statistical':
-    if opts.galaxy_catalog is None:
-        parser.error('The statistical method requires a galaxy catalog. Catalog options: glade or mdc')
-    if opts.galaxy_catalog == 'mdc':
-        if opts.mdc_version is None:
-            parser.error('Provide version of MDC catalog to use.')
-            
-if opts.method == 'counterpart':
-    if (opts.counterpart_ra is None or
-    opts.counterpart_dec is None or
-    opts.counterpart_z is None):
-        parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
+if opts.galaxy_catalog is None:
+    parser.error('The statistical method requires a galaxy catalog. Catalog options: glade or mdc')
+if opts.galaxy_catalog == 'mdc':
+    if opts.mdc_version is None:
+        parser.error('Provide version of MDC catalog to use.')
         
 if opts.posterior_samples is not None:
         posterior_samples = str(opts.posterior_samples)
@@ -117,12 +110,12 @@ if opts.skymap is not None:
 if opts.mass_distribution is not None:
         mass_distribution = str(opts.mass_distribution)
 
-if opts.method == 'statistical':
-    if opts.galaxy_catalog is not None:
-        galaxy_catalog = str(opts.galaxy_catalog)
-        if opts.mdc_version is not None:
-            mdc_version = str(opts.mdc_version)
+if opts.galaxy_catalog is not None:
+    galaxy_catalog = str(opts.galaxy_catalog)
+    if opts.mdc_version is not None:
+        mdc_version = str(opts.mdc_version)
 
+if opts.method == 'statistical':
     galaxy_weighting = str2bool(opts.galaxy_weighting)
     completion = str2bool(opts.completion)
 
@@ -169,22 +162,36 @@ def main():
     else:
         #TODO: Implement 3D skymap here for pixel method
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
-
-    if opts.method == 'counterpart':
-        catalog.load_counterpart_catalog(counterpart_ra, counterpart_dec, counterpart_z)
         
-    if opts.method == 'statistical':
-        if galaxy_catalog in ('glade', 'sdss', 'des', 'sdss_clusters', 'des_clusters'):
-            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog)
-        elif galaxy_catalog == 'mdc':
-            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog+mdc_version)
+    if galaxy_catalog in ('glade', 'sdss', 'des', 'sdss_clusters', 'des_clusters'):
+        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog)
+    elif galaxy_catalog == 'mdc':
+        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog+mdc_version)
+    else:
+        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+    
+    if opts.method == 'counterpart':
+        counterpart = gwcosmo.prior.catalog.galaxyCatalog()
+        if (opts.counterpart_ra is None or
+            opts.counterpart_dec is None or
+            opts.counterpart_z is None):
+            if opts.posterior_samples == 'GW170817':
+                counterpart.get_galaxy(0).ra = 197.4500*np.pi/180.
+                counterpart.get_galaxy(0).dec = -23.3839*np.pi/180.
+                counterpart.get_galaxy(0).z = 0.009727
+            else:
+                parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
         else:
-            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+            counterpart.get_galaxy(0).ra = counterpart_ra
+            counterpart.get_galaxy(0).dec = counterpart_dec
+            counterpart.get_galaxy(0).z = counterpart_z
+    else:
+        counterpart = None
 
     # compute likelihood
     if implementation == 'master':
         me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
-        likelihood = me.likelihood(H0,samples,EM_counterpart=None,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
+        likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='pencilbeam')
         prior = me.pH0(H0,prior='log')
         posterior = prior*likelihood
 
