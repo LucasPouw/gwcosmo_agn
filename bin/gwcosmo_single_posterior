@@ -101,12 +101,6 @@ if opts.galaxy_catalog is None:
 if opts.galaxy_catalog == 'mdc':
     if opts.mdc_version is None:
         parser.error('Provide version of MDC catalog to use.')
-
-if opts.method == 'counterpart':
-    if (opts.counterpart_ra is None or
-    opts.counterpart_dec is None or
-    opts.counterpart_z is None):
-        parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
         
 if opts.posterior_samples is not None:
         posterior_samples = str(opts.posterior_samples)
@@ -178,9 +172,19 @@ def main():
     
     if opts.method == 'counterpart':
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
-        counterpart.get_galaxy(0).ra = counterpart_ra
-        counterpart.get_galaxy(0).dec = counterpart_dec
-        counterpart.get_galaxy(0).z = counterpart_z
+        if (opts.counterpart_ra is None or
+            opts.counterpart_dec is None or
+            opts.counterpart_z is None):
+            if opts.posterior_samples == 'GW170817':
+                counterpart.get_galaxy(0).ra = 197.4500*np.pi/180.
+                counterpart.get_galaxy(0).dec = -23.3839*np.pi/180.
+                counterpart.get_galaxy(0).z = 0.009727
+            else:
+                parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
+        else:
+            counterpart.get_galaxy(0).ra = counterpart_ra
+            counterpart.get_galaxy(0).dec = counterpart_dec
+            counterpart.get_galaxy(0).z = counterpart_z
     else:
         counterpart = None
 
