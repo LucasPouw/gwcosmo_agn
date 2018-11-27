@@ -626,7 +626,7 @@ class MasterEquation(object):
         # loop over all possible galaxies
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-            if (self.ra_min <= gal.ra <= self.ra_max) and (self.dec_min <= gal.dec <= self.dec_max):
+            if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                 # TODO: add possibility of using skymaps/other ways of using gw data
                 if skymap2d is not None:
                     tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix # TODO: test fully and integrate into px_H0nG
@@ -675,7 +675,7 @@ class MasterEquation(object):
         den = np.zeros(len(H0))       
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-            if (self.ra_min <= gal.ra <= self.ra_max) and (self.dec_min <= gal.dec <= self.dec_max):
+            if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                 if self.weighted:
                     weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0)) # TODO: make this compatible with all galaxy catalogs (ie make gal.m universal)
                 else:
@@ -894,11 +894,11 @@ class MasterEquation(object):
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
 
-            num = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             
-            den[i] = num*norm
+            #den[i] = num*norm
             
-        self.pDnG_rest_of_sky = den   
+        self.pDnG_rest_of_sky = den*norm  
         return self.pDnG_rest_of_sky
        
         
