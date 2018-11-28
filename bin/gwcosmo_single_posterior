@@ -44,9 +44,9 @@ parser = OptionParser(
             help="IMPLEMENTATION: Choose master or pofH0"),
         Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-v", "--max_H0", metavar="MAXH0", default='210.0', type=float,
+        Option("-v", "--max_H0", metavar="MAXH0", default='200.0', type=float,
             help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_H0", metavar="BINSH0", default='50', type=int,
+        Option("-x", "--bins_H0", metavar="BINSH0", default='200', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
         Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
             help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
@@ -167,7 +167,7 @@ def main():
         catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog)
     elif galaxy_catalog == 'mdc':
         catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog+mdc_version)
-    else:
+    elif galaxy_catalog[-2:] == '.p':
         catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
     
     if opts.method == 'counterpart':
@@ -192,8 +192,10 @@ def main():
     if implementation == 'master':
         me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
         likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
-        prior = me.pH0(H0,prior='log')
-        posterior = prior*likelihood
+        prior_uniform = me.pH0(H0,prior='uniform')
+        posterior_uniform = prior_uniform*likelihood
+        prior_log = me.pH0(H0,prior='log')
+        posterior_log= prior_log*likelihood
 
     if implementation == 'pofH0':
         dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution)
@@ -203,28 +205,30 @@ def main():
         likelihood = likelihoodG + likelihoodnG
         prior = me.prior(prior_type='log')*me.psiH0()/me.normalization()
         posterior=likelihood*prior
-    
-    likelihood_norm = likelihood/np.sum(likelihood*dH0)
-    prior_norm = prior/np.sum(prior*dH0)
-    posterior_norm = posterior/np.sum(posterior*dH0)
+
+    prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
+    posterior_uniform_norm = posterior_uniform/np.sum(posterior_uniform*dH0)
+    prior_log_norm = prior_log/np.sum(prior_log*dH0)
+    posterior_log_norm = posterior_log/np.sum(posterior_log*dH0)
 
     if plot == True:
         plt.figure()
-        plt.plot(H0,prior_norm,ls=':', linewidth = 3.0, label='prior')
-        plt.plot(H0,posterior_norm,linewidth = 3.0, label='posterior')
-        plt.plot(H0,likelihood_norm,linewidth = 3.0, ls = '--', label='likelihood')
+        plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)')
+        plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)')
+        plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)')
+        plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)')
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         plt.xlim(min_H0,max_H0)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
         plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
-        plt.legend(loc='best',fontsize=16)
+        plt.legend(loc='upper right',fontsize=14)
         plt.tight_layout()
         plt.savefig(outputfile+'.png',dpi=400)
 
     if save == True:
-        np.savez(outputfile+'.npz',[H0,likelihood,prior,posterior_norm,opts])
+        np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
 
 if __name__ == "__main__":
     main()
