@@ -20,47 +20,47 @@
 \section{Method}
 \begin{equation} \label{Eq:Master Equation}
 \begin{aligned}
-p(H_0|x,D,I) &= p(H_0|D,I) \bigg[ \dfrac{p(x|H_0,G,I)}{p(D|H_0,G,I)} p(G|H_0,D,I) + \dfrac{p(x|H_0,\bar{G},I)}{p(D|H_0,\bar{G},I)} p(\bar{G}|H_0,D,I) \bigg]
+p(H_0|x_{\text{GW}},D,I) &= p(H_0|D,I) \bigg[ \dfrac{p(x_{\text{GW}}|H_0,G,I)}{p(D|H_0,G,I)} p(G|H_0,D,I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},I)}{p(D|H_0,\bar{G},I)} p(\bar{G}|H_0,D,I) \bigg]
 \end{aligned}
-\end{equation}
-where $H_0$ is the Hubble constant, $x$ is the gravitational wave data, $D$ represents a gravitational wave detection, $G$ refers to the host galaxy being inside the galaxy catalogue, and $\bar{G}$ refers to the host galaxy being outside the galaxy catalogue.
+\end{equation}{
+where $H_0$ is the Hubble constant, $x_{\text{GW}}$ is the gravitational wave data, $D$ represents a gravitational wave detection, $G$ refers to the host galaxy being inside the galaxy catalogue, and $\bar{G}$ refers to the host galaxy being outside the galaxy catalogue.
 
 \subsection{Derivation} \label{sec:derivation}
-What we wish to obtain eventually is a computable expression for $p(H_0|x,I)$, but first we must marginalise over the events which we do, and do not detect:
+What we wish to obtain eventually is a computable expression for $p(H_0|x_{\text{GW}},I)$, but first we must marginalise over the events which we do, and do not detect:
 \begin{equation} \label{Eq:sum D}
 \begin{aligned}
-p(H_0|x,I) &= \sum_{d=D,\bar{D}} p(H_0,d|x,I)
-\\ &= \sum_{d=D,\bar{D}} p(H_0|x,d,I) p(d|x,I)
-\\ &= p(H_0|x,D,I) p(D|x,I) + p(H_0|x,\bar{D},I) p(\bar{D}|x,I)
+p(H_0|x_{\text{GW}},I) &= \sum_{d=D,\bar{D}} p(H_0,d|x_{\text{GW}},I)
+\\ &= \sum_{d=D,\bar{D}} p(H_0|x_{\text{GW}},d,I) p(d|x_{\text{GW}},I)
+\\ &= p(H_0|x_{\text{GW}},D,I) p(D|x_{\text{GW}},I) + p(H_0|x_{\text{GW}},\bar{D},I) p(\bar{D}|x_{\text{GW}},I)
 \end{aligned} 
 \end{equation}
 
-As we only have access to $x$ in the case where it has passed the detection threshold, we consider only the first term, and ignore $p(D|x,I)$ as a constant which is independent of $H_0$.
+As we only have access to $x_{\text{GW}}$ in the case where it has passed the detection threshold, we consider only the first term, and ignore $p(D|x_{\text{GW}},I)$ as a constant which is independent of $H_0$.
 
 Applying Bayes' Theorem to the remaining term:
 \begin{equation} \label{Eq:posterior}
 \begin{aligned}
-p(H_0|x,D,I) &= \dfrac{p(x|H_0,D,I)p(H_0|D,I)}{p(x|D,I)},
-\\ &\propto p(x|H_0,D,I)p(H_0|D,I),
+p(H_0|x_{\text{GW}},D,I) &= \dfrac{p(x_{\text{GW}}|H_0,D,I)p(H_0|D,I)}{p(x_{\text{GW}}|D,I)},
+\\ &\propto p(x_{\text{GW}}|H_0,D,I)p(H_0|D,I),
 \end{aligned} 
 \end{equation}
 which forms the basis of our method.
 
-Applying Bayes' Theorem to $p(x|H_0,D,I)$:
+Applying Bayes' Theorem to $p(x_{\text{GW}}|H_0,D,I)$:
 \begin{equation} \label{Eq:likelihood}
 \begin{aligned}
-p(x|H_0,D,I) &= \dfrac{p(D|x,H_0,I)p(x|H_0,I)}{p(D|H_0,I)},
-\\ &= \dfrac{p(x|H_0,I)}{p(D|H_0,I)},
+p(x_{\text{GW}}|H_0,D,I) &= \dfrac{p(D|x_{\text{GW}},H_0,I)p(x_{\text{GW}}|H_0,I)}{p(D|H_0,I)},
+\\ &= \dfrac{p(x_{\text{GW}}|H_0,I)}{p(D|H_0,I)},
 \end{aligned} 
 \end{equation}
-as $p(D|x,H_0,I)=1$ when we have access to the gravitational wave data.
+as $p(D|x_{\text{GW}},H_0,I)=1$ when we have access to the gravitational wave data.
 
-Considering the likelihood, $p(x|H_0,D,I)$, we can also marginalise over the cases where the host galaxy is, and is not, in the galaxy catalogue ($G$ and $\bar{G}$ respectively).
+Considering the likelihood, $p(x_{\text{GW}}|H_0,D,I)$, we can also marginalise over the cases where the host galaxy is, and is not, in the galaxy catalogue ($G$ and $\bar{G}$ respectively).
 \begin{equation} \label{Eq:sum G}
 \begin{aligned}
-p(x|H_0,D,I) &= \sum_{g=G,\bar{G}} p(x,g|H_0,D,I)
-\\ &= \sum_{g=G,\bar{G}} p(x|H_0,g,D,I) p(g|H_0,D,I)
-\\ &= p(x|H_0,G,D,I) p(G|H_0,D,I) + p(x|H_0,\bar{G},D,I) p(\bar{G}|H_0,D,I)
+p(x_{\text{GW}}|H_0,D,I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0,D,I)
+\\ &= \sum_{g=G,\bar{G}} p(x_{\text{GW}}|H_0,g,D,I) p(g|H_0,D,I)
+\\ &= p(x_{\text{GW}}|H_0,G,D,I) p(G|H_0,D,I) + p(x_{\text{GW}}|H_0,\bar{G},D,I) p(\bar{G}|H_0,D,I)
 \end{aligned} 
 \end{equation}
 
@@ -103,17 +103,17 @@ And what of $p(s|H_0,I)$?  Well, hopefully it will cancel out in the numerator a
 
 
 
-\subsection{Likelihood when host is in catalogue: $p(x|H_0,G,D,I)$}
+\subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|H_0,G,D,I)$}
 
 
 Marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,G,D,I) &= \dfrac{\iiiint p(x|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+p(x_{\text{GW}}|H_0,G,D,I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
 \end{aligned}
 \end{equation}
-which is true \emph{if} we can assume that both $x$ and $D$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
+which is true \emph{if} we can assume that both $x_{\text{GW}}$ and $D$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
 
 As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care:
 \begin{equation}
@@ -138,16 +138,16 @@ L(M(H_0,z,m)) & \text{if luminosity weighted}\\
 
 \begin{equation}
 \begin{aligned}
-p(x|H_0,G,D,I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\iiint p(x|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
+p(x_{\text{GW}}|H_0,G,D,I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
+\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
+\\ &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
 \end{aligned}
 \end{equation}
 
 In the unweighted case, this simplifies to the following:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,G,D,I) &= \dfrac{\sum^N_{i=1} p(x|H_0,z_i,\Omega_i,I) }{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I)}
+p(x_{\text{GW}}|H_0,G,D,I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) }{\sum^N_{i=1} p(D|H_0,z_i,\Omega_i,I)}
 \end{aligned}
 \end{equation}
 
@@ -208,24 +208,24 @@ p(\bar{G}|H_0,D,I) &= 1 - p(G|H_0,D,I)
 
 
 
-\subsection{Likelihood when host is not in catalogue: $p(x|H_0,\bar{G},D,I)$}
+\subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|H_0,\bar{G},D,I)$}
 Similarly:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
-\\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
+p(x_{\text{GW}}|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
+\\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
 \end{aligned}
 \end{equation}
-which is true \emph{if} we can assume that both $x$ and $D$ are mutually independent of $G$.
+which is true \emph{if} we can assume that both $x_{\text{GW}}$ and $D$ are mutually independent of $G$.
 
 \begin{equation}
 \begin{aligned}
-p(x|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiint p(x|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\\ &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
@@ -234,7 +234,7 @@ p(x|H_0,\bar{G},D,I) &= \dfrac{\iiiint p(x|H_0,z,\Omega,I) \Theta(m-m_{\text{th}
 In the case where we consider luminosity weighting, this takes the following form:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,\bar{G},D,I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|H_0,\bar{G},D,I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
@@ -297,24 +297,24 @@ In order to take into account the fact that galaxy catalogues have varying level
 
 \begin{equation}
 \begin{aligned}
-p(x|H_0,D,I) &= \int p(x,\Omega|H_0,D,I) d\Omega
-\\ & = \int p(x|H_0,D,\Omega,I) p(\Omega|H_0,D,I) d\Omega
-\\ & = \int p(x|H_0,D,\Omega,I) \dfrac{p(D|H_0,\Omega,I)p(\Omega|H_0,I)}{p(D|H_0,I)}  d\Omega
-\\ &= \dfrac{1}{p(D|H_0,I)} \int p(x|H_0,D,\Omega,I) p(D|H_0,\Omega,I)p(\Omega|I) d\Omega
-\\ &= \dfrac{1}{p(D|H_0,I)} \sum^{N_{\text{pix}}}_i \bigg[p(x|H_0,D,\Omega_i,I) p(D|H_0,\Omega_i,I)p(\Omega_i|I)\bigg]
+p(x_{\text{GW}}|H_0,D,I) &= \int p(x_{\text{GW}},\Omega|H_0,D,I) d\Omega
+\\ & = \int p(x_{\text{GW}}|H_0,D,\Omega,I) p(\Omega|H_0,D,I) d\Omega
+\\ & = \int p(x_{\text{GW}}|H_0,D,\Omega,I) \dfrac{p(D|H_0,\Omega,I)p(\Omega|H_0,I)}{p(D|H_0,I)}  d\Omega
+\\ &= \dfrac{1}{p(D|H_0,I)} \int p(x_{\text{GW}}|H_0,D,\Omega,I) p(D|H_0,\Omega,I)p(\Omega|I) d\Omega
+\\ &= \dfrac{1}{p(D|H_0,I)} \sum^{N_{\text{pix}}}_i \bigg[p(x_{\text{GW}}|H_0,D,\Omega_i,I) p(D|H_0,\Omega_i,I)p(\Omega_i|I)\bigg]
 \end{aligned} 
 \end{equation}
 
-Looking specifically at $p(x|H_0,D,\Omega_i,I)$ and expanding as in previous sections:
+Looking specifically at $p(x_{\text{GW}}|H_0,D,\Omega_i,I)$ and expanding as in previous sections:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,D,\Omega_i,I) &= \dfrac{p(x|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) + \dfrac{p(x|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I),
+p(x_{\text{GW}}|H_0,D,\Omega_i,I) &= \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I),
 \end{aligned}
 \end{equation}
 and so the final expression becomes:
 \begin{equation}
 \begin{aligned}
-p(x|H_0,D,I) = \dfrac{1}{p(D|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) \\ &+ \dfrac{p(x|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I) \bigg) \times p(D|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
+p(x_{\text{GW}}|H_0,D,I) = \dfrac{1}{p(D|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D|H_0,G,\Omega_i,I)} p(G|H_0,D,\Omega_i,I) \\ &+ \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D,\Omega_i,I) \bigg) \times p(D|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
 \end{aligned} 
 \end{equation}
 
@@ -344,13 +344,13 @@ where the factors of $4\pi$ that come from integrating over the entire sky cance
 
 
 \subsection{KDEs}
-When we create a KDE on the event samples, what we make is $p(d_L,\Omega|x)$, not $p(x|d_L,\Omega)$.
+When we create a KDE on the event samples, what we make is $p(d_L,\Omega|x_{\text{GW}})$, not $p(x_{\text{GW}}|d_L,\Omega)$.
 
 Also, we first use a 2+1D KDE approach, where we assume that $d_L$ and $\Omega$ are mutually independent (untrue), in order to split the KDE up as follows:
 \begin{equation}
 \begin{aligned}
-p(d_L,\Omega|x) &= p(d_L|x) p(\Omega|x)
-\\ &= \dfrac{p(x|d_L) p(d_L)}{p(x)} \dfrac{p(x|\Omega) p(\Omega)}{p(x)}
+p(d_L,\Omega|x_{\text{GW}}) &= p(d_L|x_{\text{GW}}) p(\Omega|x_{\text{GW}})
+\\ &= \dfrac{p(x_{\text{GW}}|d_L) p(d_L)}{p(x_{\text{GW}})} \dfrac{p(x_{\text{GW}}|\Omega) p(\Omega)}{p(x_{\text{GW}})}
 \end{aligned}
 \end{equation}
 

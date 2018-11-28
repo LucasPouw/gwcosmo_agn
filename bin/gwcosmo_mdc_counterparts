@@ -40,7 +40,7 @@ parser = OptionParser(
     option_list = [
         Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-v", "--max_H0", metavar="MAXH0", default='210.0', type=float,
+        Option("-v", "--max_H0", metavar="MAXH0", default='200.0', type=float,
             help="MAXH0: Set maximum value of H0 Posterior"),
         Option("-x", "--bins_H0", metavar="BINSH0", default='200', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
