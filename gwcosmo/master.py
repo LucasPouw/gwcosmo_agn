@@ -53,7 +53,7 @@ class MasterEquation(object):
         self.event_type = event_type
         self.galaxy_catalog = galaxy_catalog
         self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type)
-        self.mth = galaxy_catalog.mth()
+        self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
