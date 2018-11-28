@@ -44,12 +44,6 @@ parser = OptionParser(
             help="MAXH0: Set maximum value of H0 Posterior"),
         Option("-x", "--bins_H0", metavar="BINSH0", default='200', type=int,
             help="BINSH0: Set number of H0 Posterior bins"),
-        Option("-d", "--min_dist", metavar="MINDIST", default='0.1', type=float,
-            help="MINDIST: Set minimum value of luminosity distance"),
-        Option("-e", "--max_dist", metavar="MAXDIST", default='400.0', type=float,
-            help="MAXDIST: Set maximum value of luminosity distance"),
-        Option("-f", "--bins_dist", metavar="BINSDIST", default='200', type=int,
-            help="BINSDIST: Set number of luminosity distance bins"),
         Option("-p", "--plot", metavar="PLOT", default='True',
             help="PLOT: Plot results"),
         Option("-s", "--save", metavar="SAVE", default='True',
@@ -74,10 +68,6 @@ min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
 
-max_dist = float(opts.max_dist)
-min_dist = float(opts.min_dist)
-bins_dist = float(opts.bins_dist)
-
 plot = str2bool(opts.plot)
 save = str2bool(opts.save)
 
@@ -91,21 +81,17 @@ def main():
     "Compute P(H0)"
     H0 = np.linspace(min_H0, max_H0, bins_H0)
     dH0 = H0[1] - H0[0]
-    
-    #set up array of luminosity distance values
-    dl = np.linspace(min_dist,max_dist,bins_dist)
-    
-    #set up detection probability for BNSs over the range dl
-    dp = gwcosmo.likelihood.detection_probability.DetectionProbability('BNS',dl)
-    
-    galaxies_list = []
+    mass_distribution = str('BNS')
+
+    catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name='mdc1.0')
+    counterparts_list = []
     for k in range(0,250):
         catalog = gwcosmo.catalog.galaxyCatalog()
         catalog.dictionary = {'0':gwcosmo.catalog.galaxy()}
         catalog.get_galaxy(0).ra = counterparts[k][2]
         catalog.get_galaxy(0).dec = counterparts[k][3]
         catalog.get_galaxy(0).z = counterparts[k][4]
-        galaxies_list.append(catalog)
+        counterparts_list.append(catalog)
     
     # compute likelihood
     likelihoods = []
@@ -113,11 +99,14 @@ def main():
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples_hdf5('/home/ignacio.magana/first2years-data/2016/lalinference_mcmc/' \
                                                                 +str(k+1)+'/posterior_samples.hdf5')
-        me = gwcosmo.master.MasterEquation(H0,galaxies_list[k],dp,linear=True,weighted=galaxy_weighting)
-        likelihood = me.likelihood(samples,complete=completion,skymap2d=None)
+        skymap = '/home/ignacio.magana/first2years-data/2016/lalinference_mcmc/' \
+                                                                +str(k+1)+'/skypos/skymap.fits.gz'
+        skymap2d = gwcosmo.likelihood.skymap2d.skymap2d(skymap)
+        me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
+        likelihood = me.likelihood(H0,samples,EM_counterpart=counterparts_list[k],complete=completion,skymap2d=skymap2d,counterpart_case='direct')
         likelihoods.append(likelihood)
 
-    prior = me.pH0(prior='log')
+    prior = 1./H0
     
     posteriors=[] 
     posteriors_norm=[]

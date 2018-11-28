@@ -191,7 +191,7 @@ def main():
     # compute likelihood
     if implementation == 'master':
         me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
-        likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='pencilbeam')
+        likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
         prior = me.pH0(H0,prior='log')
         posterior = prior*likelihood
 
