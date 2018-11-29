@@ -14,6 +14,7 @@ from gwcosmo.utilities.standard_cosmology import *
 import pickle
 
 import pkg_resources
+import os
 """
 We want to create a function for $p(D|z,H_{0},I)$, so that when it is passed a value of $z$ and $H_0$,
 a probability of detection is returned.  This involves marginalising over masses, inclination, polarisation, and sky location.
@@ -41,10 +42,8 @@ class DetectionProbability(object):
         matter fraction of the universe (default=0.3)
     linear : bool, optional
         if True, use linear cosmology (default=False)
-    precomputed : bool, optional
-        if True, use pickled version of pdet (default=True)
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -65,7 +64,6 @@ class DetectionProbability(object):
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
         # TODO: For higher values of z (z=10) this goes outside the range of the psds and gives an error
         self.z_array = np.logspace(-4.0,0.5,50)
-        self.precomputed = precomputed
         
         # set up the samples for monte carlo integral
         N=self.Nsamps
@@ -89,12 +87,12 @@ class DetectionProbability(object):
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
             interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
+            
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
         # precompute values which will be called multiple times, if not precomputed
-        if precomputed:
+        if os.path.isfile(interp_av_path):
             z,H0,prob = pickle.load(open(interp_av_path,'rb'))
-            # TODO: add error message for if pickled file doesn't exist
         else:
             self.__interpolnum = self.__numfmax_fmax(self.M_min)
             z,H0,prob = self.__pD_zH0_array(self.H0vec)
@@ -375,8 +373,8 @@ class DetectionProbability(object):
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        #path = pkg_resources.resource_filename('gwcosmo', 'likelihood/z_H0_pD_array.p')
-        #pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
+        path = pkg_resources.resource_filename('gwcosmo', 'data/other/{}_z_H0_pD_array.p'.format(self.mass_distribution))
+        pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
         return (self.z_array,H0vec,prob)
         
 
