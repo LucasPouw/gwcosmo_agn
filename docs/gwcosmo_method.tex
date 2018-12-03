@@ -8,7 +8,7 @@
 \newcommand\note[1]{\textcolor{red}{#1}}
 
 \title{A summary of the maths in the gwcosmo pipeline}
-\author{Rachel Gray}
+\author{Rachel Gray and the LVC cosmology group}
 \date{\today} % delete this line to display the current date
 
 %%% BEGIN DOCUMENT
@@ -20,8 +20,10 @@
 \section{Introduction}
 Outlined in this document is the maths which has gone into the gwcosmo pipeline, designed to calculate the Hubble constant, $H_0$, using gravitational wave (GW) data from binary black holes (BBHs) and binary neutron stars (BNSs), in combination with EM data in the form of galaxy catalogues or EM counterparts.
 
+Section \ref{Sec: Overview} introduces the Bayesian approach for the statistical and counterpart cases.  Section \ref{Sec: Components} takes a closer look at the individual components which go into the statistical case, and derives mathematical expressions for each of them.  Section \ref{Sec: maths2code} discusses some adjustments and approximations which have been made to the maths in section \ref{Sec: Components} in order to allow the approach to be efficiently adapted into a pipeline.  And section \ref{Sec: Future} outlines a method which will be implemented during O3, in order to improve upon current approximations.
 
-\section{An Overview of the Method}
+
+\section{An Overview of the Method \label{Sec: Overview}}
 
 
 The posterior probability on $H_0$ from $N_{det}$ GW events is computed as follows:
@@ -57,13 +59,13 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0
 \end{aligned} 
 \end{equation}
 
-This equation,
-\begin{equation} \label{Eq:Master Equation}
-\begin{aligned}
-p(H_0|x_{\text{GW}},D_{\text{GW}},I) &= \dfrac{p(x_{\text{GW}}|H_0,G,I)}{p(D_{\text{GW}}|H_0,G,I)} p(G|H_0,D_{\text{GW}},I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},I)}{p(D_{\text{GW}}|H_0,\bar{G},I)} p(\bar{G}|H_0,D_{\text{GW}},I),
-\end{aligned}
-\end{equation}
-is what has come to be known as the ``Master Equation'' (desperately in need of a new name), and calculating the six constituent parts forms the bulk of the gwcosmo analysis.
+%This equation,
+%\begin{equation} \label{Eq:Master Equation}
+%\begin{aligned}
+%p(H_0|x_{\text{GW}},D_{\text{GW}},I) &= \dfrac{p(x_{\text{GW}}|H_0,G,I)}{p(D_{\text{GW}}|H_0,G,I)} p(G|H_0,D_{\text{GW}},I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},I)}{p(D_{\text{GW}}|H_0,\bar{G},I)} p(\bar{G}|H_0,D_{\text{GW}},I),
+%\end{aligned}
+%\end{equation}
+%is what has come to be known as the ``Master Equation'' (desperately in need of a new name), and calculating the six constituent parts forms the bulk of the gwcosmo analysis.
 
 
 \subsection{The EM counterpart method}
@@ -72,51 +74,38 @@ The method outlined above is for the statistical $H_0$ case, in which no EM coun
 Similar to above, we can express the likelihood in this case as follows:
 \begin{equation}
 \begin{aligned}
-p(H_0|x_{\text{GW}},x_{\text{EM}},D_{\text{GW}},D_{\text{EM}},C,I) \propto p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) p(H_0|D_{\text{GW}},D_{\text{EM}},C)
+p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},I) &= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,I) p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,I)}
+\\&= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,I)}.
 \end{aligned} 
 \end{equation}
-where $C$ refers to the EM catalogue, and other symbols have their usual meanings.
-
-First we marginalise over the cases where the source is inside and outside the galaxy catalogue:
-\begin{equation}
-\begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},x_{\text{EM}},g|H_0,D_{\text{GW}},D_{\text{EM}},C,I)
-\\ &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) p(g|H_0,D_{\text{GW}},D_{\text{EM}},C,I)
-\end{aligned} 
-\end{equation}
-
-And then we Bayes the first expression:
-\begin{equation}
-\begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,g,C,I) p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,g,C,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,g,C,I)}
-\\&= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,g,C,I)} 
-\end{aligned} 
-\end{equation}
-We take $p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,g,C,I)=1$ whenever we have GW and EM data (note this currently doesn't include the case in which a GW BNS was detected, and no counterpart was detected).
+We take $p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,I)=1$ whenever we have GW and EM data.
 
 Both the numerator and denominator can now be expanded:
-\begin{equation}
+\begin{equation} \label{Eq:counterpart}
 \begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,g,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}}|H_0,g,C,I) p(x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{EM}}|D_{\text{GW}},H_0,g,C,I) p(D_{\text{GW}}|H_0,g,C,I)} 
-\\ &= \dfrac{p(x_{\text{GW}}|H_0,g,C,I) p(x_{\text{EM}}|H_0,g,C,I)}{p(D_{\text{GW}}|H_0,g,C,I)} 
+p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},I) &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{EM}}|D_{\text{GW}},H_0,I) p(D_{\text{GW}}|H_0,I)} 
+\\ &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{GW}}|H_0,I)} 
 \end{aligned} 
 \end{equation}
-where we take $p(D_{\text{EM}}|D_{\text{GW}},H_0,g,C,I) = 1$, under the assumption that if the event was detected in gravitational waves, it will be detectable to EM telescopes (which is true if the telescope observing it sees beyond the BNS horizon, as is currently the case).  Note that this still involves many assumptions, such as assuming that the EM counterpart is not obscured behind another galaxy, or the galactic plane, and these are assumptions which will have to be dealt with in the future.
+where we take $p(D_{\text{EM}}|D_{\text{GW}},H_0,I) = 1$, under the assumption that if the event was detected in gravitational waves, it will be detectable to EM telescopes.  While for current telecsopes and GW detection horizons, this is a reasonable assumption, it will have to be considered in more detail in the future.
+
+In general, the assumption with the EM counterpart case is that observation of the counterpart will allow the identification of one (or more than one) of the galaxies in the neighboring region as the host of the GW event, and provide a redshift in this manner.
+
+From here, the counterpart case can be broken down into two further methods: ``direct'' and ``pencil-beam''. 
+
+\subsubsection{Direct}
+This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$.
 
 
-\subsubsection{The complete catalogue case}
-For the sake of simplicity, completeness can be assumed for all BNSs with EM counterparts which have already been observed (again, something that will not necessarily be the case in the future).  In this case the likelihood for the event simplifies down to the following:
-\begin{equation}
-\begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},C,I) &= \dfrac{p(x_{\text{GW}}|H_0,G,C,I) p(x_{\text{EM}}|H_0,G,C,I)}{p(D_{\text{GW}}|H_0,G,C,I)} 
-\end{aligned} 
-\end{equation}
-where $G$ now indicates that the source host is inside the galaxy catalogue.
 
+\subsubsection{Pencil-beam}
+The pencil-beam method makes the assumption that while the sky location of the galaxy associated with the counterpart is that of the GW event, the true host may be hidden behind that galaxy, and therefore there returns the question of whether the host is inside or outside the galaxy catalogue.  In this case, the likelihood takes the same form as in the statistical case, but evaluated along the line of sight of the counterpart\footnote{In future, this (and the ``direct'' method) should be expanded to cover a finite patch of sky, if more than one potential host galaxy (or none at all) could be associated with the counterpart.}.
 
 
 
 \subsection{A brief note on luminosity weighting}
+Whenever there is ambiguity about the host of a GW event, the possibility of luminosity weighting must be considered.
+
 Included in the term $I$ on the right-hand side of all of these equations is one very important assumption: that there really was a GW source (here we shall denote it $s$), and the detection was not a false alarm.  In the majority of calculations, the presence of this term can be taken as granted and safely ignored, as it has no bearing on the result.  For example:
 \begin{equation}
 \begin{aligned}
@@ -125,13 +114,13 @@ p(z|s,I) &= \dfrac{p(s|z,I) p(z|I)}{p(s|I)}
 \\ &= p(z|I),
 \end{aligned}
 \end{equation}
-that is, we do not modify our prior on $z$ because of our knowledge.
+as we do not modify our prior on $z$ because of our knowledge.
 
 However, there is an important case in which this assumption is true only part of the time:
 \begin{equation}
 \begin{aligned}
 p(M|s,H_0,I) &= \dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)} 
-\\ &= p(M|H_0,I)
+\\ &= p(M|H_0,I) 
 \end{aligned}
 \end{equation}
 which is \emph{only} true if we believe that the probability of a particular galaxy being host to a gravitational wave event is independent of the galaxy's absolute magnitude. That is, when there is no luminosity weighting.
@@ -139,7 +128,11 @@ which is \emph{only} true if we believe that the probability of a particular gal
 In general, we define $p(M|H_0,I)$ as a distribution of absolute magnitudes represented by the Schechter function, as we believe this mirrors the distribution of absolute magnitudes for all the galaxies in the universe.  If we believe that the probability of a given galaxy being host to the gravitational wave source is dependent on the galaxy's absolute magnitude, then $p(s|M,H_0,I)$ takes some non-constant value.  For example:
 \begin{equation}
 \begin{aligned}
-p(s|M,H_0,I) &\propto L(M)
+p(s|M,H_0,I) &\propto 
+\begin{cases}
+L(M(H_0)) & \text{if luminosity weighted}\\
+\text{const} & \text{if unweighted}
+\end{cases}
 \end{aligned}
 \end{equation}
 
@@ -150,8 +143,8 @@ As will be seen below, all $p(s|H_0,I)$ terms will cancel out in the numerator a
 
 
 
-\section{Individual components}
-Now to consider the individual components of Eq. \ref{Eq:Master Equation}.
+\section{Individual components of the statistical case \label{Sec: Components}}
+Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in the cases where the integration limits are not specified, they can be assumed to cover the full parameter space.
 
 
 \subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I)$}
@@ -172,21 +165,12 @@ As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific g
 p(z,\Omega,m,M|s,H_0,G,I) &= p(M|s,H_0,z,\Omega,m,G,I)p(z,\Omega,m|s,H_0,G,I)
 \\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
 \\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
+\\ &= \dfrac{p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
 \end{aligned}
 \end{equation}
 
 
-The form taken by $p(s|M(H_0,z,m),I)$ depends on how we believe a galaxy's absolute magnitude is related to its probability of being a GW host.
-\begin{equation}
-\begin{aligned}
-p(s|M(H_0,z,m),I) &\propto 
-\begin{cases}
-L(M(H_0,z,m)) & \text{if luminosity weighted}\\
-\text{const} & \text{if unweighted}
-\end{cases}
-\end{aligned}
-\end{equation}
-
+Substituting this back in:
 \begin{equation}
 \begin{aligned}
 p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
@@ -204,12 +188,6 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 
 
 
-
-
-
-
-
-
 \subsection{Probability the host galaxy is in the galaxy catalogue: $p(G|H_0,D_{\text{GW}},I)$}
 
 
@@ -222,12 +200,11 @@ p(G|H_0,D_{\text{GW}},I) &= \iiiint p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\O
 \\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
 \end{aligned}
 \end{equation}
-where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$ - the apparent magnitude threshold of the galaxy catalogue.
+where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue.
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
-\\ &= \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
+p(G|H_0,D_{\text{GW}},I) &= \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
 \\ &= \dfrac{\iiint \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \\ &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
@@ -255,10 +232,6 @@ p(\bar{G}|H_0,D_{\text{GW}},I) &= 1 - p(G|H_0,D_{\text{GW}},I)
 
 
 
-
-
-
-
 \subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I)$}
 Similarly:
 \begin{equation}
@@ -268,13 +241,7 @@ p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H
 \\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
 \\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
 \\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\end{aligned}
-\end{equation}
-which is true \emph{if} we can assume that both $x_{\text{GW}}$ and $D_{\text{GW}}$ are mutually independent of $G$.
-
-\begin{equation}
-\begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
+\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
 \\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \\ &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
@@ -293,7 +260,7 @@ p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\int^\infty_{z(H_0,m_{\te
 
 
 
-\section{Converting from maths to code}
+\section{Converting from maths to code \label{Sec: maths2code}}
 There are several things to bear in mind when moving from the maths shown above, to actually doing the calculations in python.
 
 \subsection{$p(G|H_0,D_{\text{GW}},I)$ and $p(\bar{G}|H_0,D_{\text{GW}},I)$}
@@ -333,7 +300,7 @@ Essentially, when we create the KDE it already contains the prior that was used 
 
 
 
-\section{For the future: the pixel-based method}
+\section{For the future: the pixel-based method \label{Sec: Future}}
 In order to take into account the fact that galaxy catalogues have varying levels of completeness across the sky, we consider a method in which the sky is gridded up into equally-sized pieces, which are later summed.
 
 \begin{equation}
