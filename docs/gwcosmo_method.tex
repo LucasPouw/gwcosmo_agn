@@ -59,13 +59,16 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0
 \end{aligned} 
 \end{equation}
 
-%This equation,
-%\begin{equation} \label{Eq:Master Equation}
-%\begin{aligned}
-%p(H_0|x_{\text{GW}},D_{\text{GW}},I) &= \dfrac{p(x_{\text{GW}}|H_0,G,I)}{p(D_{\text{GW}}|H_0,G,I)} p(G|H_0,D_{\text{GW}},I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},I)}{p(D_{\text{GW}}|H_0,\bar{G},I)} p(\bar{G}|H_0,D_{\text{GW}},I),
-%\end{aligned}
-%\end{equation}
-%is what has come to be known as the ``Master Equation'' (desperately in need of a new name), and calculating the six constituent parts forms the bulk of the gwcosmo analysis.
+
+\subsubsection{The catalogue patch case}
+While in general the statistical method in gwcosmo is designed for use with a galaxy catalogue which covers the entire sky, a small modification allows the use of catalogues which only cover a patch of sky, as long as the patch can be specified using limits in RA and Dec.  If we represent the sky area covered by the catalogue as $\Omega_{\text{cat}}$, and the area outside the catalogue as $\Omega_{\text{rest}}$, such that $\Omega_{\text{cat}}+\Omega_{\text{rest}}$ covers the whole sky, this can be written as follows:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \int p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega
+\\&=  \int^{\Omega_{\text{cat}}} p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega + \int^{\Omega_{\text{rest}}}p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega.
+\end{aligned} 
+\end{equation}
+The first term is equivalent to Eq. \ref{Eq:sum G} with limits on the integral over $\Omega$, while the second term has no $G$ and $\bar{G}$ terms, and covers the rest of the sky from redshift 0 to $\infty$.
 
 
 \subsection{The EM counterpart method}
@@ -94,7 +97,7 @@ In general, the assumption with the EM counterpart case is that observation of t
 From here, the counterpart case can be broken down into two further methods: ``direct'' and ``pencil-beam''. 
 
 \subsubsection{Direct}
-This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$.
+This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$ (note that this is independent of galaxy catalogue data).
 
 
 
@@ -200,7 +203,7 @@ p(G|H_0,D_{\text{GW}},I) &= \iiiint p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\O
 \\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
 \end{aligned}
 \end{equation}
-where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue.
+where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
 \begin{equation}
 \begin{aligned}
@@ -261,41 +264,26 @@ p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\int^\infty_{z(H_0,m_{\te
 
 
 \section{Converting from maths to code \label{Sec: maths2code}}
-There are several things to bear in mind when moving from the maths shown above, to actually doing the calculations in python.
+Below are a few differences to bear in mind between the maths presented in section \ref{Sec: Components} and the functions as they appear in gwcosmo.
 
-\subsection{$p(G|H_0,D_{\text{GW}},I)$ and $p(\bar{G}|H_0,D_{\text{GW}},I)$}
-Instead of calculating 
+
+
+\subsection{Separating distance and sky location for GW events}
+Mathematically speaking, the GW likelihood is conditioned jointly on $d_L$ and $\Omega$, and should not be separated:
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM},
+p(x_{\text{GW}}|d_L,\Omega) &\neq p(x_{\text{GW}}|d_L) p(x_{\text{GW}}|\Omega).
 \end{aligned}
 \end{equation}
-we can save time by reducing the number of integrals, by noting that this is the same as the following:
-\begin{equation}
-\begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int dM p(D_{\text{GW}}|H_0,z,I) p(z)p(M|H_0,I)}{\iint p(D_{\text{GW}}|H_0,z,I) p(z)p(M|H_0,I) dz dM}
-\end{aligned}
-\end{equation}
-where the factors of $4\pi$ that come from integrating over the entire sky cancel in numerator and denominator.
+However, in order to reduce the number of integrals required to calculate $p(x|H_0,I)$ we make this approximation, and calculate the integral over sky separately from the ones over redshift.
+
+
+Also, we bear in mind that when we create a KDE over the event's posterior samples, it will include whichever prior was chosen in order to generate the samples, which must be removed if a different prior is to be applied.  Specifically, this means that the $d_L^2$ prior which went into the samples needs to be removed so that it can be replaced with the uniform in comoving volume prior, $p(z|I)$.  If skymaps are being used to provide sky localisation information, the prior on sky has already been removed.
 
 
 
-
-\subsection{KDEs}
-When we create a KDE on the event samples, what we make is $p(d_L,\Omega|x_{\text{GW}})$, not $p(x_{\text{GW}}|d_L,\Omega)$.
-
-Also, we first use a 2+1D KDE approach, where we assume that $d_L$ and $\Omega$ are mutually independent (untrue), in order to split the KDE up as follows:
-\begin{equation}
-\begin{aligned}
-p(d_L,\Omega|x_{\text{GW}}) &= p(d_L|x_{\text{GW}}) p(\Omega|x_{\text{GW}})
-\\ &= \dfrac{p(x_{\text{GW}}|d_L) p(d_L)}{p(x_{\text{GW}})} \dfrac{p(x_{\text{GW}}|\Omega) p(\Omega)}{p(x_{\text{GW}})}
-\end{aligned}
-\end{equation}
-
-Essentially, when we create the KDE it already contains the prior that was used to generate the samples (ie $d_L^2$ or $1/4\pi$).  This means that if we want to change the prior we are using, we need to first remove the one that is already present.  In particular, this means being careful when summing over the galaxies in the catalogue, as they represent a new prior on $\alpha,\delta,z$, and so the old priors need to be removed in this case.
-
-
-
+\subsection{Sky-averaged $p(D|H_0,I)$}
+While in reality the probability of detecting a GW event varies across the sky due to antenna patterns, in the code we marginalise over the sky location in order to reduce the number of integrals required to calculate $p(D|H_0,I)$.  This is similar (but not identical) to marginalising over time of detection due to the rotation of the earth.  Ideally in the future, neither of these approximations will be used.
 
 
 
@@ -326,7 +314,7 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},I) = \dfrac{1}{p(D_{\text{GW}}|H_0,I)} &\sum^{
 \end{aligned} 
 \end{equation}
 
-It is also worth noting that, for a suitably fine grid, the choice of 3D vs 2+1D for dealing with GW data is removed, as for every position in the sky a single distance posterior is used, and so this method is inherently ``3D''.
+It is also worth noting that, for a suitably fine grid, the choice of 3D vs 2+1D for dealing with GW data is removed, as for every position in the sky the corresponding distance posterior is used, and so this method is inherently ``3D''.
 
 
 
