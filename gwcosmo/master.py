@@ -503,7 +503,8 @@ class MasterEquation(object):
         for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                #temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dlH0_eval(self.cosmo.dl_zH0(z,H0[i]),70.0)*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:

@@ -395,8 +395,8 @@ class DetectionProbability(object):
         float or array_like
             Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
         """
-        z = np.array([z_dlH0(x,H0) for x in dl])
-        return self.interp_average(z,H0)
+        #z = np.array([z_dlH0(x,H0) for x in dl])
+        return self.interp_average(z_dlH0(dl,H0),H0)
         
         
     def pD_zH0_eval(self,z,H0):
