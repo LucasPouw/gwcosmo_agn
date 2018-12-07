@@ -77,6 +77,7 @@ class DetectionProbability(object):
             self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
             self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
             interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
+            self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BBH':
             #Based on Maya's notebook
             def inv_cumulative_power_law(u,mmin,mmax,alpha):
@@ -87,17 +88,19 @@ class DetectionProbability(object):
             self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
             self.m2 = np.random.uniform(low=5.0,high=self.m1)
             interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
+            self.dl_array = np.linspace(1.0e-100,2500.0,500)
             
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
         # precompute values which will be called multiple times, if not precomputed
         if os.path.isfile(interp_av_path):
             z,H0,prob = pickle.load(open(interp_av_path,'rb'))
-        else:
             self.__interpolnum = self.__numfmax_fmax(self.M_min)
+        else:
             z,H0,prob = self.__pD_zH0_array(self.H0vec)
-        self.interp_average = interp2d(z,H0,prob,kind='cubic') 
         # TODO: test how different interpolations and fill values effect results.  Do values go below 0 and above 1?
+        self.interp_average = interp2d(z,H0,prob,kind='cubic')
+        self.interp_average_basic = self.__pD_dl_basic(self.dl_array)
         if Nside != None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
 
@@ -460,6 +463,73 @@ class DetectionProbability(object):
             Returns twice the maximum distance given corresponding to Pdet(dl,H0) = 0.01.
         """
         return 2.*dl[np.where(self.pD_dlH0_eval(dl, H0)>0.01)[0][-1]]
+
+
+    def __snr_squared_basic(self,RA,Dec,m1,m2,inc,psi,detector,gmst,dl):
+        """
+        the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
+        
+        Parameters
+        ----------
+        RA,Dec : float
+            sky location of the event in radians
+        m1,m2 : float
+            source masses in kg
+        inc : float
+            source inclination in radians
+        psi : float
+            source polarisation in radians
+        detector : str
+            name of detector in network as a string (eg 'H1', 'L1')
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+                    
+        Returns
+        -------
+        float
+            snr squared*dL^2 for given parameters at a single detector
+        """
+        mtot = self.__mtot(m1,m2)
+        mc = self.mchirp(m1,m2)
+        A = self.__reduced_amplitude(RA,Dec,inc,psi,detector,gmst) * np.power(mc,5.0/6.0)/ (dl*lal.PC_SI*1e6)
+        
+        fmax = self.__fmax(mtot)
+        num = self.__interpolnum(fmax)
+    
+        return 4.0*A**2*num*np.power(lal.G_SI,5.0/3.0)/lal.C_SI**3.0      
+
+
+    def __pD_dl_basic(self,H0):
+        """
+        Detection probability over a range of distances, returned as an interpolated function.
+        
+        Parameters
+        ----------
+        H0 : float
+            value of Hubble constant in kms-1Mpc-1
+        
+        Returns
+        -------
+        interpolated probabilities of detection over an array of luminosity distances, for a specific value of H0
+        """
+        rho = np.zeros((self.Nsamps,len(self.dl_array)))
+        for n in range(self.Nsamps):
+            rhosqs = [ self.__snr_squared_basic(self.RAs[n],self.Decs[n],self.m1[n],self.m2[n],self.incs[n],self.psis[n], det, 0.0, self.dl_array) for det in self.__lal_detectors]
+            rho[n] = np.sum(rhosqs,0)
+
+        effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
+        survival = ncx2.sf(effective_threshold**2,4,rho)
+        prob = np.sum(survival,0)/self.Nsamps
+        self.spl = splrep(self.dl_array,prob)
+        return splrep(self.dl_array,prob)
+
+
+    def pD_dl_eval_basic(self,dl):
+        """
+        Returns a probability for a given distance dl from the interpolated function.
+        Or an array of probabilities for an array of distances.
+        """
+        return splev(dl,self.spl,ext=1)
 
 
     # TODO: repair pixel-based functions
