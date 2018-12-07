@@ -49,16 +49,17 @@ class MasterEquation(object):
         Needed if whole_cat=False. RA and Dec limits on the catalog in the format np.array([ramin,ramax,decmin,decmax]) in radians
     """
 
-    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None):
+    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None,basic=False):
         self.event_type = event_type
         self.galaxy_catalog = galaxy_catalog
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type)
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,Nsamps=5000)
         self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
+        self.basic = basic
         if self.whole_cat == False:
             if all(radec_lim)==None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
@@ -79,11 +80,10 @@ class MasterEquation(object):
         self.pDnG_rest_of_sky = None
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
-        # Also note, when zmax is set too high (ie 6.0), it can cause px_H0nG to incorrectly evaluate to 0 for some values of H0.
         if event_type == 'BNS':
             self.zmax = 0.4
         elif event_type == 'BBH':
-            self.zmax = 2.0
+            self.zmax = 4.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
@@ -218,7 +218,10 @@ class MasterEquation(object):
                     weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0))
                 else:
                     weight = 1.0
-                prob = self.pdet.pD_zH0_eval(gal.z,H0)
+                if self.basic:
+                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
+                else:
+                    prob = self.pdet.pD_zH0_eval(gal.z,H0)
                 den += np.reshape(prob,len(H0))*weight
             else:
                 continue
@@ -253,7 +256,10 @@ class MasterEquation(object):
         for i in range(len(H0)):
             
             def I(z,M):
-                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -396,7 +402,10 @@ class MasterEquation(object):
         for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -503,8 +512,10 @@ class MasterEquation(object):
         for i in range(len(H0)):
 
             def I(z,M):
-                #temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
-                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dlH0_eval(self.cosmo.dl_zH0(z,H0[i]),70.0)*self.zprior(z)
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -589,7 +600,10 @@ class MasterEquation(object):
         for i in range(len(H0)):
 
             def I(z,M):
-                temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
