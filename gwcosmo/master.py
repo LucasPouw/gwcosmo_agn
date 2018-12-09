@@ -87,7 +87,7 @@ class MasterEquation(object):
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
-    def px_H0G(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
+    def px_H0G(self,H0,GW_data,skymap2d,EM_counterpart=None):
         """
         Returns p(x|H0,G) for given values of H0.
         The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
@@ -98,13 +98,12 @@ class MasterEquation(object):
             Hubble constant value(s) in kms-1Mpc-1
         GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
             Gravitational wave event samples
+        skymap2d : gwcosmo.likelihood.skymap.skymap object
+            Gravitational wave event skymap
         EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
             EM_counterpart data (default=None)
             If not None, will default to using this over the galaxy_catalog 
-        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
-            Gravitational wave event skymap (default=None)
-            If not None, will default to using this over the GW_data
-            
+
         Returns
         -------
         float or array_like
@@ -113,18 +112,10 @@ class MasterEquation(object):
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
         
-        if skymap2d is not None:
-            prob_sorted = np.sort(skymap2d.prob)[::-1]
-            prob_sorted_cum = np.cumsum(prob_sorted)
-            idx = np.searchsorted(prob_sorted_cum,0.999) # find index of array which bounds the 99.9% confidence interval
-            minskypdf = prob_sorted[idx]*skymap2d.npix
-        
-        else:    
-            skykernel = GW_data.compute_2d_kde()
-            skypdf = skykernel.evaluate([GW_data.longitude,GW_data.latitude])
-            skypdf.sort()
-            sampno = int(0.001*np.size(skypdf)) # find the position of the sample in the list which bounds the 99.9% confidence interval
-            minskypdf = skypdf[sampno]
+        prob_sorted = np.sort(skymap2d.prob)[::-1]
+        prob_sorted_cum = np.cumsum(prob_sorted)
+        idx = np.searchsorted(prob_sorted_cum,0.999) # find index of array which bounds the 99.9% confidence interval
+        minskypdf = prob_sorted[idx]*skymap2d.npix
 
         count = 0
         nGal_patch = 0
@@ -146,11 +137,7 @@ class MasterEquation(object):
         if EM_counterpart != None:
             counterpart = EM_counterpart.get_galaxy(0)
             
-            if skymap2d is not None:
-                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
-            else:
-                tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
-                
+            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
             tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
             numnorm = tempdist*tempsky
 
@@ -160,11 +147,7 @@ class MasterEquation(object):
                 gal = self.galaxy_catalog.get_galaxy(i)
                 if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                     nGal_patch += 1.0
-                    if skymap2d is not None:
-                        tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
-                    else:
-                        tempsky = skykernel.evaluate([gal.ra,gal.dec])*4.0*np.pi/np.cos(gal.dec) # remove uniform sky prior from samples
-    
+                    tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
                     if tempsky >= minskypdf:
                         count += 1
     
@@ -299,7 +282,7 @@ class MasterEquation(object):
         return self.pnGD
        
         
-    def px_H0nG(self,H0,GW_data,EM_counterpart=None,skymap2d=None):
+    def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None):
         """
         Returns p(x|H0,bar{G}).
         The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
@@ -310,12 +293,11 @@ class MasterEquation(object):
             Hubble constant value(s) in kms-1Mpc-1
         GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
             Gravitational wave event samples
+        skymap2d : gwcosmo.likelihood.skymap.skymap object
+            Gravitational wave event skymap
         EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
             EM_counterpart data (default=None)
-            If not None, will default to using this over the galaxy_catalog 
-        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
-            Gravitational wave event skymap (default=None)
-            If not None, will default to using this over the GW_data
+            If not None, will default to using this over the galaxy_catalog
             
         Returns
         -------
@@ -356,12 +338,7 @@ class MasterEquation(object):
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
             counterpart = EM_counterpart.get_galaxy(0)
-            
-            if skymap2d is not None:
-                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
-            else:
-                tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
-                
+            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix                
             num = distnum*tempsky
         
         else:
@@ -422,7 +399,7 @@ class MasterEquation(object):
         return self.pDnG
 
 
-    def px_H0nG_rest_of_sky(self,H0,GW_data,skymap2d=None):
+    def px_H0nG_rest_of_sky(self,H0,GW_data,skymap2d):
         """
         FOR THE AREA OF SKY OUTSIDE THE RA AND DEC LIMITS 
         Returns p(x|H0,bar{G}).
@@ -434,9 +411,8 @@ class MasterEquation(object):
             Hubble constant value(s) in kms-1Mpc-1
         GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
             Gravitational wave event samples
-        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
-            Gravitational wave event skymap (default=None)
-            If not None, will default to using this over the GW_data
+        skymap2d : gwcosmo.likelihood.skymap.skymap object
+            Gravitational wave event skymap
             
         Returns
         -------
@@ -530,7 +506,7 @@ class MasterEquation(object):
         return self.pDnG_rest_of_sky
 
 
-    def px_H0_counterpart(self,H0,GW_data,EM_counterpart,skymap2d):
+    def px_H0_counterpart(self,H0,GW_data,skymap2d,EM_counterpart):
         """
         Returns p(x|H0,counterpart)
         The likelihood of the GW data given H0 and direct counterpart.
@@ -541,12 +517,11 @@ class MasterEquation(object):
             Hubble constant value(s) in kms-1Mpc-1
         GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
             Gravitational wave event samples
+        skymap2d : gwcosmo.likelihood.skymap.skymap object
+            Gravitational wave event skymap
         EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
             EM_counterpart data (default=None)
-            If not None, will default to using this over the galaxy_catalog 
-        skymap2d : gwcosmo.likelihood.skymap.skymap object, optional
-            Gravitational wave event skymap (default=None)
-            If not None, will default to using this over the GW_data
+            If not None, will default to using this over the galaxy_catalog
             
         Returns
         -------
@@ -569,11 +544,7 @@ class MasterEquation(object):
             return splev(dl,temp,ext=3)
         
         counterpart = EM_counterpart.get_galaxy(0)
-            
-        if skymap2d is not None:
-            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
-        else:
-            tempsky = skykernel.evaluate([counterpart.ra,counterpart.dec])*4.0*np.pi/np.cos(counterpart.dec) # remove uniform sky prior from samples
+        tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
                 
         tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
         numnorm = tempdist*tempsky
@@ -643,7 +614,7 @@ class MasterEquation(object):
             return 1./H0
 
 
-    def likelihood(self,H0,GW_data,EM_counterpart=None,complete=False,skymap2d=None,counterpart_case='direct'):
+    def likelihood(self,H0,GW_data,skymap2d,EM_counterpart=None,complete=False,counterpart_case='direct'):
         """
         The likelihood for a single event
         
@@ -676,7 +647,7 @@ class MasterEquation(object):
         if EM_counterpart != None:
             
             if counterpart_case == 'direct':
-                pxG = self.px_H0_counterpart(H0,GW_data,EM_counterpart,skymap2d)
+                pxG = self.px_H0_counterpart(H0,GW_data,skymap2d,EM_counterpart)
                 pD_H0 = self.pD_H0(H0)
                 likelihood = pxG/pD_H0
                 
@@ -684,7 +655,7 @@ class MasterEquation(object):
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
             # TODO: allow this to cover a small patch of sky
             elif counterpart_case == 'pencilbeam':
-                pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+                pxG = self.px_H0G(H0,GW_data,skymap2d,EM_counterpart)
                 if all(self.pDG)==None:
                     self.pDG = self.pD_H0G(H0)
                 if all(self.pGD)==None:
@@ -693,7 +664,7 @@ class MasterEquation(object):
                     self.pnGD = self.pnG_H0D(H0)
                 if all(self.pDnG)==None:
                     self.pDnG = self.pD_H0nG(H0)
-                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+                pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
                 
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)            
             else:
@@ -701,7 +672,7 @@ class MasterEquation(object):
 
 
         else:
-            pxG = self.px_H0G(H0,GW_data,EM_counterpart,skymap2d)
+            pxG = self.px_H0G(H0,GW_data,skymap2d,EM_counterpart)
             if all(self.pDG)==None:
                 self.pDG = self.pD_H0G(H0)
         
@@ -716,7 +687,7 @@ class MasterEquation(object):
                 if all(self.pDnG)==None:
                     self.pDnG = self.pD_H0nG(H0)
                     
-                pxnG = self.px_H0nG(H0,GW_data,EM_counterpart,skymap2d)
+                pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
                 

@@ -185,13 +185,13 @@ def main():
         counterpart = None
 
     # compute likelihood
-	me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,basic=True)
-	likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
-	prior_uniform = me.pH0(H0,prior='uniform')
-	posterior_uniform = prior_uniform*likelihood
-	prior_log = me.pH0(H0,prior='log')
-	posterior_log= prior_log*likelihood
-
+    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,basic=True)
+    likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
+    prior_uniform = me.pH0(H0,prior='uniform')
+    posterior_uniform = prior_uniform*likelihood
+    prior_log = me.pH0(H0,prior='log')
+    posterior_log= prior_log*likelihood
+    
     prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
     posterior_uniform_norm = posterior_uniform/np.sum(posterior_uniform*dH0)
     prior_log_norm = prior_log/np.sum(prior_log*dH0)
