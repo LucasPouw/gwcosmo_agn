@@ -40,8 +40,6 @@ parser = OptionParser(
     option_list = [
         Option("-m", "--method", metavar="METHOD", default=None,
             help="METHOD: Select counterpart/statistical (required)"),
-        Option("-l", "--implementation", metavar="IMPLEMENTATION", default='master',
-            help="IMPLEMENTATION: Choose master or pofH0"),
         Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
             help="MINH0: Set minimum value of H0 Posterior"),
         Option("-v", "--max_H0", metavar="MAXH0", default='200.0', type=float,
@@ -130,8 +128,6 @@ if opts.method == 'counterpart':
         counterpart_z = float(opts.counterpart_z)
         
 # Set command line arguments
-implementation = str(opts.implementation)
-
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
@@ -189,22 +185,12 @@ def main():
         counterpart = None
 
     # compute likelihood
-    if implementation == 'master':
-        me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting)
-        likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
-        prior_uniform = me.pH0(H0,prior='uniform')
-        posterior_uniform = prior_uniform*likelihood
-        prior_log = me.pH0(H0,prior='log')
-        posterior_log= prior_log*likelihood
-
-    if implementation == 'pofH0':
-        dp = gwcosmo.likelihood.detection_probability.DetectionProbability(mass_distribution)
-        me = gwcosmo.gwcosmo.pofH0(H0,catalog,dp,linear=False,complete=completion,weighted=galaxy_weighting)
-        likelihoodG = me.likelihoodG(samples)
-        likelihoodnG = me.likelihoodnG(samples)
-        likelihood = likelihoodG + likelihoodnG
-        prior = me.prior(prior_type='log')*me.psiH0()/me.normalization()
-        posterior=likelihood*prior
+	me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,basic=True)
+	likelihood = me.likelihood(H0,samples,EM_counterpart=counterpart,complete=completion,skymap2d=skymap2d,counterpart_case='direct')
+	prior_uniform = me.pH0(H0,prior='uniform')
+	posterior_uniform = prior_uniform*likelihood
+	prior_log = me.pH0(H0,prior='log')
+	posterior_log= prior_log*likelihood
 
     prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
     posterior_uniform_norm = posterior_uniform/np.sum(posterior_uniform*dH0)
