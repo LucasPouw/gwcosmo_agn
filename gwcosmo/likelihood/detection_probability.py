@@ -318,11 +318,15 @@ class DetectionProbability(object):
             name of detector in network as a string (eg 'H1', 'L1')
         gmst : float
             Greenwich Mean Sidereal Time in seconds
+        z : float
+            redshift
+        H0 : float
+            value of Hubble constant in kms-1Mpc-1
                     
         Returns
         -------
         float
-            snr squared*dL^2 for given parameters at a single detector
+            snr squared for given parameters at a single detector
         """
         mtot = self.__mtot_obs(m1,m2,z)
         mc = self.mchirp_obs(m1,m2,z)
@@ -336,7 +340,7 @@ class DetectionProbability(object):
 
     def __pD_zH0(self,H0):
         """
-        Detection probability over a range of distances, returned as an interpolated function.
+        Detection probability over a range of redshifts and H0s, returned as an interpolated function.
         
         Parameters
         ----------
@@ -421,31 +425,23 @@ class DetectionProbability(object):
         return self.interp_average(z,H0)
 
 
-    def pD_H0_zinterp(self,H0):
+    def __call__(self, z, H0):
         """
-        Hopefully something faster than 2d interpolation over z and H0 and p(D|z,H0)
-        """
-        # TODO: write this function, so that an integral for any given H0 over z is fast
-        pass
-
-
-    def __call__(self, dl, H0):
-        """
-        To call as function of dl and H0
+        To call as function of z and H0
         
         Parameters
         ----------
-        dl : float or array_like
-            value(s) of luminosity distances in Mpc
+        z : float or array_like
+            value(s) of redshift
         H0 : float
             H0 value in kms-1Mpc-1
         
         Returns
         -------
         float or array_like
-            Returns Pdet(dl,H0).
+            Returns Pdet(z,H0).
         """
-        return self.pD_dlH0_eval(dl, H0)
+        return self.pD_zH0_eval(z, H0)
     
     
     def pD_distmax(self, dl, H0):
@@ -468,6 +464,7 @@ class DetectionProbability(object):
     def __snr_squared_basic(self,RA,Dec,m1,m2,inc,psi,detector,gmst,dl):
         """
         the optimal snr squared for one detector, used for marginalising over sky location, inclination, polarisation, mass
+        Note that this ignores the redshifting of source masses.
         
         Parameters
         ----------
@@ -483,11 +480,13 @@ class DetectionProbability(object):
             name of detector in network as a string (eg 'H1', 'L1')
         gmst : float
             Greenwich Mean Sidereal Time in seconds
+        dl : float
+            luminosity distance in Mpc
                     
         Returns
         -------
         float
-            snr squared*dL^2 for given parameters at a single detector
+            snr squared for given parameters at a single detector
         """
         mtot = self.__mtot(m1,m2)
         mc = self.mchirp(m1,m2)
@@ -502,6 +501,7 @@ class DetectionProbability(object):
     def __pD_dl_basic(self,H0):
         """
         Detection probability over a range of distances, returned as an interpolated function.
+        Note that this ignores the redshifting of source masses.
         
         Parameters
         ----------
@@ -526,8 +526,18 @@ class DetectionProbability(object):
 
     def pD_dl_eval_basic(self,dl):
         """
-        Returns a probability for a given distance dl from the interpolated function.
-        Or an array of probabilities for an array of distances.
+        Returns a probability of detection at a given luminosity distance
+        Note that this ignores the redshifting of source masses.
+        
+        Parameters
+        ----------
+        dl : float or array_like
+            value(s) of luminosity distances in Mpc
+        
+        Returns
+        -------
+        float or array_like
+            Probability of detection at the given luminosity distance and H0, marginalised over masses, inc, pol, and sky location
         """
         return splev(dl,self.spl,ext=1)
 
