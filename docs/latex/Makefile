@@ -12,7 +12,7 @@ all: $(DOCS)
 
 default: all
 
-Technical_Document.pdf: $(BIBLIO) $(TEXFILES)
+gwcosmo_method.pdf: $(BIBLIO) $(TEXFILES)
 	latexmk -pdf gwcosmo_method.tex
 
 clean:
