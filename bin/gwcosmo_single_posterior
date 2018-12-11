@@ -53,9 +53,7 @@ parser = OptionParser(
         Option("-i", "--skymap", metavar="SKYMAP", default=None,
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="GALAXY_CATALOG", default=None,
-            help="GALAXY_CATALOG: Load galaxy catalog. Options: glade or mdc"),
-        Option("-q", "--mdc_version", metavar="MDC", default=None,
-            help="MDC: Version of MDC catalogs available. Options: 1.0, 2.1, 2.2, 2.3, 3.1"),  
+            help="GALAXY_CATALOG: Load galaxy catalog in pickle format"), 
         Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
             help="WEIGHTING: Set galaxy catalog weighting"),
         Option("-c", "--completion", metavar="COMPLETENESS", default='False',
@@ -66,10 +64,6 @@ parser = OptionParser(
             help="DEC: Declination of counterpart"),
         Option("-z", "--counterpart_z", metavar="REDSHIFT", default=None,
             help="REDSHIFT: Redshift of counterpart"),
-        Option("-p", "--plot", metavar="PLOT", default='True',
-            help="PLOT: Plot results"),
-        Option("-s", "--save", metavar="SAVE", default='True',
-            help="SAVE: Save results"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
             help="OUTPUTFILE: Name of output file")
     ])
@@ -89,16 +83,13 @@ print('Selected method is:', opts.method)
 
 if (opts.posterior_samples is None and
     opts.skymap is None):
-        parser.error('Provide either posterior samples or skymap or both.')
+        parser.error('Provide either posterior samples and skymap.')
         
 if opts.mass_distribution is None:
         parser.error('Provide a mass distribution to use for Pdet calculation.')
         
 if opts.galaxy_catalog is None:
-    parser.error('The statistical method requires a galaxy catalog. Catalog options: glade or mdc')
-if opts.galaxy_catalog == 'mdc':
-    if opts.mdc_version is None:
-        parser.error('Provide version of MDC catalog to use.')
+    parser.error('The statistical method requires a galaxy catalog. Please provide one.')
         
 if opts.posterior_samples is not None:
         posterior_samples = str(opts.posterior_samples)
@@ -110,8 +101,6 @@ if opts.mass_distribution is not None:
 
 if opts.galaxy_catalog is not None:
     galaxy_catalog = str(opts.galaxy_catalog)
-    if opts.mdc_version is not None:
-        mdc_version = str(opts.mdc_version)
 
 if opts.method == 'statistical':
     galaxy_weighting = str2bool(opts.galaxy_weighting)
@@ -133,10 +122,6 @@ max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
 
 options_string = opts.method
-
-plot = str2bool(opts.plot)
-save = str2bool(opts.save)
-
 outputfile = str(opts.outputfile)
 
 def main():
@@ -158,13 +143,11 @@ def main():
     else:
         #TODO: Implement 3D skymap here for pixel method
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
-        
-    if galaxy_catalog in ('glade', 'sdss', 'des', 'sdss_clusters', 'des_clusters'):
-        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog)
-    elif galaxy_catalog == 'mdc':
-        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_name=galaxy_catalog+mdc_version)
-    elif galaxy_catalog[-2:] == '.p':
+
+    if galaxy_catalog[-2:] == '.p':
         catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+    else:
+        print('Not a compatible catalog.')
     
     if opts.method == 'counterpart':
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
