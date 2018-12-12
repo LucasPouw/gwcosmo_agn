@@ -1,7 +1,7 @@
 """Module containing functionality for creation and management of galaxy catalogs.
 Ignacio Magana
 """
-
+import gwcosmo
 import numpy as np
 import healpy as hp
 import pandas as pd
@@ -56,15 +56,11 @@ class galaxyCatalog(object):
     catalog_file : Path to catalog.p file
     catalog_name : Name of stored catalog to be loaded
     """
-    def __init__(self, catalog_file=None, catalog_name=None):
+    def __init__(self, catalog_file=None):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
-        if catalog_name is not None:
-            self.catalog_name = catalog_name
-            self.dictionary = self.__load_stored_catalog()
-        if (catalog_file is None and catalog_name is None):
-            print("Making empty catalog")
+        if catalog_file is None:
             self.catalog_name = ""
             self.dictionary = {'0':galaxy()}
 
@@ -105,6 +101,40 @@ class galaxyCatalog(object):
         if all(m) == 0: #for mdc1 and mdc2
             m = np.ones(nGal)
         return ra, dec, z, m, sigmaz
+    
+    def redshiftUncertainty(self):
+        """
+        A function which "smears" out galaxies in the catalog, therefore incorporating redshift uncetainties. 
+        """
+        nsmear=100
+        zmaxmax=1.0
+        z_uncert = []
+        ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()
+        ra_uncert = np.repeat(ralist,nsmear)
+        dec_uncert = np.repeat(declist,nsmear)
+        m_uncert = np.repeat(mlist,nsmear)
+        for i, z in enumerate(zlist):
+            z_uncert.append(z+sigmaz[i]*np.random.randn(100))
+        z_uncert = np.array(z_uncert).flatten()
+        sel = (z_uncert>0.) & (z_uncert < zmaxmax)
+        z_uncert = z_uncert[sel]
+        ra_uncert = ra_uncert[sel]
+        dec_uncert = dec_uncert[sel]
+        m_uncert = m_uncert[sel]
+        
+        galaxies = {}
+        index = np.arange(len(z_uncert))
+        for i in index:
+            gal = gwcosmo.prior.catalog.galaxy()
+            gal.ra = ra_uncert[i]
+            gal.dec = dec_uncert[i]
+            gal.z = z_uncert[i]
+            gal.m = m_uncert[i]
+            gal.sigmaz = 0.
+            galaxies[str(i)] = gal
+        catalog = gwcosmo.prior.catalog.galaxyCatalog()
+        catalog.dictionary = galaxies
+        return catalog
 
     def pixelCatalogs(self,skymap3d):
         moc_map = skymap3d.as_healpix()

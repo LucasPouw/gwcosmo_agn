@@ -49,17 +49,24 @@ class MasterEquation(object):
         Needed if whole_cat=False. RA and Dec limits on the catalog in the format np.array([ramin,ramax,decmin,decmax]) in radians
     """
 
-    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None,basic=False):
+    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
-        self.galaxy_catalog = galaxy_catalog
         self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,Nsamps=5000)
-        self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
         self.basic = basic
+        self.uncertainty = uncertainty
+        
+        if self.uncertainty == False:
+            self.galaxy_catalog = galaxy_catalog
+        else:
+            self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
+        ngal = (self.galaxy_catalog).nGal()
+        print(ngal)
+        self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
             if all(radec_lim)==None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
@@ -150,7 +157,6 @@ class MasterEquation(object):
                     tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
                     if tempsky >= minskypdf:
                         count += 1
-    
                         if self.weighted:
                             weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0))
                         else:
