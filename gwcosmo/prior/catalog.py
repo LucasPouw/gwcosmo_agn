@@ -1,7 +1,7 @@
 """Module containing functionality for creation and management of galaxy catalogs.
 Ignacio Magana
 """
-
+import gwcosmo
 import numpy as np
 import healpy as hp
 import pandas as pd
@@ -15,17 +15,6 @@ import pkg_resources
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
 
-def blue_luminosity_from_mag(m,z):
-    """
-    Returns the blue luminosity in units of L_10 given the apparent
-    magnitude and the luminosity distance
-    """
-    coverh = (const.c.to('km/s') / ( 70 * u.km / u.s / u.Mpc )).value
-    M_blue_solar = 5.48 # Binney & Tremaine
-    MB = m - 5.0 * np.log10( z*coverh / 10.0e-6 )
-    lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
-    return lumB
-
 class galaxy(object):
     """
     Class to store galaxy objects.
@@ -37,15 +26,26 @@ class galaxy(object):
     dec : Declination in radians
     z : redshift
     m : Apparent blue magnitude
-    lumB : Blue luminiosity computed from m and a Hubble constant of 70 #TODO: Have as separate function.
+    sigmaz : redshift uncertainty
     """
-    def __init__(self, index = 0, ra = 0, dec = 0, z = 0, m = 0, lumB = 1.0):
+    def __init__(self, index = 0, ra = 0, dec = 0, z = 0, m = 0, sigmaz = 0):
         self.index = index
         self.ra = ra
         self.dec = dec
         self.z = z
         self.m = m
-        self.lumB = lumB
+        self.sigmaz = sigmaz
+
+    def blue_luminosity_from_mag(self):
+        """
+        Returns the blue luminosity in units of L_10 given the apparent
+        magnitude and the redshift of a galaxy object assuming a Hubble constant of 70.
+        """
+        coverh = (const.c.to('km/s') / ( 70 * u.km / u.s / u.Mpc )).value
+        M_blue_solar = 5.48 # Binney & Tremaine
+        MB = self.m - 5.0 * np.log10( self.z*coverh / 10.0e-6 )
+        lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
+        return lumB
         
 class galaxyCatalog(object):
     """
@@ -56,29 +56,16 @@ class galaxyCatalog(object):
     catalog_file : Path to catalog.p file
     catalog_name : Name of stored catalog to be loaded
     """
-    def __init__(self, catalog_file=None, catalog_name=None):
+    def __init__(self, catalog_file=None):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
-        if catalog_name is not None:
-            self.catalog_name = catalog_name
-            self.dictionary = self.__load_stored_catalog()
-        if (catalog_file is None and catalog_name is None):
-            print("Making empty catalog")
+        if catalog_file is None:
             self.catalog_name = ""
             self.dictionary = {'0':galaxy()}
 
     def __load_catalog(self):
         return pickle.load(open(self.catalog_file, "rb"))
-    
-    def __load_stored_catalog(self):
-        stored_catalogs = ['glade', 'sdss', 'des', 'mdc1.0', 'mdc2.1', 'mdc2.2', 'mdc2.3', \
-                           'mdc3.1','sdss_clusters', 'des_clusters']
-        if self.catalog_name in stored_catalogs:
-            self.catalog_file = catalog_data_path + self.catalog_name + ".p"
-            return pickle.load(open(self.catalog_file, "rb"))
-        else:
-            print("Provide the name of a default catalog")
 
     def nGal(self):
         return len(self.dictionary)
@@ -103,17 +90,51 @@ class galaxyCatalog(object):
         dec = np.zeros(nGal)
         z = np.zeros(nGal)
         m = np.zeros(nGal)
-        lumB = np.zeros(nGal)
+        sigmaz = np.zeros(nGal)
         for i in range(nGal):
             gal = self.get_galaxy(i)
             ra[i] = gal.ra
             dec[i] = gal.dec
             z[i] = gal.z
             m[i] = gal.m
-            lumB[i] = gal.lumB
+            sigmaz[i] = gal.sigmaz
         if all(m) == 0: #for mdc1 and mdc2
             m = np.ones(nGal)
-        return ra, dec, z, m, lumB
+        return ra, dec, z, m, sigmaz
+    
+    def redshiftUncertainty(self):
+        """
+        A function which "smears" out galaxies in the catalog, therefore incorporating redshift uncetainties. 
+        """
+        nsmear=1
+        zmaxmax=1.0
+        z_uncert = []
+        ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()
+        ra_uncert = np.repeat(ralist,nsmear)
+        dec_uncert = np.repeat(declist,nsmear)
+        m_uncert = np.repeat(mlist,nsmear)
+        for i, z in enumerate(zlist):
+            z_uncert.append(z+sigmaz[i]*np.random.randn(nsmear))
+        z_uncert = np.array(z_uncert).flatten()
+        sel = (z_uncert>0.) & (z_uncert < zmaxmax)
+        z_uncert = z_uncert[sel]
+        ra_uncert = ra_uncert[sel]
+        dec_uncert = dec_uncert[sel]
+        m_uncert = m_uncert[sel]
+        
+        galaxies = {}
+        index = np.arange(len(z_uncert))
+        for i in index:
+            gal = gwcosmo.prior.catalog.galaxy()
+            gal.ra = ra_uncert[i]
+            gal.dec = dec_uncert[i]
+            gal.z = z_uncert[i]
+            gal.m = m_uncert[i]
+            gal.sigmaz = 0.
+            galaxies[str(i)] = gal
+        catalog = gwcosmo.prior.catalog.galaxyCatalog()
+        catalog.dictionary = galaxies
+        return catalog
 
     def pixelCatalogs(self,skymap3d):
         moc_map = skymap3d.as_healpix()

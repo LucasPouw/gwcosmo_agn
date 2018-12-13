@@ -11,8 +11,6 @@ from astropy import constants as const
 from astropy.table import Table
 import h5py
 
-import pkg_resources
-
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
     '''
@@ -30,16 +28,7 @@ class posterior_samples(object):
         """ Loads GW170817 posterior samples by default into class 
             Currently it only supports .dat posterior samples format.
         """
-        event_data_path = pkg_resources.resource_filename('gwcosmo', 'data/event_data/')
-        O1_events = ['GW150914', 'GW151012', 'GW151226']
-        O2_events = ['GW170104', 'GW170608', 'GW170729', 'GW170809', 'GW170814', 'GW170817', 'GW170818', 'GW170823']
-        if event in O1_events:
-            lalinference_path = event_data_path + 'O1/' + event + '/' + event + '.dat'
-        elif event in O2_events:
-            lalinference_path = event_data_path + 'O2/' + event + '/' + event + '.dat'
-        else:
-            lalinference_path=event
-        lalinference_data = np.genfromtxt(lalinference_path, names=True)
+        lalinference_data = np.genfromtxt(event, names=True)
         self.distance = lalinference_data['distance']
         self.longitude = lalinference_data['ra']
         self.latitude = lalinference_data['dec']
