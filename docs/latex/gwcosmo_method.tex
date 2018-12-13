@@ -286,6 +286,46 @@ Also, we bear in mind that when we create a KDE over the event's posterior sampl
 While in reality the probability of detecting a GW event varies across the sky due to antenna patterns, in the code we marginalise over the sky location in order to reduce the number of integrals required to calculate $p(D|H_0,I)$.  This is similar (but not identical) to marginalising over time of detection due to the rotation of the earth.  Ideally in the future, neither of these approximations will be used.
 
 
+\subsection{Redshifted-masses}
+Calculating $p(D|H_0,I)$ requires integrating over many realisations of GW events, and applying a lower integration limit which corresponds to the SNR threshold ($\rho_{th}$) which all events much reach in order to be deemed detected:
+\begin{equation}
+\begin{aligned}
+p(D|H_0,I) = \int_{\rho>\rho_{th}}^\infty p(D|x,H_0,I)p(x|H_0,I)dx.
+\end{aligned}
+\end{equation}
+In order to marginalise over many GW events a monte-carlo integration is used, where parameters which affect an event's detectability (mass, inclination, polarisation, and sky location) are sampled from chosen priors, and the event's SNR is calculated for a range of redshift and $H_0$ values.
+
+An event's detectability is dependent on observed mass, $M_{\text{obs}}$, but when calculating $p(D|H_0,I)$ the masses are drawn from the priors on source mass, $p(M_{\text{1,source}},M_{\text{2,source}})$ and then converted to observed masses through the usual equation:
+\begin{equation}
+\begin{aligned}
+M_{\text{obs}} = (1+z)M_{\text{source}}.
+\end{aligned}
+\end{equation}
+However, when we use GW data in the form of posterior samples, the prior used to generate those is uniform on $M_{\text{obs}}$.  For nearby BNSs (GW170817 in particular) the redshifts involved are small enough to be considered insignificant and this issue can be ignored.  However, for BBHs this is not true.  As redshift is linked directly to $H_0$, this difference must be accounted for, and a transformation between priors is required.
+
+In general, when calculating $p(D|H_0,I)$ for BBHs, $M_{\text{1,source}}$ is drawn from a power-law with slope $\alpha$, and $M_{\text{2,source}}$ is drawn from a uniform distribution between $5M_{\odot\text{,source}}$ and $M_{\text{1,source}}$, to give:
+\begin{equation}
+\begin{aligned}
+p(M_{\text{1,source}},M_{\text{2,source}}) \propto \dfrac{M_{\text{1,source}}^\alpha}{M_{\text{1,source}}-5M_{\odot\text{,source}}}.
+\end{aligned}
+\end{equation}
+
+To convert between a prior on source masses and a prior on observed masses, the following equation is used:
+\begin{equation}
+\begin{aligned}
+p(M_{\text{1,obs}},M_{\text{2,obs}}) &= p(M_{\text{1,source}},M_{\text{2,source}}) \dfrac{\partial(M_{\text{1,obs}},M_{\text{2,obs}})}{\partial(M_{\text{1,source}},M_{\text{2,source}})}
+\\ &= p(M_{\text{1,source}},M_{\text{2,source}}) \dfrac{1}{(1+z)^2}
+\end{aligned}
+\end{equation}
+For a choice of $\alpha=-1$, the factor of $(1+z)^2$ cancels in the numerator and denominator:
+\begin{equation}
+\begin{aligned}
+p(M_{\text{1,obs}},M_{\text{2,obs}}) &\propto \dfrac{1}{M_{\text{1,source}}(M_{\text{1,source}}-5M_{\odot\text{,source}})} \dfrac{1}{(1+z)^2}
+\\ &\propto \dfrac{(1+z)^2}{M_{\text{1,obs}}(M_{\text{1,obs}}-5M_{\odot\text{,obs}})} \dfrac{1}{(1+z)^2}
+\\ &\propto \dfrac{1}{M_{\text{1,obs}}(M_{\text{1,obs}}-5M_{\odot\text{,obs}})}
+\end{aligned}
+\end{equation}
+As all redshift (and hence $H_0$) dependence has been removed in this case, no correction is required for the differing priors.  This will not be the case for any $\alpha \neq -1$, and so this choice should be investigated thoroughly in future.
 
 
 \section{For the future: the pixel-based method \label{Sec: Future}}
