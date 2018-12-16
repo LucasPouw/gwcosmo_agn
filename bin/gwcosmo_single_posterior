@@ -148,18 +148,20 @@ def main():
         catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
     else:
         print('Not a compatible catalog.')
-    
+
+    if catalog.skypatch['allsky'] is not None:
+        allsky = False
+        radeclims = catalog.skypatch['allsky']
+    else:
+        allsky = True
+        radeclims = None
+
     if opts.method == 'counterpart':
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
         if (opts.counterpart_ra is None or
             opts.counterpart_dec is None or
             opts.counterpart_z is None):
-            if opts.posterior_samples == 'GW170817':
-                counterpart.get_galaxy(0).ra = 197.4500*np.pi/180.
-                counterpart.get_galaxy(0).dec = -23.3839*np.pi/180.
-                counterpart.get_galaxy(0).z = 0.009727
-            else:
-                parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
+            parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
         else:
             counterpart.get_galaxy(0).ra = counterpart_ra
             counterpart.get_galaxy(0).dec = counterpart_dec
@@ -168,7 +170,7 @@ def main():
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,basic=True)
+    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=False)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = me.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
@@ -188,6 +190,7 @@ def main():
         plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)')
         plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
         plt.xlim(min_H0,max_H0)
+        plt.ylim([0,max(prior_log_norm)])
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)

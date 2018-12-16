@@ -43,7 +43,7 @@ class DetectionProbability(object):
     linear : bool, optional
         if True, use linear cosmology (default=False)
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precompute=False):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precompute=True):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -99,15 +99,11 @@ class DetectionProbability(object):
         else:
             print("calculating pdet")
             z,H0,prob = self.__pD_zH0_array(self.H0vec)
-            print("out of loop")
         # TODO: test how different interpolations and fill values effect results.  Do values go below 0 and above 1?
         self.interp_average = interp2d(z,H0,prob,kind='cubic')
-        print("1")
         self.interp_average_basic = self.__pD_dl_basic(self.dl_array)
-        print("2")
         if Nside != None:
             self.interp_map = self.__pD_dlradec(self.Nside,self.dl_array)
-            print("3")
 
 
     def mchirp(self,m1,m2):

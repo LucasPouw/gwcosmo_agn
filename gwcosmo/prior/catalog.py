@@ -56,16 +56,20 @@ class galaxyCatalog(object):
     catalog_file : Path to catalog.p file
     catalog_name : Name of stored catalog to be loaded
     """
-    def __init__(self, catalog_file=None):
+    def __init__(self, catalog_file=None, skypatch=None):
         if catalog_file is not None:
             self.catalog_file = catalog_file
-            self.dictionary = self.__load_catalog()
+            self.dictionary, self.skypatch = self.__load_catalog()
         if catalog_file is None:
             self.catalog_name = ""
             self.dictionary = {'0':galaxy()}
+            self.skypatch = None
 
     def __load_catalog(self):
-        return pickle.load(open(self.catalog_file, "rb"))
+        cat = pickle.load(open(self.catalog_file, "rb"))
+        dictionary = cat[0]
+        skypatch = cat[1]
+        return dictionary, skypatch
 
     def nGal(self):
         return len(self.dictionary)
