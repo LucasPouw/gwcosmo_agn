@@ -35,7 +35,7 @@ p(H_0|\{x_{\text{GW}}\},\{D_{\text{GW}}\},I)&=\frac{p(H_0|I)p(N_{det}|H_0)\prod_
 \end{equation}
 where $\{x_{\text{GW}}\}$ is the set of GW data and $D_{\text{GW}}$ indicates that the event was detected as a GW.
 
-The term $p(N_{det}|H_0)$ is the likelihood of detecting $N_{det}$ events for a particular choice of $H_0$.  It depends on the instrinsic astrophysical rate of events, $R=\frac{\partial{N}}{\partial V \partial T}$, and by choosing a prior on rate of $p(R|I) \propto 1/R$, then the dependence on $H_0$ drops out. For simplicity this approximation is made throughout the analysis.
+The term $p(N_{det}|H_0)$ is the likelihood of detecting $N_{det}$ events for a particular choice of $H_0$.  It depends on the intrinsic astrophysical rate of events, $R=\frac{\partial{N}}{\partial V \partial T}$, and by choosing a prior on rate of $p(R|I) \propto 1/R$, then the dependence on $H_0$ drops out. For simplicity this approximation is made throughout the analysis.
 
 The remaining term factorises into likelihoods for each detected event,
 which can each be written as $p(x_{\text{GW}}|H_0,D_{\text{GW}},I)$.
@@ -58,7 +58,6 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0
 \\ &= p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) p(G|H_0,D_{\text{GW}},I) + p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) p(\bar{G}|H_0,D_{\text{GW}},I)
 \end{aligned} 
 \end{equation}
-
 
 \subsubsection{The catalogue patch case}
 While in general the statistical method in gwcosmo is designed for use with a galaxy catalogue which covers the entire sky, a small modification allows the use of catalogues which only cover a patch of sky, as long as the patch can be specified using limits in RA and Dec.  If we represent the sky area covered by the catalogue as $\Omega_{\text{cat}}$, and the area outside the catalogue as $\Omega_{\text{rest}}$, such that $\Omega_{\text{cat}}+\Omega_{\text{rest}}$ covers the whole sky, this can be written as follows:
@@ -90,14 +89,14 @@ p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},I) &= \dfrac{p(x_{
 \\ &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{GW}}|H_0,I)} 
 \end{aligned} 
 \end{equation}
-where we take $p(D_{\text{EM}}|D_{\text{GW}},H_0,I) = 1$, under the assumption that if the event was detected in gravitational waves, it will be detectable to EM telescopes.  While for current telecsopes and GW detection horizons, this is a reasonable assumption, it will have to be considered in more detail in the future.
+where we take $p(D_{\text{EM}}|D_{\text{GW}},H_0,I) = 1$, under the assumption that if the event was detected in gravitational waves, it will be detectable to EM telescopes.  While for current telescopes and GW detection horizons, this is a reasonable assumption, it will have to be considered in more detail in the future.
 
 In general, the assumption with the EM counterpart case is that observation of the counterpart will allow the identification of one (or more than one) of the galaxies in the neighboring region as the host of the GW event, and provide a redshift in this manner.
 
 From here, the counterpart case can be broken down into two further methods: ``direct'' and ``pencil-beam''. 
 
 \subsubsection{Direct}
-This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$ (note that this is independent of galaxy catalogue data).
+This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$ (note that this is independent of galaxy catalogue data).
 
 
 
@@ -153,11 +152,13 @@ Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in t
 \subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I)$}
 
 
+
+
 Marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &\propto \int p(x_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM
+\\ &= \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM
 \end{aligned}
 \end{equation}
 which is true \emph{if} we can assume that both $x_{\text{GW}}$ and $D_{\text{GW}}$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
@@ -176,11 +177,17 @@ p(z,\Omega,m,M|s,H_0,G,I) &= p(M|s,H_0,z,\Omega,m,G,I)p(z,\Omega,m|s,H_0,G,I)
 Substituting this back in:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
+p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &\propto p(s|H_0,G,I)p(s|H_0,G,I) \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm
+\\ &=  p(s|H_0,G,I)p(s|H_0,G,I) \sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)
 \end{aligned}
 \end{equation}
+
+Using Eq 2. we finally arrive at,
+\begin{equation}
+p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) = \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
+\end{equation}
+Notice that the terms $p(s|H_0,G,I)p(s|H_0,G,I)$ cancel out.
+
 
 In the unweighted case, this simplifies to the following:
 \begin{equation}
@@ -196,20 +203,20 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \iiiint p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
-\\ &= \iiiint p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
-\\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dm dM
-\\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}},z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
-\\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+p(G|H_0,D_{\text{GW}},I) &= \int p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
+\\ &= \int p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
+\\ &= \int \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dm dM
+\\ &=  \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\int p(D_{\text{GW}},z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+\\ &=  \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
 \end{aligned}
 \end{equation}
 where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
-\\ &= \dfrac{\iiint \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
+\\ &= \dfrac{\int \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\\ &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0  p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega  dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
@@ -233,23 +240,25 @@ p(\bar{G}|H_0,D_{\text{GW}},I) &= 1 - p(G|H_0,D_{\text{GW}},I)
 \end{equation}
 
 
-
-
 \subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I)$}
 Similarly:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
-\\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},& I) \propto \int p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM
+\\ &= \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM
+\\ &= \int p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM
+\\ &= p(\bar{G}|H_0,I)\int p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM
+\\ &= p(\bar{G}|H_0,I) \int p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM
+\\ &= p(\bar{G}|H_0,I) \int p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
+\\ &= p(\bar{G}|H_0,I) \int^\infty_{z(H_0,m_{\text{th}},M)} \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 
+Using Eq 2. we finally arrive at,
+\begin{equation}
+p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) = \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\end{equation}
+Notice that the term $p(\bar{G}|H_0,I)$ cancels out.
 
 \subsubsection{The luminosity weighted case}
 In the case where we consider luminosity weighting, this takes the following form:
@@ -285,6 +294,15 @@ Also, we bear in mind that when we create a KDE over the event's posterior sampl
 \subsection{Sky-averaged $p(D|H_0,I)$}
 While in reality the probability of detecting a GW event varies across the sky due to antenna patterns, in the code we marginalise over the sky location in order to reduce the number of integrals required to calculate $p(D|H_0,I)$.  This is similar (but not identical) to marginalising over time of detection due to the rotation of the earth.  Ideally in the future, neither of these approximations will be used.
 
+\subsection{Redshift Uncertainties}
+Most galaxy catalogs provide estimates of redshifts that use machine learning or Bayesian frameworks by assigning a redshift estimate to galaxies based on their color and apparent magnitude information which is usually compared to a spectroscopic sample that was used to train the algorithm, we refer to these redshift estimates here as photoz's.
+
+For machine learning based estimates a median (or mean) $z_\text{photo}$ and an error estimate $\sigma_{z_\text{photo}}$ is provided. Given the frequentist nature of ML estimates there is usually no more information other than a few quality flags that classify the redshifts in terms of how trustworthy these are. 
+For the Bayesian algorithms, a full posterior for each photoz is produced. The posteriors usually do not fit a gaussian distribution. Ideally, we would want the full distribution but most catalogs only provide a median (or mean) $z_\text{photo}$ and an error estimate $\sigma_{z_\text{photo}}$.
+
+Given the limited information about the photoz posteriors, we simply fit a gaussian distribution around the median $z_\text{photo}$ given $\sigma_{z_\text{photo}}$. We then sample from the distribution to get an estimate $z_\text{sample}$ and use it instead of the median (or mean) photoz estimate.
+
+When examining the photoz estimates, we notice that the algorithms tend to introduce artificial structure. This is important to note since the structure can mimic galaxy clustering and large scale structure which can lead to systematics in our estimate of $H_0$. Sampling from the gaussian distribution that we fit to the biased photoz estimates tends to wash out the introduced structure.
 
 \subsection{Redshifted-masses}
 Calculating $p(D|H_0,I)$ requires integrating over many realisations of GW events, and applying a lower integration limit which corresponds to the SNR threshold ($\rho_{th}$) which all events much reach in order to be deemed detected:
