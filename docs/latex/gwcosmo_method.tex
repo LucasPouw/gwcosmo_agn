@@ -101,7 +101,7 @@ This method assumes that the counterpart has been unambiguously linked to the ho
 
 
 \subsubsection{Pencil-beam}
-The pencil-beam method makes the assumption that while the sky location of the galaxy associated with the counterpart is that of the GW event, the true host may be hidden behind that galaxy, and therefore there returns the question of whether the host is inside or outside the galaxy catalogue.  In this case, the likelihood takes the same form as in the statistical case, but evaluated along the line of sight of the counterpart\footnote{In future, this (and the ``direct'' method) should be expanded to cover a finite patch of sky, if more than one potential host galaxy (or none at all) could be associated with the counterpart.}.
+The pencil-beam method makes the assumption that while the sky location of the galaxy associated with the counterpart is that of the GW event, the true host may be hidden behind that galaxy, and therefore there returns the question of whether the host is inside or outside the galaxy catalogue.  In this case, the likelihood takes the same form as in the statistical case, but evaluated along the line of sight of the counterpart\footnote{In the future, this (and the ``direct'' method) should be expanded to cover a finite patch of sky, if more than one potential host galaxy (or none at all) could be associated with the counterpart.}.
 
 
 
@@ -206,26 +206,35 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 p(G|H_0,D_{\text{GW}},I) &= \int p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
 \\ &= \int p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
 \\ &= \int \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dm dM
-\\ &=  \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\int p(D_{\text{GW}},z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
-\\ &=  \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+\\ &\propto  \int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM
+\\ &=  \int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM
 \end{aligned}
 \end{equation}
-where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
+where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
-\\ &= \dfrac{\int \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0  p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega  dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(G|H_0,D_{\text{GW}},I) &\propto \int \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM
+\\ &= \int \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM
+\\ &= \int^{z(H_0,m_{\text{th}},M)}_0  p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega  dM
 \end{aligned}
 \end{equation}
 
+Now the proportionality factor is,
+\begin{equation}
+    p(D_{\text{GW}}|H_0,I) = \int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
+\end{equation}
+
+Such that our final result is,
+\begin{equation}
+p(G|H_0,D_{\text{GW}},I) = \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0  p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega  dM}{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+\end{equation}
 
 \subsubsection{The luminosity weighted case}
 In the case where we consider luminosity weighting, this takes the following form:
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
+p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I)dz d\Omega dM }{\int p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
@@ -244,19 +253,19 @@ p(\bar{G}|H_0,D_{\text{GW}},I) &= 1 - p(G|H_0,D_{\text{GW}},I)
 Similarly:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},& I) \propto \int p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM
+p(x_{\text{GW}}|&H_0,\bar{G},D_{\text{GW}}, I) \propto \int p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM
 \\ &= \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM
 \\ &= \int p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM
 \\ &= p(\bar{G}|H_0,I)\int p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM
 \\ &= p(\bar{G}|H_0,I) \int p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM
 \\ &= p(\bar{G}|H_0,I) \int p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
-\\ &= p(\bar{G}|H_0,I) \int^\infty_{z(H_0,m_{\text{th}},M)} \int p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
+\\ &= p(\bar{G}|H_0,I) \int^\infty_{z(H_0,m_{\text{th}},M)} p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 
 Using Eq 2. we finally arrive at,
 \begin{equation}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) = \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) = \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
 \end{equation}
 Notice that the term $p(\bar{G}|H_0,I)$ cancels out.
 
@@ -264,7 +273,7 @@ Notice that the term $p(\bar{G}|H_0,I)$ cancels out.
 In the case where we consider luminosity weighting, this takes the following form:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} p(x_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} p(D_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
@@ -368,7 +377,7 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega_i,I) &= \dfrac{p(x_{\text{GW}}|H_0,G,\O
 and so the final expression becomes:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},I) = \dfrac{1}{p(D_{\text{GW}}|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D_{\text{GW}}|H_0,G,\Omega_i,I)} p(G|H_0,D_{\text{GW}},\Omega_i,I) \\ &+ \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D_{\text{GW}}|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D_{\text{GW}},\Omega_i,I) \bigg) \times p(D_{\text{GW}}|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
+p(x_{\text{GW}}|H_0,D_{\text{GW}},I) = \dfrac{1}{p(D_{\text{GW}}|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D_{\text{GW}}|H_0,G,\Omega_i,I)} p(G|H_0,D_{\text{GW}},\Omega_i,I) \\ &+ \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D_{\text{GW}}|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D_{\text{GW}},\Omega_i,I) \bigg) p(D_{\text{GW}}|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
 \end{aligned} 
 \end{equation}
 
