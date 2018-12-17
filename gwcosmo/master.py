@@ -11,6 +11,8 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import healpy as hp
+import warnings
+warnings.filterwarnings("ignore")
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
