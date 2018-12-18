@@ -110,31 +110,3 @@ class posterior_samples(object):
                 return 0.
         sky_support = np.vectorize(sky_support)
         return sky_support
-
-    def compute_3d_kde(self,coverh_x):
-        "Computes 3D KDE over the samples given an array of H0 values."
-        radecdist_list=[]
-        for coverh in coverh_x:
-            three_d_arr = np.vstack((self.longitude, self.latitude, self.distance/coverh))
-            kde = gaussian_kde(three_d_arr)
-            kde_norm = kde.integrate_box(np.asarray([0, -np.pi / 2, 0]), np.asarray([2.0 * np.pi, np.pi / 2, 1.0]))
-            radecdist_list.append([kde,kde_norm])
-        return radecdist_list
-
-    def compute_3d_probability(self, nt, kde, pdfnorm, zmax, ngalaxies=10, z_err_fraction=0.01, a_err_fraction=0.01):
-        nt = nt[(np.where((nt['z'] > 0) & (nt['z'] < zmax)))]
-        nt = nt[(np.where((nt['RA'] > np.min(self.longitude) - 1.0) \
-                          & (nt['RA'] < np.max(self.longitude ) + 1.0)))]
-        nt = nt[(np.where((nt['Dec'] > np.min(self.latitude) - 1.0) \
-                          & (nt['Dec'] < np.max(self.latitude ) + 1.0)))]
-
-        tmpra = np.transpose(np.tile(nt['RA'], (len(self.longitude[:ngalaxies]), 1))) - np.tile(self.longitude[:ngalaxies], (len(nt['RA']), 1))
-        tmpdec = np.transpose(np.tile(nt['Dec'], (len(self.latitude[:ngalaxies]), 1))) - np.tile(self.latitude[:ngalaxies], (len(nt['Dec']), 1))
-        tmpm = tmpra**2. + tmpdec**2.
-        mask1 = np.ma.masked_where(tmpm > (a_err_fraction**2), tmpm).filled(0)
-        mask1 = np.max((mask1 > 0), 1)
-        nt = nt[mask1]
-        
-        tmppdf = kde(np.vstack((nt['RA'], nt['Dec'], nt['z']))) / pdfnorm
-
-        return np.sum(tmppdf*nt['lumB']/(np.cos(nt['Dec'])*nt['z']**2))
