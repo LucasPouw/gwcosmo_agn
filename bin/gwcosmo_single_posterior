@@ -187,7 +187,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=True)
+    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=False)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = me.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
