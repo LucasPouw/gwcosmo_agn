@@ -144,8 +144,12 @@ class MasterEquation(object):
         
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if EM_counterpart != None:
-            counterpart = EM_counterpart.get_galaxy(0)
-            
+            if self.uncertainty == False:
+                counterpart = EM_counterpart.get_galaxy(0)
+            else:
+                EM_counterpart = EM_counterpart.redshiftUncertainty()
+                counterpart = EM_counterpart.get_galaxy(0)
+
             tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
             tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
             numnorm = tempdist*tempsky
@@ -345,7 +349,11 @@ class MasterEquation(object):
         
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
-            counterpart = EM_counterpart.get_galaxy(0)
+            if self.uncertainty == False:
+                counterpart = EM_counterpart.get_galaxy(0)
+            else:
+                EM_counterpart = EM_counterpart.redshiftUncertainty()
+                counterpart = EM_counterpart.get_galaxy(0)
             tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix                
             num = distnum*tempsky
         
@@ -551,7 +559,11 @@ class MasterEquation(object):
             """
             return splev(dl,temp,ext=3)
         
-        counterpart = EM_counterpart.get_galaxy(0)
+        if self.uncertainty == False:
+            counterpart = EM_counterpart.get_galaxy(0)
+        else:
+            EM_counterpart = EM_counterpart.redshiftUncertainty()
+            counterpart = EM_counterpart.get_galaxy(0)
         tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
                 
         tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
