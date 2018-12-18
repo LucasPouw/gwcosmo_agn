@@ -67,7 +67,6 @@ class MasterEquation(object):
         else:
             self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
         ngal = (self.galaxy_catalog).nGal()
-        print(ngal)
         self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
             if all(radec_lim)==None:
@@ -86,7 +85,6 @@ class MasterEquation(object):
         self.pGD = None
         self.pnGD = None
         self.pDnG = None
-        self.pDnG_rest_of_sky = None
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         if event_type == 'BNS':
@@ -372,7 +370,8 @@ class MasterEquation(object):
     def pD_H0nG(self,H0):
         """
         Returns p(D|H0,bar{G})
-        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
+        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog for an
+        all sky or patchy galaxy catalog.
         
         Parameters
         ----------
@@ -385,7 +384,7 @@ class MasterEquation(object):
             p(D|H0,bar{G})     
         """  
         # TODO: same fixes as for pG_H0D 
-        distden = np.zeros(len(H0))
+        den = np.zeros(len(H0))
         
         def skynorm(dec,ra):
             return np.cos(dec)
@@ -406,12 +405,13 @@ class MasterEquation(object):
 
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
-
-            distden[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        
-        den = distden*norm
-
-        self.pDnG = den   
+            if self.whole_cat == True:
+                den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                self.pDnG = den*norm
+            else:
+                den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                self.pDnG = den*(1.-norm)
+                
         return self.pDnG
 
 
@@ -475,52 +475,6 @@ class MasterEquation(object):
             
         num = distnum*skynum
         return num
-
-
-    def pD_H0nG_rest_of_sky(self,H0):
-        """
-        FOR THE AREA OF SKY OUTSIDE THE RA AND DEC LIMITS
-        Returns p(D|H0,bar{G})
-        The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog
-        
-        Parameters
-        ----------
-        H0 : float or array_like
-            Hubble constant value(s) in kms-1Mpc-1
-            
-        Returns
-        -------
-        float or array_like
-            p(D|H0,bar{G})     
-        """  
-        # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(H0))
-        
-        def skynorm(dec,ra):
-            return np.cos(dec)
-                
-        norm = 1.0 - dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
-
-        for i in range(len(H0)):
-
-            def I(z,M):
-                if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
-                else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
-
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
-
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            
-        self.pDnG_rest_of_sky = den*norm  
-        return self.pDnG_rest_of_sky
-
 
     def px_H0_counterpart(self,H0,GW_data,skymap2d,EM_counterpart):
         """
@@ -712,17 +666,21 @@ class MasterEquation(object):
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
                 
             if self.whole_cat == False:
-                if all(self.pDnG_rest_of_sky)==None:
-                    self.pDnG_rest_of_sky = self.pD_H0nG_rest_of_sky(H0)
                 pxnG_rest_of_sky = self.px_H0nG_rest_of_sky(H0,GW_data,skymap2d)
 
-                likelihood = likelihood + (pxnG_rest_of_sky/self.pDnG_rest_of_sky)
+                likelihood = likelihood + (pxnG_rest_of_sky/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
-
-
-
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+### Pixel Based Likelihood (WIP) *DO NOT REVIEW* ###
 class PixelBasedLikelihood(MasterEquation):
     """
     Likelihood for a single event, evaluated using a pixel based sky map
@@ -846,7 +804,6 @@ class PixelBasedLikelihood(MasterEquation):
                 val[i] += galprob/detprob
         return val
         
-    
     def pixel_likelihood_notG(self,H0,pixel):
         """
         p(x | H0, D, notG, pix)
