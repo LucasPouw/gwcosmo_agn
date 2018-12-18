@@ -153,7 +153,7 @@ else:
             samples.load_posterior_samples(posterior_samples)
         skymap3d = None
         if opts.skymap is not None:
-            skymap2d = gwcosmo.likelihood.skymap2d.skymap2d(skymap)
+            skymap2d = gwcosmo.likelihood.skymap.skymap2d(skymap)
         else:
             skymap2d = None
     else:
