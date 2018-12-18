@@ -295,8 +295,8 @@ class MasterEquation(object):
     def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None):
         """
         Returns p(x|H0,bar{G}).
-        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
-        
+        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog for an
+        all sky or patchy galaxy catalog.        
         Parameters
         ----------
         H0 : float or array_like
@@ -342,9 +342,11 @@ class MasterEquation(object):
 
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
+            if self.whole_cat == True:
+                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            else:
+                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-            distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-        
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
             if self.uncertainty == False:
@@ -360,10 +362,12 @@ class MasterEquation(object):
             theta,rapix = hp.pix2ang(skymap2d.nside,pixind,nest=True)
             decpix = np.pi/2.0 - theta
             idx = (self.ra_min <= rapix) & (rapix <= self.ra_max) & (self.dec_min <= decpix) & (decpix <= self.dec_max)
-            skynum = skymap2d.prob[idx].sum()
+            if self.whole_cat == True:
+                skynum = skymap2d.prob[idx].sum()
+            else: 
+                skynum = 1.0 - skymap2d.prob[idx].sum()
             print("{}% of the event's sky probability is contained within the patch covered by the catalog".format(skynum*100))
             num = distnum*skynum
-        
         return num
 
 
@@ -413,68 +417,6 @@ class MasterEquation(object):
                 self.pDnG = den*(1.-norm)
                 
         return self.pDnG
-
-
-    def px_H0nG_rest_of_sky(self,H0,GW_data,skymap2d):
-        """
-        FOR THE AREA OF SKY OUTSIDE THE RA AND DEC LIMITS 
-        Returns p(x|H0,bar{G}).
-        The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog.
-        
-        Parameters
-        ----------
-        H0 : float or array_like
-            Hubble constant value(s) in kms-1Mpc-1
-        GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
-            Gravitational wave event samples
-        skymap2d : gwcosmo.likelihood.skymap.skymap object
-            Gravitational wave event skymap
-            
-        Returns
-        -------
-        float or array_like
-            p(x|H0,bar{G})
-        """
-        distnum = np.zeros(len(H0))
-        
-        distkernel = GW_data.lineofsight_distance()
-        
-        distmax = 2.0*np.amax(GW_data.distance)
-        distmin = 0.5*np.amin(GW_data.distance)
-        dl_array = np.linspace(distmin,distmax,500)
-        vals = distkernel(dl_array)
-        temp = splrep(dl_array,vals)
-        
-        def px_dl(dl):
-            """
-            Returns a probability for a given distance dl from the interpolated function.
-            """
-            return splev(dl,temp,ext=3)
-            
-        pixind = range(skymap2d.npix)
-        theta,rapix = hp.pix2ang(skymap2d.nside,pixind,nest=True)
-        decpix = np.pi/2.0 - theta
-        idx = (self.ra_min <= rapix) & (rapix <= self.ra_max) & (self.dec_min <= decpix) & (decpix <= self.dec_max)
-        skynum = 1.0 - skymap2d.prob[idx].sum()
-        print("{}% of the event's sky probability is not inside the patch covered by the catalog".format(skynum*100))
-
-        for i in range(len(H0)):
-
-            def Icat(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
-
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
-
-            distnum[i] = dblquad(Icat,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            
-        num = distnum*skynum
-        return num
 
     def px_H0_counterpart(self,H0,GW_data,skymap2d,EM_counterpart):
         """
@@ -644,7 +586,6 @@ class MasterEquation(object):
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
-
         else:
             pxG = self.px_H0G(H0,GW_data,skymap2d,EM_counterpart)
             if all(self.pDG)==None:
@@ -664,22 +605,10 @@ class MasterEquation(object):
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
-                
-            if self.whole_cat == False:
-                pxnG_rest_of_sky = self.px_H0nG_rest_of_sky(H0,GW_data,skymap2d)
-
-                likelihood = likelihood + (pxnG_rest_of_sky/self.pDnG)
             
         return likelihood/np.sum(likelihood)/dH0
     
-    
-    
-    
-    
-    
-    
-    
-    
+
 ### Pixel Based Likelihood (WIP) *DO NOT REVIEW* ###
 class PixelBasedLikelihood(MasterEquation):
     """
