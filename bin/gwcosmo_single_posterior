@@ -18,7 +18,7 @@ matplotlib.rcParams['text.usetex']= True
 matplotlib.rcParams['mathtext.fontset']= 'stixsans'
 
 import seaborn as sns
-sns.set_context('talk')
+sns.set_context('paper')
 sns.set_style('ticks')
 sns.set_palette('colorblind')
 
@@ -65,7 +65,9 @@ parser = OptionParser(
         Option("-z", "--counterpart_z", metavar="REDSHIFT", default=None,
             help="REDSHIFT: Redshift of counterpart"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
-            help="OUTPUTFILE: Name of output file")
+            help="OUTPUTFILE: Name of output file"),
+        Option("-p", "--plot", metavar="PLOT", default=None,
+            help="PLOT: Plot .npz file")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -80,51 +82,65 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
 print('Selected method is:', opts.method)
+if opts.plot is not None:
+    filename = str(opts.plot)
+    data = np.load(filename)['arr_0']
+    H0 = data[0]
+    min_H0 = min(H0)
+    max_H0 = max(H0)
+    dH0 = H0[1]-H0[0]
+    prior_uniform = np.ones(len(H0))
+    prior_log = 1./H0
+    prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
+    prior_log_norm = prior_log/np.sum(prior_log*dH0)
+    posterior_uniform_norm = data[2]
+    posterior_log_norm = data[3]
+    outputfile = filename[:-4]
+    
+else:
+    if (opts.posterior_samples is None and
+        opts.skymap is None):
+            parser.error('Provide either posterior samples and skymap.')
 
-if (opts.posterior_samples is None and
-    opts.skymap is None):
-        parser.error('Provide either posterior samples and skymap.')
-        
-if opts.mass_distribution is None:
-        parser.error('Provide a mass distribution to use for Pdet calculation.')
-        
-if opts.galaxy_catalog is None:
-    parser.error('The statistical method requires a galaxy catalog. Please provide one.')
-        
-if opts.posterior_samples is not None:
-        posterior_samples = str(opts.posterior_samples)
-if opts.skymap is not None:
-        skymap = str(opts.skymap)
+    if opts.mass_distribution is None:
+            parser.error('Provide a mass distribution to use for Pdet calculation.')
 
-if opts.mass_distribution is not None:
-        mass_distribution = str(opts.mass_distribution)
+    if opts.galaxy_catalog is None:
+        parser.error('The statistical method requires a galaxy catalog. Please provide one.')
 
-if opts.galaxy_catalog is not None:
-    galaxy_catalog = str(opts.galaxy_catalog)
+    if opts.posterior_samples is not None:
+            posterior_samples = str(opts.posterior_samples)
+    if opts.skymap is not None:
+            skymap = str(opts.skymap)
 
-if opts.method == 'statistical':
-    galaxy_weighting = str2bool(opts.galaxy_weighting)
-    completion = str2bool(opts.completion)
+    if opts.mass_distribution is not None:
+            mass_distribution = str(opts.mass_distribution)
 
-if opts.method == 'counterpart':
-    galaxy_weighting = False
-    completion = True
-    if opts.counterpart_ra is not None:
-        counterpart_ra = float(opts.counterpart_ra)
-    if opts.counterpart_dec is not None:
-        counterpart_dec = float(opts.counterpart_dec)
-    if opts.counterpart_z is not None:
-        counterpart_z = float(opts.counterpart_z)
-        
-# Set command line arguments
-min_H0 = float(opts.min_H0)
-max_H0 = float(opts.max_H0)
-bins_H0 = float(opts.bins_H0)
+    if opts.galaxy_catalog is not None:
+        galaxy_catalog = str(opts.galaxy_catalog)
 
-options_string = opts.method
-outputfile = str(opts.outputfile)
+    if opts.method == 'statistical':
+        galaxy_weighting = str2bool(opts.galaxy_weighting)
+        completion = str2bool(opts.completion)
 
-def main():
+    if opts.method == 'counterpart':
+        galaxy_weighting = False
+        completion = True
+        if opts.counterpart_ra is not None:
+            counterpart_ra = float(opts.counterpart_ra)
+        if opts.counterpart_dec is not None:
+            counterpart_dec = float(opts.counterpart_dec)
+        if opts.counterpart_z is not None:
+            counterpart_z = float(opts.counterpart_z)
+
+    # Set command line arguments
+    min_H0 = float(opts.min_H0)
+    max_H0 = float(opts.max_H0)
+    bins_H0 = float(opts.bins_H0)
+
+    options_string = opts.method
+    outputfile = str(opts.outputfile)
+
     "Compute P(H0)"
     H0 = np.linspace(min_H0, max_H0, bins_H0)
     dH0 = H0[1] - H0[0]
@@ -163,14 +179,15 @@ def main():
             opts.counterpart_z is None):
             parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
         else:
-            counterpart.get_galaxy(0).ra = counterpart_ra
-            counterpart.get_galaxy(0).dec = counterpart_dec
+            counterpart.get_galaxy(0).ra = counterpart_ra*np.pi/180.
+            counterpart.get_galaxy(0).dec = counterpart_dec*np.pi/180.
             counterpart.get_galaxy(0).z = counterpart_z
+            counterpart.get_galaxy(0).sigmaz = 6.671e-4 #200/c
     else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=False)
+    me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=True)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = me.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
@@ -181,24 +198,66 @@ def main():
     posterior_uniform_norm = posterior_uniform/np.sum(posterior_uniform*dH0)
     prior_log_norm = prior_log/np.sum(prior_log*dH0)
     posterior_log_norm = posterior_log/np.sum(posterior_log*dH0)
-
-    plt.figure()
-    plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)')
-    plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)')
-    plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)')
-    plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)')
-    plt.axvline(70,ls='--', c='k', label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-    plt.xlim(min_H0,max_H0)
-    plt.ylim([0,1.1*max(posterior_log_norm)])
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
-    plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
-    plt.legend(loc='upper right',fontsize=14)
-    plt.tight_layout()
-    plt.savefig(outputfile+'.png',dpi=400)
-
+    
     np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
 
-if __name__ == "__main__":
-    main()
+def percentile_from_fit(p,y,x):
+    from scipy.integrate import cumtrapz
+    from scipy.interpolate import UnivariateSpline
+    sp = UnivariateSpline(cumtrapz(y,x),x[1:],s=0.0)
+    return sp(p)
+
+if opts.method == 'counterpart':
+    idx = np.where(H0>54)[0]
+    print(H0[idx])
+    lowc_uniform = percentile_from_fit(0.05,posterior_uniform_norm[idx],H0[idx])
+    highc_uniform = percentile_from_fit(0.95,posterior_uniform_norm[idx],H0[idx])
+    lowc_log = percentile_from_fit(0.05,posterior_log_norm[idx],H0[idx])
+    highc_log = percentile_from_fit(0.95,posterior_log_norm[idx],H0[idx])
+else:
+    lowc_uniform = percentile_from_fit(0.05,posterior_uniform_norm,H0)
+    highc_uniform = percentile_from_fit(0.95,posterior_uniform_norm,H0)
+    lowc_log = percentile_from_fit(0.05,posterior_log_norm,H0)
+    highc_log = percentile_from_fit(0.95,posterior_log_norm,H0)
+
+median_uniform = H0[np.where(posterior_uniform_norm > np.median(posterior_uniform_norm))[0][0]]
+median_log = H0[np.where(posterior_log_norm > np.median(posterior_log_norm))[0][0]]
+sigma90_low_uniform = median_uniform - lowc_uniform
+sigma90_high_uniform = highc_uniform - median_uniform
+sigma90_low_log = median_log - lowc_log
+sigma90_high_log = highc_log - median_log
+
+ymin = 0
+ymax = 1.1*max(posterior_log_norm)
+planck_h = 0.6774*100
+sigma_planck_h = 0.0062*100
+riess_h = 0.7324*100
+sigma_riess_h = 0.0174*100
+
+c=sns.color_palette('colorblind')
+plt.figure()
+plt.axvline(planck_h,label='Planck',color=c[4])
+plt.fill_betweenx([ymin,ymax],planck_h-2*sigma_planck_h,planck_h+2*sigma_planck_h,color=c[4],alpha=0.2)
+plt.axvline(riess_h,label='SH0ES',color=c[2])
+plt.fill_betweenx([ymin,ymax],riess_h-2*sigma_riess_h,riess_h+2*sigma_riess_h,color=c[2],alpha=0.2)
+plt.axvline(70,ls='--', color='k',alpha=0.8, label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)',c=c[0])
+plt.axvline(lowc_uniform,ls='--',c=c[0])
+plt.axvline(highc_uniform,ls='--',c=c[0])
+plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
+plt.axvline(lowc_log,ls='--',c=c[1])
+plt.axvline(highc_log,ls='--',c=c[1])
+plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
+plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
+plt.xlim(min_H0,max_H0)
+plt.ylim(ymin,ymax)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
+plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
+plt.legend(loc='upper right',fontsize=10)
+plt.tight_layout()
+plt.savefig(outputfile+'.png',dpi=800)
+
+print('median and 90 percent credidble interval for flat H0 prior: %f + %f - %f' %(median_uniform, sigma90_high_uniform, sigma90_low_uniform) )
+print('median and 90 percent credidble interval for log H0 prior: %f + %f - %f' %(median_log, sigma90_high_log, sigma90_low_log) )
