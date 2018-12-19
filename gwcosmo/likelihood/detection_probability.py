@@ -11,6 +11,7 @@ from scipy.integrate import quad
 from scipy.stats import ncx2
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
+from gwcosmo.prior.priors import *
 import pickle
 
 import pkg_resources
@@ -74,21 +75,15 @@ class DetectionProbability(object):
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS':
-            self.m1 = np.random.normal(1.35,0.1,N)*1.988e30
-            self.m2 = np.random.normal(1.35,0.1,N)*1.988e30
+            m1, m2 = BNS_gaussian_distribution(N,mean=1.35,sigma=0.15)
             interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BBH':
-            #Based on Maya's notebook
-            def inv_cumulative_power_law(u,mmin,mmax,alpha):
-                if alpha != -1:
-                    return (u*(mmax**(alpha+1)-mmin**(alpha+1))+mmin**(alpha+1))**(1.0/(alpha+1))
-                else:
-                    return np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
-            self.m1 = inv_cumulative_power_law(np.random.rand(N),5.,40.,-1.)*1.988e30
-            self.m2 = np.random.uniform(low=5.0,high=self.m1)
+            m1, m2 = BBH_powerlaw_distribution(N,mmin=5.,mmax=40.,alpha=-1)
             interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,2500.0,500)
+        self.m1 = m1*1.988e30
+        self.m2 = m2*1.988e30
             
         self.M_min = np.min(self.m1)+np.min(self.m2)
         self.__interpolnum = self.__numfmax_fmax(self.M_min)

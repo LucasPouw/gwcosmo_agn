@@ -110,7 +110,7 @@ class galaxyCatalog(object):
         """
         A function which "smears" out galaxies in the catalog, therefore incorporating redshift uncetainties. 
         """
-        nsmear=1
+        nsmear=5
         zmaxmax=1.0
         z_uncert = []
         ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()

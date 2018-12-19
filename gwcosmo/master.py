@@ -66,6 +66,7 @@ class MasterEquation(object):
             self.galaxy_catalog = galaxy_catalog
         else:
             self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
+
         ngal = (self.galaxy_catalog).nGal()
         self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
@@ -292,7 +293,7 @@ class MasterEquation(object):
         return self.pnGD
        
         
-    def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None):
+    def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None,allsky=True):
         """
         Returns p(x|H0,bar{G}).
         The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog for an
@@ -342,7 +343,7 @@ class MasterEquation(object):
 
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
-            if self.whole_cat == True:
+            if allsky == True:
                 distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
                 distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
@@ -362,7 +363,7 @@ class MasterEquation(object):
             theta,rapix = hp.pix2ang(skymap2d.nside,pixind,nest=True)
             decpix = np.pi/2.0 - theta
             idx = (self.ra_min <= rapix) & (rapix <= self.ra_max) & (self.dec_min <= decpix) & (decpix <= self.dec_max)
-            if self.whole_cat == True:
+            if allsky == True:
                 skynum = skymap2d.prob[idx].sum()
             else: 
                 skynum = 1.0 - skymap2d.prob[idx].sum()
@@ -371,7 +372,7 @@ class MasterEquation(object):
         return num
 
 
-    def pD_H0nG(self,H0):
+    def pD_H0nG(self,H0,allsky=True):
         """
         Returns p(D|H0,bar{G})
         The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog for an
@@ -409,7 +410,7 @@ class MasterEquation(object):
 
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
-            if self.whole_cat == True:
+            if allsky == True:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
                 self.pDnG = den*norm
             else:
@@ -504,32 +505,6 @@ class MasterEquation(object):
         self.pDnG = den   
         return self.pDnG
 
-            
-    def pH0(self,H0,prior='log'):
-        """
-        Returns p(H0)
-        The prior probability of H0
-        
-        Parameters
-        ----------
-        H0 : float or array_like
-            Hubble constant value(s) in kms-1Mpc-1
-        prior : str, optional
-            The choice of prior (default='log')
-            if 'log' uses uniform in log prior
-            if 'uniform' uses uniform prior
-            
-        Returns
-        -------
-        float or array_like
-            p(H0)
-        """
-        if prior == 'uniform':
-            return np.ones(len(H0))
-        if prior == 'log':
-            return 1./H0
-
-
     def likelihood(self,H0,GW_data,skymap2d,EM_counterpart=None,complete=False,counterpart_case='direct'):
         """
         The likelihood for a single event
@@ -605,6 +580,13 @@ class MasterEquation(object):
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+
+            if self.whole_cat == False:
+                pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
+                pxnG_rest_of_sky = self.px_H0nG(H0,GW_data,skymap2d,allsky=False)
+
+                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky)
+
             
         return likelihood/np.sum(likelihood)/dH0
     

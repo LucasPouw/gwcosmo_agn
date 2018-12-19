@@ -89,8 +89,8 @@ if opts.plot is not None:
     min_H0 = min(H0)
     max_H0 = max(H0)
     dH0 = H0[1]-H0[0]
-    prior_uniform = np.ones(len(H0))
-    prior_log = 1./H0
+    prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
+    prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')
     prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
     prior_log_norm = prior_log/np.sum(prior_log*dH0)
     posterior_uniform_norm = data[2]
@@ -189,9 +189,9 @@ else:
     # compute likelihood
     me = gwcosmo.master.MasterEquation(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=False)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
-    prior_uniform = me.pH0(H0,prior='uniform')
+    prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
-    prior_log = me.pH0(H0,prior='log')
+    prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')
     posterior_log= prior_log*likelihood
     
     prior_uniform_norm = prior_uniform/np.sum(prior_uniform*dH0)
