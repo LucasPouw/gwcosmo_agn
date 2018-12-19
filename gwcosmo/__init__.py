@@ -8,4 +8,4 @@ from gwcosmo.likelihood import posterior_samples, detection_probability, skymap
 from gwcosmo.prior import catalog, priors
 from gwcosmo.utilities import standard_cosmology, schechter_function
 
-from .master import MasterEquation
+from .gwcosmo import gwcosmoLikelihood

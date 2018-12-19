@@ -106,11 +106,11 @@ class galaxyCatalog(object):
             m = np.ones(nGal)
         return ra, dec, z, m, sigmaz
     
-    def redshiftUncertainty(self):
+    def redshiftUncertainty(self,nsmear=10):
         """
         A function which "smears" out galaxies in the catalog, therefore incorporating redshift uncetainties. 
         """
-        nsmear=5
+        nsmear=int(nsmear)
         zmaxmax=1.0
         z_uncert = []
         ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()

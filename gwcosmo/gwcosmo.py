@@ -1,6 +1,6 @@
 """
-Master Equation
-Rachel Gray, John Veitch, Ignacio Magana
+gwcosmoLikelihood Module
+Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
 """
 from __future__ import absolute_import
 
@@ -28,7 +28,7 @@ import gwcosmo
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
 
-class MasterEquation(object):
+class gwcosmoLikelihood(object):
     """
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
@@ -592,7 +592,7 @@ class MasterEquation(object):
     
 
 ### Pixel Based Likelihood (WIP) *DO NOT REVIEW* ###
-class PixelBasedLikelihood(MasterEquation):
+class PixelBasedLikelihood(gwcosmoLikelihood):
     """
     Likelihood for a single event, evaluated using a pixel based sky map
     p(x|D, H0, I)

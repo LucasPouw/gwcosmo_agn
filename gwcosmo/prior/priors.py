@@ -15,7 +15,7 @@ from astropy import units as u
 
 import gwcosmo
 
-def pH0(self,H0,prior='log'):
+def pH0(H0,prior='log'):
     """
     Returns p(H0)
     The prior probability of H0
