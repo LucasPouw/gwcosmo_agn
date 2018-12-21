@@ -143,15 +143,14 @@ class gwcosmoLikelihood(object):
         
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if EM_counterpart != None:
-            if self.uncertainty == False:
-                counterpart = EM_counterpart.get_galaxy(0)
-            else:
-                EM_counterpart = EM_counterpart.redshiftUncertainty()
-                counterpart = EM_counterpart.get_galaxy(0)
-
-            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
-            tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
-            numnorm = tempdist*tempsky
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+            nGalEM = EM_counterpart.nGal()
+            print(nGalEM)
+            for i in range(nGalEM):
+                counterpart = EM_counterpart.get_galaxy(i)
+                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+                tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+                numnorm += tempdist*tempsky
 
         else:
             # loop over all possible galaxies
@@ -350,13 +349,13 @@ class gwcosmoLikelihood(object):
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
-            if self.uncertainty == False:
-                counterpart = EM_counterpart.get_galaxy(0)
-            else:
-                EM_counterpart = EM_counterpart.redshiftUncertainty()
-                counterpart = EM_counterpart.get_galaxy(0)
-            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix                
-            num = distnum*tempsky
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+            nGalEM = EM_counterpart.nGal()
+            print(nGalEM)
+            for i in range(nGalEM):
+                counterpart = EM_counterpart.get_galaxy(i)
+                tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+                num += distnum*tempsky
         
         else:
             pixind = range(skymap2d.npix)
@@ -440,9 +439,7 @@ class gwcosmoLikelihood(object):
         -------
         float or array_like
             p(x|H0,counterpart)
-        """
-        num = np.zeros(len(H0))
-        
+        """        
         distkernel = GW_data.lineofsight_distance()
         distmax = 2.0*np.amax(GW_data.distance)
         distmin = 0.5*np.amin(GW_data.distance)
@@ -456,15 +453,14 @@ class gwcosmoLikelihood(object):
             """
             return splev(dl,temp,ext=3)
         
-        if self.uncertainty == False:
-            counterpart = EM_counterpart.get_galaxy(0)
-        else:
-            EM_counterpart = EM_counterpart.redshiftUncertainty()
-            counterpart = EM_counterpart.get_galaxy(0)
-        tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
-                
-        tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
-        numnorm = tempdist*tempsky
+        EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+        nGalEM = EM_counterpart.nGal()
+        print(nGalEM)
+        for i in range(nGalEM):
+            counterpart = EM_counterpart.get_galaxy(i)
+            tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
+            tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+            numnorm = tempdist*tempsky
         return numnorm
 
 
