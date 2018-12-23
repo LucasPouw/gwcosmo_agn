@@ -101,3 +101,37 @@ def BNS_gaussian_distribution(N, mean=1.35, sigma=0.15):
     mass1 = np.array(mass1)
     mass2 = np.array(mass2)
     return mass1, mass2
+
+def BNS_uniform_distribution(N, mmin=1., mmax=3.):
+    """
+    Returns p(m1,m2)
+    The prior on the mass distribution that follows gaussian for BNSs.
+
+    Parameters
+    ----------
+    N : integer
+        Number of masses sampled
+    mmin : float
+        minimum mass
+    mmax : float
+        maximum mass
+
+    Returns
+    -------
+    float or array_like
+        mass1, mass2
+    """
+    mass1 = []
+    mass2 = []
+    while len(mass1)<N:
+        m1 = np.random.uniform(mmin,mmax)
+        m2 = np.random.uniform(mmin,mmax)
+        if m2 > m1:
+            m3 = m2
+            m2 = m1
+            m1 = m3
+        mass1.append(m1)
+        mass2.append(m2)
+    mass1 = np.array(mass1)
+    mass2 = np.array(mass2)
+    return mass1, mass2

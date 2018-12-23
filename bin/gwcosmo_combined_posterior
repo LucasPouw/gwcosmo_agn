@@ -108,7 +108,7 @@ sigma90_low_log = median_log - lowc_log
 sigma90_high_log = highc_log - median_log
 
 ymin = 0
-ymax = 0.06
+ymax = 1.1*max(posterior_log_norm)
 planck_h = 0.6774*100
 sigma_planck_h = 0.0062*100
 riess_h = 0.7324*100

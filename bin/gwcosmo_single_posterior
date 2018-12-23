@@ -57,7 +57,13 @@ parser = OptionParser(
         Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
             help="WEIGHTING: Set galaxy catalog weighting"),
         Option("-c", "--completion", metavar="COMPLETENESS", default='False',
-            help="COMPLETENESS: Set galaxy catalog completion function."),
+            help="COMPLETENESS: Assumes a complete catalog."),
+        Option("-a", "--uncertainty", metavar="UNCERTAINTY", default='True',
+            help="UNCERTAINTY: Apply redshift uncertainties."),
+        Option("-f", "--linear_cosmology", metavar="LINEAR", default='False',
+            help="LINEAR: Assume a linear cosmology."),
+        Option("-e", "--basic_pdet", metavar="BASIC", default='False',
+            help="BASIC: Allow for masses to be redshifted in Pdet using False."),
         Option("-r", "--counterpart_ra", metavar="RA", default=None,
             help="RA: Right ascension of counterpart"),
         Option("-o", "--counterpart_dec", metavar="DEC", default=None,
@@ -137,6 +143,10 @@ else:
     min_H0 = float(opts.min_H0)
     max_H0 = float(opts.max_H0)
     bins_H0 = float(opts.bins_H0)
+    
+    uncertainty = str2bool(opts.uncertainty)
+    linear = str2bool(opts.linear_cosmology)
+    basic = str2bool(opts.basic_pdet)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -187,7 +197,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,Omega_m=0.3,linear=False,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=True,basic=False)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

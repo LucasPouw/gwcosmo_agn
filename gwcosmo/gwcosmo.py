@@ -89,7 +89,9 @@ class gwcosmoLikelihood(object):
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
         if event_type == 'BNS':
-            self.zmax = 0.4
+            self.zmax = 0.5
+        elif event_type == 'BNS-uniform':
+            self.zmax = 0.5
         elif event_type == 'BBH':
             self.zmax = 4.0
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
@@ -143,7 +145,7 @@ class gwcosmoLikelihood(object):
         
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if EM_counterpart != None:
-            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -349,7 +351,7 @@ class gwcosmoLikelihood(object):
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
-            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -453,7 +455,7 @@ class gwcosmoLikelihood(object):
             """
             return splev(dl,temp,ext=3)
         
-        EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=10000)
+        EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
         nGalEM = EM_counterpart.nGal()
         print(nGalEM)
         for i in range(nGalEM):

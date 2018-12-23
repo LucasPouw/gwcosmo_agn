@@ -78,6 +78,10 @@ class DetectionProbability(object):
             m1, m2 = BNS_gaussian_distribution(N,mean=1.35,sigma=0.15)
             interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,400.0,500)
+        if self.mass_distribution == 'BNS-uniform':
+            m1, m2 = BNS_uniform_distribution(N,mmin=1.2,mmax=1.6)
+            interp_av_path = data_path + 'BNS-uniform_z_H0_pD_array.p'
+            self.dl_array = np.linspace(1.0e-100,400.0,500)           
         if self.mass_distribution == 'BBH':
             m1, m2 = BBH_powerlaw_distribution(N,mmin=5.,mmax=50.,alpha=-1)
             interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
