@@ -5,6 +5,7 @@ Rachel Gray, John Veitch, Ignacio Magana
 #from __future__ import absolute_import
 import lal
 from   lal import ComputeDetAMResponse
+import lalsimulation as lalsim
 import numpy as np
 from scipy.interpolate import interp1d,splev,splrep,interp2d
 from scipy.integrate import quad
@@ -49,12 +50,11 @@ class DetectionProbability(object):
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
         # Also techically ASDs - rename
-        data_path = pkg_resources.resource_filename('gwcosmo', 'data/other/')
+        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         if psds is not None:
             self.psds = psds
         else:
-            PSD_data = np.genfromtxt(data_path + 'PSD_L1_H1_mid.txt')
-            self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
+            self.psds = np.vectorize(lambda f: lalsim.SimNoisePSDaLIGOZeroDetHighPower(f))
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
         self.Nside = Nside
@@ -79,7 +79,7 @@ class DetectionProbability(object):
             interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BBH':
-            m1, m2 = BBH_powerlaw_distribution(N,mmin=5.,mmax=40.,alpha=-1)
+            m1, m2 = BBH_powerlaw_distribution(N,mmin=5.,mmax=50.,alpha=-1)
             interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,2500.0,500)
         self.m1 = m1*1.988e30
@@ -284,8 +284,8 @@ class DetectionProbability(object):
         """
         PSD = self.psds
         fmax = lambda m: self.__fmax(m)
-        I = lambda f: np.power(f,-7.0/3.0)/(PSD(f)**2)
-        f_min = 10
+        I = lambda f: np.power(f,-7.0/3.0)/(2*np.sqrt(PSD(f))**2)
+        f_min = 0.1
         f_max = fmax(M_min)
 
         arr_fmax = np.linspace(f_min, f_max, self.Nsamps)
@@ -376,7 +376,7 @@ class DetectionProbability(object):
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        path = pkg_resources.resource_filename('gwcosmo', 'data/other/{}_z_H0_pD_array.p'.format(self.mass_distribution))
+        path = pkg_resources.resource_filename('gwcosmo', 'data/{}_z_H0_pD_array.p'.format(self.mass_distribution))
         pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
         return (self.z_array,H0vec,prob)
         
