@@ -259,7 +259,7 @@ class redshift_prior(object):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
-        z_array = np.linspace(0.0,self.zmax,100)
+        z_array = np.linspace(0.0,self.zmax,5000)
         lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m) for z in z_array])
         self.interp = splrep(z_array,lookup)
 
@@ -288,7 +288,7 @@ class fast_cosmology(object):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
-        z_array = np.linspace(0.0,self.zmax,100)
+        z_array = np.linspace(0.0,self.zmax,5000)
         lookup = np.array([dLH0overc(z, Omega_m=self.Omega_m) for z in z_array])
         self.interp = splrep(z_array,lookup)
         
