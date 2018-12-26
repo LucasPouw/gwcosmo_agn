@@ -145,7 +145,10 @@ class gwcosmoLikelihood(object):
         
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if EM_counterpart != None:
-            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+            if self.uncertainty == False:
+                EM_counterpart = EM_counterpart
+            else:
+                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -351,7 +354,10 @@ class gwcosmoLikelihood(object):
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if EM_counterpart != None:
-            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+            if self.uncertainty == False:
+                EM_counterpart = EM_counterpart
+            else:
+                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -455,7 +461,10 @@ class gwcosmoLikelihood(object):
             """
             return splev(dl,temp,ext=3)
         
-        EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+        if self.uncertainty == False:
+            EM_counterpart = EM_counterpart
+        else:
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
         nGalEM = EM_counterpart.nGal()
         print(nGalEM)
         for i in range(nGalEM):
