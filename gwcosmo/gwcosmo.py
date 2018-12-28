@@ -148,7 +148,7 @@ class gwcosmoLikelihood(object):
             if self.uncertainty == False:
                 EM_counterpart = EM_counterpart
             else:
-                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -357,7 +357,7 @@ class gwcosmoLikelihood(object):
             if self.uncertainty == False:
                 EM_counterpart = EM_counterpart
             else:
-                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+                EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
             nGalEM = EM_counterpart.nGal()
             print(nGalEM)
             for i in range(nGalEM):
@@ -464,7 +464,7 @@ class gwcosmoLikelihood(object):
         if self.uncertainty == False:
             EM_counterpart = EM_counterpart
         else:
-            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=50000)
+            EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
         nGalEM = EM_counterpart.nGal()
         print(nGalEM)
         for i in range(nGalEM):
