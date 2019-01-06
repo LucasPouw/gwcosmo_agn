@@ -56,6 +56,8 @@ parser = OptionParser(
             help="GALAXY_CATALOG: Load galaxy catalog in pickle format"), 
         Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
             help="WEIGHTING: Set galaxy catalog weighting"),
+        Option("-y", "--weights", metavar="WEIGHTS", default=None,
+            help="WEIGHTS: Choose galaxy catalog weight types."),        
         Option("-c", "--completion", metavar="COMPLETENESS", default='False',
             help="COMPLETENESS: Assumes a complete catalog."),
         Option("-a", "--uncertainty", metavar="UNCERTAINTY", default='True',
@@ -126,7 +128,12 @@ else:
         galaxy_catalog = str(opts.galaxy_catalog)
 
     if opts.method == 'statistical':
-        galaxy_weighting = str2bool(opts.galaxy_weighting)
+        if (str2bool(opts.galaxy_weighting) is True and
+        opts.weights is None):
+            parser.error('Provide choose galaxy weights: trivial or schechter weights')
+        else:
+            galaxy_weighting = str2bool(opts.galaxy_weighting)
+            weights = str(opts.weights)
         completion = str2bool(opts.completion)
 
     if opts.method == 'counterpart':
@@ -197,7 +204,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

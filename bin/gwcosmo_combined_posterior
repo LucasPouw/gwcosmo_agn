@@ -34,7 +34,7 @@ parser = OptionParser(
             help="DIR: Directory to .npz gwcosmo_single_posterior files to be combined. (required)"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior_mdc',
             help="OUTPUTFILE: Name of output file"),
-        Option("-m", "--mdc", metavar="MDC", default=False,
+        Option("-m", "--mdc", metavar="MDC", default='False',
             help="MDC: Plotting MDC?")
     ])
 opts, args = parser.parse_args()

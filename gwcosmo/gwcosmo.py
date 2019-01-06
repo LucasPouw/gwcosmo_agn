@@ -51,12 +51,13 @@ class gwcosmoLikelihood(object):
         Needed if whole_cat=False. RA and Dec limits on the catalog in the format np.array([ramin,ramax,decmin,decmax]) in radians
     """
 
-    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,weights='trivial',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
         self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,Nsamps=5000)
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
+        self.weights = weights
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
         self.basic = basic
@@ -67,7 +68,6 @@ class gwcosmoLikelihood(object):
         else:
             self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
 
-        ngal = (self.galaxy_catalog).nGal()
         self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
             if all(radec_lim)==None:
@@ -150,7 +150,6 @@ class gwcosmoLikelihood(object):
             else:
                 EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
             nGalEM = EM_counterpart.nGal()
-            print(nGalEM)
             for i in range(nGalEM):
                 counterpart = EM_counterpart.get_galaxy(i)
                 tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
@@ -259,7 +258,10 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    return temp*L_M(M)
+                    if self.weights == 'trivial':
+                        return temp
+                    if self.weights == 'schechter':
+                        return temp*L_M(M)
                 else:
                     return temp
             
@@ -341,7 +343,10 @@ class gwcosmoLikelihood(object):
                 temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
-                    return temp*L_M(M)
+                    if self.weights == 'trivial':
+                        return temp
+                    if self.weights == 'schechter':
+                        return temp*L_M(M)
                 else:
                     return temp
 
@@ -359,7 +364,6 @@ class gwcosmoLikelihood(object):
             else:
                 EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
             nGalEM = EM_counterpart.nGal()
-            print(nGalEM)
             for i in range(nGalEM):
                 counterpart = EM_counterpart.get_galaxy(i)
                 tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
@@ -411,7 +415,10 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    return temp*L_M(M)
+                    if self.weights == 'trivial':
+                        return temp
+                    if self.weights == 'schechter':
+                        return temp*L_M(M)
                 else:
                     return temp
 
@@ -466,7 +473,6 @@ class gwcosmoLikelihood(object):
         else:
             EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
         nGalEM = EM_counterpart.nGal()
-        print(nGalEM)
         for i in range(nGalEM):
             counterpart = EM_counterpart.get_galaxy(i)
             tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
@@ -500,7 +506,10 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    return temp*L_M(M)
+                    if self.weights == 'trivial':
+                        return temp
+                    if self.weights == 'schechter':
+                        return temp*L_M(M)
                 else:
                     return temp
 
