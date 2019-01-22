@@ -36,7 +36,7 @@ class gwcosmoLikelihood(object):
     Parameters
     ----------
     event_type : str
-        Type of gravitational wave event (either 'BNS' or 'BBH')
+        Type of gravitational wave event (either 'BNS', 'BNS-uniform' or 'BBH')
     galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
         The relevant galaxy catalog
     Omega_m : float, optional
@@ -45,13 +45,20 @@ class gwcosmoLikelihood(object):
         Use linear cosmology (default=False)
     weighted : bool, optional
         Use luminosity weighting (default=False)
+    weights : str, optional
+        Specifies type of luminosity weighting to use, 'schechter' or 'trivial' (default='schechter')
+        'trivial' is only for testing purposes and should not be used in analysis
     whole_cat : bool, optional
         Does the galaxy catalog provided cover the whole sky? (default=True)
     radec_lim : array_like, optional
         Needed if whole_cat=False. RA and Dec limits on the catalog in the format np.array([ramin,ramax,decmin,decmax]) in radians
+    basic : bool, optional
+        If True, uses pdet suitable for MDC analysis (default=False)
+    uncertainty : bool, optional
+        If true, redshift uncertainty will be assumed and corrected for (default=False)
     """
 
-    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,weights='trivial',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
         self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,Nsamps=5000)
         self.Omega_m = Omega_m

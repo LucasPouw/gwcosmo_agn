@@ -29,7 +29,7 @@ class DetectionProbability(object):
     Parameters
     ----------
     mass_distribution : str
-        choice of mass distribution ('BNS' or 'BBH')
+        choice of mass distribution ('BNS', 'BNS-uniform', or 'BBH')
     detectors : list of str, optional
         list of detector names (default=['H1','L1'])
     psds : str, optional
@@ -44,8 +44,10 @@ class DetectionProbability(object):
         matter fraction of the universe (default=0.3)
     linear : bool, optional
         if True, use linear cosmology (default=False)
+    precomputed : bool, optional
+        if True, use precomputed values.  NOTE if False, precomputed values will be overwritten
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precompute=True):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
         # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
@@ -93,7 +95,7 @@ class DetectionProbability(object):
         self.__interpolnum = self.__numfmax_fmax(self.M_min)
 
         # precompute values which will be called multiple times, if not precomputed
-        if (os.path.isfile(interp_av_path) and precompute==True):
+        if (os.path.isfile(interp_av_path) and precomputed==True):
             z,H0,prob = pickle.load(open(interp_av_path,'rb'))
         else:
             print("calculating pdet")
