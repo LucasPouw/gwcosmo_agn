@@ -6,6 +6,6 @@ import gwcosmo.prior
 
 from gwcosmo.likelihood import posterior_samples, detection_probability, skymap
 from gwcosmo.prior import catalog, priors
-from gwcosmo.utilities import standard_cosmology, schechter_function
+from gwcosmo.utilities import standard_cosmology, schechter_function, posterior_utilities
 
 from .gwcosmo import gwcosmoLikelihood

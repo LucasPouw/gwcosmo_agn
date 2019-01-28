@@ -25,6 +25,8 @@ sns.set_palette('colorblind')
 import numpy as np
 import gwcosmo
 
+from gwcosmo.utilities.posterior_utilities import confidence_interval
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
@@ -218,31 +220,10 @@ else:
     
     np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
 
-def percentile_from_fit(p,y,x):
-    from scipy.integrate import cumtrapz
-    from scipy.interpolate import UnivariateSpline
-    sp = UnivariateSpline(cumtrapz(y,x),x[1:],s=0.0)
-    return sp(p)
-
-if opts.method == 'counterpart':
-    idx = np.where(H0>54)[0]
-    print(H0[idx])
-    lowc_uniform = percentile_from_fit(0.05,posterior_uniform_norm[idx],H0[idx])
-    highc_uniform = percentile_from_fit(0.95,posterior_uniform_norm[idx],H0[idx])
-    lowc_log = percentile_from_fit(0.05,posterior_log_norm[idx],H0[idx])
-    highc_log = percentile_from_fit(0.95,posterior_log_norm[idx],H0[idx])
-else:
-    lowc_uniform = percentile_from_fit(0.05,posterior_uniform_norm,H0)
-    highc_uniform = percentile_from_fit(0.95,posterior_uniform_norm,H0)
-    lowc_log = percentile_from_fit(0.05,posterior_log_norm,H0)
-    highc_log = percentile_from_fit(0.95,posterior_log_norm,H0)
-
-median_uniform = H0[np.where(posterior_uniform_norm > np.median(posterior_uniform_norm))[0][0]]
-median_log = H0[np.where(posterior_log_norm > np.median(posterior_log_norm))[0][0]]
-sigma90_low_uniform = median_uniform - lowc_uniform
-sigma90_high_uniform = highc_uniform - median_uniform
-sigma90_low_log = median_log - lowc_log
-sigma90_high_log = highc_log - median_log
+print("Uniform Prior")
+MAP_uniform, a_uniform, b_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683)
+print("Log Prior")
+MAP_log, a_log, b_log = confidence_interval(posterior_log_norm,H0,level=0.683)
 
 ymin = 0
 ymax = 1.1*max(posterior_log_norm)
@@ -259,11 +240,11 @@ plt.axvline(riess_h,label='SH0ES',color=c[2])
 plt.fill_betweenx([ymin,ymax],riess_h-2*sigma_riess_h,riess_h+2*sigma_riess_h,color=c[2],alpha=0.2)
 plt.axvline(70,ls='--', color='k',alpha=0.8, label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
 plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)',c=c[0])
-plt.axvline(lowc_uniform,ls='--',c=c[0])
-plt.axvline(highc_uniform,ls='--',c=c[0])
+plt.axvline(a_uniform,ls='--',c=c[0])
+plt.axvline(b_uniform,ls='--',c=c[0])
 plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
-plt.axvline(lowc_log,ls='--',c=c[1])
-plt.axvline(highc_log,ls='--',c=c[1])
+plt.axvline(a_log,ls='--',c=c[1])
+plt.axvline(b_log,ls='--',c=c[1])
 plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
 plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
 plt.xlim(min_H0,max_H0)
@@ -275,6 +256,3 @@ plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
 plt.legend(loc='upper right',fontsize=10)
 plt.tight_layout()
 plt.savefig(outputfile+'.png',dpi=800)
-
-print('median and 90 percent credidble interval for flat H0 prior: %f + %f - %f' %(median_uniform, sigma90_high_uniform, sigma90_low_uniform) )
-print('median and 90 percent credidble interval for log H0 prior: %f + %f - %f' %(median_log, sigma90_high_log, sigma90_low_log) )
