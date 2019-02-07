@@ -55,7 +55,9 @@ parser = OptionParser(
         Option("-i", "--skymap", metavar="SKYMAP", default=None,
             help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
         Option("-g", "--galaxy_catalog", metavar="GALAXY_CATALOG", default=None,
-            help="GALAXY_CATALOG: Load galaxy catalog in pickle format"), 
+            help="GALAXY_CATALOG: Load galaxy catalog in pickle format"),
+        Option("-j", "--psd", metavar="PSD", default=None,
+            help="PSD: Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None)."), 
         Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
             help="WEIGHTING: Set galaxy catalog weighting"),
         Option("-y", "--weights", metavar="WEIGHTS", default=None,
@@ -156,6 +158,13 @@ else:
     uncertainty = str2bool(opts.uncertainty)
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
+    
+    if opts.psd is not None:
+        psd = str(opts.psd)
+        print(psd)
+    else:
+        psd = None
+        print(psd)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -206,7 +215,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

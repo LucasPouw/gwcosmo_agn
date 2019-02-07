@@ -32,8 +32,8 @@ class DetectionProbability(object):
         choice of mass distribution ('BNS', 'BNS-uniform', or 'BBH')
     detectors : list of str, optional
         list of detector names (default=['H1','L1'])
-    psds : str, optional
-        path to file containing the relevant PSDs (default=None)
+    psd : str, optional
+        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None).
     Nsamps : int, optional
         Number of samples for monte carlo integration (default=1000)
     snr_theshold : float, optional
@@ -47,16 +47,35 @@ class DetectionProbability(object):
     precomputed : bool, optional
         if True, use precomputed values.  NOTE if False, precomputed values will be overwritten
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psds=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psd=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
         self.detectors = detectors
         self.snr_threshold = snr_threshold
-        # TODO: find official place where PSDs are stored, and link to specific detectors/observing runs
-        # Also techically ASDs - rename
         data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
-        if psds is not None:
-            self.psds = psds
+        if psd==None:
+            self.psds = np.vectorize(lambda f: np.sqrt(lalsim.SimNoisePSDaLIGOZeroDetHighPower(f)))
+            print('analytic')
         else:
-            self.psds = np.vectorize(lambda f: lalsim.SimNoisePSDaLIGOZeroDetHighPower(f))
+            PSD_data = {}
+            if psd=='O1':
+                for det in detectors:
+                    PSD_data[det] = np.genfromtxt(data_path + det + '_O1_strain.txt')
+                print('o1')
+            if psd=='O2':
+                for det in detectors:
+                    PSD_data[det] = np.genfromtxt(data_path + det + '_O1_strain.txt')
+                print('o2')                
+            freqs = {}
+            psds = {}
+            for det in detectors:
+                ff = np.zeros(len(PSD_data[det]))
+                pxx = np.zeros(len(PSD_data[det]))
+                for k in range(0,len(PSD_data[det])): 
+                    ff[k] = PSD_data[det][k][0]
+                    pxx[k] = PSD_data[det][k][1]
+                freqs[det] = ff
+                psds[det] = pxx
+            PSD = (psds['L1'] + psds['H1'])/2.
+            self.psds = interp1d(freqs['L1'],PSD)
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
         self.Nside = Nside
@@ -290,8 +309,8 @@ class DetectionProbability(object):
         """
         PSD = self.psds
         fmax = lambda m: self.__fmax(m)
-        I = lambda f: np.power(f,-7.0/3.0)/(2*np.sqrt(PSD(f))**2)
-        f_min = 0.1
+        I = lambda f: np.power(f,-7.0/3.0)/(PSD(f)**2)
+        f_min = 20
         f_max = fmax(M_min)
 
         arr_fmax = np.linspace(f_min, f_max, self.Nsamps)

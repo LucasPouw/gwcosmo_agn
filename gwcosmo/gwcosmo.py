@@ -39,6 +39,8 @@ class gwcosmoLikelihood(object):
         Type of gravitational wave event (either 'BNS', 'BNS-uniform' or 'BBH')
     galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
         The relevant galaxy catalog
+    psd : str, optional
+        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None).
     Omega_m : float, optional
         The matter fraction of the universe (default=0.3)
     linear : bool, optional
@@ -58,9 +60,10 @@ class gwcosmoLikelihood(object):
         If true, redshift uncertainty will be assumed and corrected for (default=False)
     """
 
-    def __init__(self,event_type,galaxy_catalog,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,Nsamps=5000)
+        self.psd = psd
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5000)
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
