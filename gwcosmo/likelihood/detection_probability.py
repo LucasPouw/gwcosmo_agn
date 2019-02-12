@@ -49,6 +49,7 @@ class DetectionProbability(object):
     """
     def __init__(self, mass_distribution, detectors=['H1','L1'], psd=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, precomputed=True):
         self.detectors = detectors
+        self.psd = psd
         self.snr_threshold = snr_threshold
         data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         if psd==None:
@@ -62,7 +63,7 @@ class DetectionProbability(object):
                 print('o1')
             if psd=='O2':
                 for det in detectors:
-                    PSD_data[det] = np.genfromtxt(data_path + det + '_O1_strain.txt')
+                    PSD_data[det] = np.genfromtxt(data_path + det + '_O2_strain.txt')
                 print('o2')                
             freqs = {}
             psds = {}
@@ -75,7 +76,7 @@ class DetectionProbability(object):
                 freqs[det] = ff
                 psds[det] = pxx
             PSD = (psds['L1'] + psds['H1'])/2.
-            self.psds = interp1d(freqs['L1'],PSD)
+            self.psds = interp1d(freqs['L1'],PSD,fill_value='extrapolate')
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
         self.Nside = Nside
@@ -310,14 +311,14 @@ class DetectionProbability(object):
         PSD = self.psds
         fmax = lambda m: self.__fmax(m)
         I = lambda f: np.power(f,-7.0/3.0)/(PSD(f)**2)
-        f_min = 20
+        f_min = 10 #Hz, changed this from 20 to 10 to resolve NaN error
         f_max = fmax(M_min)
 
         arr_fmax = np.linspace(f_min, f_max, self.Nsamps)
         num_fmax = np.zeros(self.Nsamps)
         for i in range(self.Nsamps):
             num_fmax[i] = quad(I, f_min, arr_fmax[i],epsabs=0,epsrel=1.49e-4)[0]
-        
+
         return interp1d(arr_fmax, num_fmax)
 
         
@@ -382,7 +383,7 @@ class DetectionProbability(object):
             effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
             survival = ncx2.sf(effective_threshold**2,4,rho)
             prob[i] = np.sum(survival,0)/self.Nsamps
-        
+
         return prob
         
         
@@ -401,7 +402,7 @@ class DetectionProbability(object):
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
         prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        path = pkg_resources.resource_filename('gwcosmo', 'data/{}_z_H0_pD_array.p'.format(self.mass_distribution))
+        path = pkg_resources.resource_filename('gwcosmo', 'data/{}PSD_{}_{}Nsamps_z_H0_pD_array.p'.format(self.psd,self.mass_distribution,self.Nsamps))
         pickle.dump((self.z_array,H0vec,prob),open(path,'wb'))
         return (self.z_array,H0vec,prob)
         
