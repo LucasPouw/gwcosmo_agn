@@ -189,7 +189,7 @@ class gwcosmoLikelihood(object):
                         continue
                 else:
                     continue
-            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(count))
+            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
             
             if self.whole_cat == True:
                 numnorm = num/nGal
