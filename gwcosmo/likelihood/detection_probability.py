@@ -76,7 +76,7 @@ class DetectionProbability(object):
                 freqs[det] = ff
                 psds[det] = pxx
             PSD = (psds['L1'] + psds['H1'])/2.
-            self.psds = interp1d(freqs['L1'],PSD,fill_value='extrapolate')
+            self.psds = interp1d(freqs['L1'],PSD,fill_value='extrapolate') #TODO: check if extrapolation causes weird behaviour
         self.__lal_detectors = [lal.cached_detector_by_prefix[name] for name in detectors]
         self.Nsamps = Nsamps
         self.Nside = Nside
@@ -114,6 +114,8 @@ class DetectionProbability(object):
         self.M_min = np.min(self.m1)+np.min(self.m2)
         self.__interpolnum = self.__numfmax_fmax(self.M_min)
 
+        if psd != None:
+            interp_av_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd,self.mass_distribution)
         # precompute values which will be called multiple times, if not precomputed
         if (os.path.isfile(interp_av_path) and precomputed==True):
             z,H0,prob = pickle.load(open(interp_av_path,'rb'))
