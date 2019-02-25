@@ -63,7 +63,6 @@ class gwcosmoLikelihood(object):
     def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
         self.psd = psd
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5000)
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
@@ -72,6 +71,7 @@ class gwcosmoLikelihood(object):
         self.radec_lim = radec_lim
         self.basic = basic
         self.uncertainty = uncertainty
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5000,basic=self.basic)
         
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
