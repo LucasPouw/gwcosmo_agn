@@ -60,13 +60,17 @@ class gwcosmoLikelihood(object):
         If true, redshift uncertainty will be assumed and corrected for (default=False)
     """
 
-    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',Mstar_obs=-20.457,alpha=-1.07,Mmin_obs=-22.96,Mmax_obs=-12.96,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
         self.weights = weights
+        self.Mstar_obs = Mstar_obs
+        self.alpha = alpha
+        self.Mmin_obs = Mmin_obs
+        self.Mmax_obs = Mmax_obs
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
         self.basic = basic
@@ -264,9 +268,9 @@ class gwcosmoLikelihood(object):
             
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     if self.weights == 'trivial':
                         return temp
@@ -278,8 +282,8 @@ class gwcosmoLikelihood(object):
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
             # TODO: test how sensitive this result is to changing Mmin and Mmax.
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],self.Mmin_obs)
+            Mmax = M_Mobs(H0[i],self.Mmax_obs)
             
             num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
@@ -351,7 +355,7 @@ class gwcosmoLikelihood(object):
 
             def Inum(z,M):
                 temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     if self.weights == 'trivial':
                         return temp
@@ -360,8 +364,8 @@ class gwcosmoLikelihood(object):
                 else:
                     return temp
 
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],self.Mmin_obs)
+            Mmax = M_Mobs(H0[i],self.Mmax_obs)
             if allsky == True:
                 distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
@@ -421,9 +425,9 @@ class gwcosmoLikelihood(object):
 
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     if self.weights == 'trivial':
                         return temp
@@ -432,8 +436,8 @@ class gwcosmoLikelihood(object):
                 else:
                     return temp
 
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],self.Mmin_obs)
+            Mmax = M_Mobs(H0[i],self.Mmax_obs)
             if allsky == True:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
                 self.pDnG = den*norm
@@ -512,9 +516,9 @@ class gwcosmoLikelihood(object):
 
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     if self.weights == 'trivial':
                         return temp
@@ -523,8 +527,8 @@ class gwcosmoLikelihood(object):
                 else:
                     return temp
 
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0[i],self.Mmin_obs)
+            Mmax = M_Mobs(H0[i],self.Mmax_obs)
 
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
