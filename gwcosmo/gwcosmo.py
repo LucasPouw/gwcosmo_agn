@@ -1,6 +1,16 @@
 """
 gwcosmoLikelihood Module
 Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
+
+In general:
+p(x|z,H0,\Omega) is written as p(x|dl(z,H0))*p(x|\Omega)
+p(x|dL(z,H0)): px_dl(dl(z,H0))
+p(x|\Omega): skymap2d.skyprob(ra,dec) or skymap2d.prob[idx]
+p(D|z,H0): pdet.pD_zH0_eval(z,H0)
+p(s|M(H0)): L_M(M) or L_mdl(m,dl(z,H0))
+p(z): zprior(z)
+p(M|H0): SchechterMagFunction(H0)(M)
+p(\Omega): this term comes out the front and cancels in most cases, and so does not appear explicitly.
 """
 from __future__ import absolute_import
 
@@ -110,6 +120,7 @@ class gwcosmoLikelihood(object):
     def px_H0G(self,H0,GW_data,skymap2d,EM_counterpart=None):
         """
         Returns p(x|H0,G) for given values of H0.
+        This corresponds to the numerator of Eq 12 in the method doc.
         The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
         
         Parameters
@@ -201,6 +212,7 @@ class gwcosmoLikelihood(object):
     def pD_H0G(self,H0):
         """
         Returns p(D|H0,G) (the normalising factor for px_H0G).
+        This corresponds to the denominator of Eq 12 in the methods doc.
         The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
         
         Parameters
@@ -243,6 +255,7 @@ class gwcosmoLikelihood(object):
     def pG_H0D(self,H0):
         """
         Returns p(G|H0,D)
+        This corresponds to Eq 16 in the doc.
         The probability that the host galaxy is in the catalogue given detection and H0.
         
         Parameters
@@ -291,6 +304,7 @@ class gwcosmoLikelihood(object):
     def pnG_H0D(self,H0):
         """
         Returns 1.0 - pG_H0D(H0).
+        This corresponds to Eq 17 in the doc.
         The probability that a galaxy is not in the catalogue given detection and H0
         
         Parameters
@@ -312,6 +326,7 @@ class gwcosmoLikelihood(object):
     def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None,allsky=True):
         """
         Returns p(x|H0,bar{G}).
+        This corresponds to the numerator of Eq 19 in the doc
         The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog for an
         all sky or patchy galaxy catalog.        
         Parameters
@@ -396,6 +411,7 @@ class gwcosmoLikelihood(object):
     def pD_H0nG(self,H0,allsky=True):
         """
         Returns p(D|H0,bar{G})
+        This corresponds to the denominator of Eq 19 in the doc.
         The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog for an
         all sky or patchy galaxy catalog.
         
@@ -446,6 +462,7 @@ class gwcosmoLikelihood(object):
     def px_H0_counterpart(self,H0,GW_data,skymap2d,EM_counterpart):
         """
         Returns p(x|H0,counterpart)
+        This corresponds to the numerator or Eq 6 in the doc.
         The likelihood of the GW data given H0 and direct counterpart.
         
         Parameters
@@ -494,6 +511,7 @@ class gwcosmoLikelihood(object):
     def pD_H0(self,H0):
         """
         Returns p(D|H0).
+        This corresponds to the denominator of Eq 6 in the doc.
         The probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
         
         Parameters
@@ -534,6 +552,7 @@ class gwcosmoLikelihood(object):
     def likelihood(self,H0,GW_data,skymap2d,EM_counterpart=None,complete=False,counterpart_case='direct'):
         """
         The likelihood for a single event
+        This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
         
         Parameters
         ----------
@@ -566,7 +585,7 @@ class gwcosmoLikelihood(object):
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0,GW_data,skymap2d,EM_counterpart)
                 pD_H0 = self.pD_H0(H0)
-                likelihood = pxG/pD_H0
+                likelihood = pxG/pD_H0 # Eq 6
                 
             # The pencilbeam case is currently coded up along the line of sight of the counterpart
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
@@ -583,7 +602,7 @@ class gwcosmoLikelihood(object):
                     self.pDnG = self.pD_H0nG(H0)
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
                 
-                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)            
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3 along a single line of sight       
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
@@ -593,7 +612,7 @@ class gwcosmoLikelihood(object):
                 self.pDG = self.pD_H0G(H0)
         
             if complete==True:
-                likelihood = pxG/self.pDG
+                likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
         
             else:
                 if all(self.pGD)==None:
@@ -605,13 +624,13 @@ class gwcosmoLikelihood(object):
                     
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
     
-                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
             if self.whole_cat == False:
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,GW_data,skymap2d,allsky=False)
 
-                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky)
+                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky) # Eq 4
 
             
         return likelihood/np.sum(likelihood)/dH0
