@@ -51,6 +51,18 @@ class posterior_samples(object):
         self.nsamples = len(self.weight)
         f1.close()
 
+    def load_posterior_samples_hdf(self, samples_file_path):
+        """ Loads hdf posterior samples
+        """
+        fp = h5py.File(samples_file_path, 'r')
+
+        self.distance = fp['samples/distance'][:]
+        self.longitude = fp['samples/ra'][:]
+        self.latitude = fp['samples/dec'][:]
+        self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
+        self.nsamples = len(self.weight)
+        fp.close()
+
     def lineofsight_distance(self):
         """
         Takes distance and makes 1-d kde out of it

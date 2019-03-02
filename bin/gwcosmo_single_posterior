@@ -142,6 +142,7 @@ else:
 
     if opts.method == 'counterpart':
         galaxy_weighting = False
+        weights = 'schechter'
         completion = True
         if opts.counterpart_ra is not None:
             counterpart_ra = float(opts.counterpart_ra)
@@ -177,6 +178,8 @@ else:
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         if posterior_samples[-4:] == 'hdf5':
             samples.load_posterior_samples_hdf5(posterior_samples)
+        if posterior_samples[-3:] == 'hdf':
+            samples.load_posterior_samples_hdf(posterior_samples)
         else:
             samples.load_posterior_samples(posterior_samples)
         skymap3d = None
