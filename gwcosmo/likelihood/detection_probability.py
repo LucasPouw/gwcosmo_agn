@@ -29,7 +29,7 @@ class DetectionProbability(object):
     Parameters
     ----------
     mass_distribution : str
-        choice of mass distribution ('BNS', 'BNS-uniform', or 'BBH')
+        choice of mass distribution ('BNS-gaussian', 'BNS-uniform', 'BBH-powerlaw' or 'BBH-flatlog')
     detectors : list of str, optional
         list of detector names (default=['H1','L1'])
     psd : str, optional
@@ -47,7 +47,7 @@ class DetectionProbability(object):
     precomputed : bool, optional
         if True, use precomputed values.  NOTE if False, precomputed values will be overwritten
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psd=None, Nsamps=1000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, basic=False, precomputed=True):
+    def __init__(self, mass_distribution, detectors=['H1','L1'], psd=None, Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, basic=False, precomputed=True):
         self.detectors = detectors
         self.psd = psd
         self.snr_threshold = snr_threshold
@@ -99,17 +99,17 @@ class DetectionProbability(object):
         q = np.random.rand(N)
         self.incs = np.arcsin(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
-        if self.mass_distribution == 'BNS':
+        if self.mass_distribution == 'BNS-gaussian':
             m1, m2 = BNS_gaussian_distribution(N,mean=1.35,sigma=0.15)
-            interp_av_path = data_path + 'BNS_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BNS-uniform':
             m1, m2 = BNS_uniform_distribution(N,mmin=1.2,mmax=1.6)
-            interp_av_path = data_path + 'BNS-uniform_z_H0_pD_array.p'
             self.dl_array = np.linspace(1.0e-100,400.0,500)           
-        if self.mass_distribution == 'BBH':
-            m1, m2 = BBH_powerlaw_distribution(N,mmin=5.,mmax=50.,alpha=-1)
-            interp_av_path = data_path + 'BBH_z_H0_pD_array.p'
+        if self.mass_distribution == 'BBH-powerlaw':
+            m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-1.6)
+            self.dl_array = np.linspace(1.0e-100,2500.0,500)
+        if self.mass_distribution == 'BBH-flatlog':
+            m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-1)
             self.dl_array = np.linspace(1.0e-100,2500.0,500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30

@@ -39,10 +39,10 @@ def pH0(H0,prior='log'):
     if prior == 'log':
         return 1./H0
     
-def BBH_powerlaw_distribution(N,mmin=5.,mmax=40.,alpha=-1):
+def BBH_mass_distribution(N,mmin=5.,mmax=40.,alpha=-1):
     """
     Returns p(m1,m2)
-    The prior on the mass distribution that follows a power law for BBHs (See Rates paper)
+    The prior on the mass distribution that follows a power law (or flat in log when alpha = -1) for BBHs.
 
     Parameters
     ----------
