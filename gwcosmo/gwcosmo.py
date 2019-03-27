@@ -1,6 +1,16 @@
 """
 gwcosmoLikelihood Module
 Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
+
+In general:
+p(x|z,H0,\Omega) is written as p(x|dl(z,H0))*p(x|\Omega)
+p(x|dL(z,H0)): px_dl(dl(z,H0))
+p(x|\Omega): skymap2d.skyprob(ra,dec) or skymap2d.prob[idx]
+p(D|z,H0): pdet.pD_zH0_eval(z,H0)
+p(s|M(H0)): L_M(M) or L_mdl(m,dl(z,H0))
+p(z): zprior(z)
+p(M|H0): SchechterMagFunction(H0)(M)
+p(\Omega): this term comes out the front and cancels in most cases, and so does not appear explicitly.
 """
 from __future__ import absolute_import
 
@@ -60,7 +70,7 @@ class gwcosmoLikelihood(object):
         If true, redshift uncertainty will be assumed and corrected for (default=False)
     """
 
-    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',Mstar_obs=-20.457,alpha=-1.07,Mmin_obs=-22.96,Mmax_obs=-12.96,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False,Mstar_obs=-20.457,alpha=-1.07,Mmin_obs=-22.96,Mmax_obs=-12.96, mth=None):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
@@ -81,8 +91,11 @@ class gwcosmoLikelihood(object):
             self.galaxy_catalog = galaxy_catalog
         else:
             self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
-
-        self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
+        
+        if mth == None:
+            self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
+        else:
+            self.mth = mth
         if self.whole_cat == False:
             if all(radec_lim)==None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
@@ -100,20 +113,24 @@ class gwcosmoLikelihood(object):
         self.pGD = None
         self.pnGD = None
         self.pDnG = None
+        self.nGalVol = None
         
         # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
-        if event_type == 'BNS':
+        if event_type == 'BNS-gaussian':
             self.zmax = 0.5
         elif event_type == 'BNS-uniform':
             self.zmax = 0.5
-        elif event_type == 'BBH':
+        elif event_type == 'BBH-powerlaw':
             self.zmax = 4.0
+        elif event_type == 'BBH-flatlog':
+            self.zmax = 4.0            
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
 
     def px_H0G(self,H0,GW_data,skymap2d,EM_counterpart=None):
         """
         Returns p(x|H0,G) for given values of H0.
+        This corresponds to the numerator of Eq 12 in the method doc.
         The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
         
         Parameters
@@ -169,8 +186,8 @@ class gwcosmoLikelihood(object):
                 tempsky = skymap2d.skyprob(counterpart.ra,counterpart.dec)*skymap2d.npix
                 tempdist = px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
                 numnorm += tempdist*tempsky
-
         else:
+            galIndex = []
             # loop over all possible galaxies
             for i in range(nGal):
                 gal = self.galaxy_catalog.get_galaxy(i)
@@ -179,6 +196,7 @@ class gwcosmoLikelihood(object):
                     tempsky = skymap2d.skyprob(gal.ra,gal.dec)*skymap2d.npix
                     if tempsky >= minskypdf:
                         count += 1
+                        galIndex.append(i)
                         if self.weighted:
                             weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0))
                         else:
@@ -193,7 +211,21 @@ class gwcosmoLikelihood(object):
                         continue
                 else:
                     continue
-            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
+            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count)))
+
+            #Get number of galaxies in 99.9% volume (Should be moved somewhere else)
+            nGalVol = []
+            for h0 in [66.9,67.4,67.9]:
+                count = 0
+                for i in galIndex:
+                    gal = self.galaxy_catalog.get_galaxy(i)
+                    zmin = z_dlH0(np.amin(GW_data.distance), H0=h0)
+                    zmax = z_dlH0(np.amax(GW_data.distance), H0=h0)
+                    if (zmin <= gal.z <= zmax):
+                        count += 1
+                nGalVol.append(count)
+            self.nGalVol = nGalVol          
+            print("Number of galaxies in 99.9% volume assuming Planck 2015 cosmology is: " + str(nGalVol[1])+'+'+str(nGalVol[2]-nGalVol[1])+'-'+str(nGalVol[1]-nGalVol[0]))
             
             if self.whole_cat == True:
                 numnorm = num/nGal
@@ -205,6 +237,7 @@ class gwcosmoLikelihood(object):
     def pD_H0G(self,H0):
         """
         Returns p(D|H0,G) (the normalising factor for px_H0G).
+        This corresponds to the denominator of Eq 12 in the methods doc.
         The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
         
         Parameters
@@ -247,6 +280,7 @@ class gwcosmoLikelihood(object):
     def pG_H0D(self,H0):
         """
         Returns p(G|H0,D)
+        This corresponds to Eq 16 in the doc.
         The probability that the host galaxy is in the catalogue given detection and H0.
         
         Parameters
@@ -295,6 +329,7 @@ class gwcosmoLikelihood(object):
     def pnG_H0D(self,H0):
         """
         Returns 1.0 - pG_H0D(H0).
+        This corresponds to Eq 17 in the doc.
         The probability that a galaxy is not in the catalogue given detection and H0
         
         Parameters
@@ -316,6 +351,7 @@ class gwcosmoLikelihood(object):
     def px_H0nG(self,H0,GW_data,skymap2d,EM_counterpart=None,allsky=True):
         """
         Returns p(x|H0,bar{G}).
+        This corresponds to the numerator of Eq 19 in the doc
         The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog for an
         all sky or patchy galaxy catalog.        
         Parameters
@@ -400,6 +436,7 @@ class gwcosmoLikelihood(object):
     def pD_H0nG(self,H0,allsky=True):
         """
         Returns p(D|H0,bar{G})
+        This corresponds to the denominator of Eq 19 in the doc.
         The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog for an
         all sky or patchy galaxy catalog.
         
@@ -450,6 +487,7 @@ class gwcosmoLikelihood(object):
     def px_H0_counterpart(self,H0,GW_data,skymap2d,EM_counterpart):
         """
         Returns p(x|H0,counterpart)
+        This corresponds to the numerator or Eq 6 in the doc.
         The likelihood of the GW data given H0 and direct counterpart.
         
         Parameters
@@ -498,6 +536,7 @@ class gwcosmoLikelihood(object):
     def pD_H0(self,H0):
         """
         Returns p(D|H0).
+        This corresponds to the denominator of Eq 6 in the doc.
         The probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
         
         Parameters
@@ -538,6 +577,7 @@ class gwcosmoLikelihood(object):
     def likelihood(self,H0,GW_data,skymap2d,EM_counterpart=None,complete=False,counterpart_case='direct'):
         """
         The likelihood for a single event
+        This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
         
         Parameters
         ----------
@@ -570,7 +610,7 @@ class gwcosmoLikelihood(object):
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0,GW_data,skymap2d,EM_counterpart)
                 pD_H0 = self.pD_H0(H0)
-                likelihood = pxG/pD_H0
+                likelihood = pxG/pD_H0 # Eq 6
                 
             # The pencilbeam case is currently coded up along the line of sight of the counterpart
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
@@ -587,7 +627,7 @@ class gwcosmoLikelihood(object):
                     self.pDnG = self.pD_H0nG(H0)
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
                 
-                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)            
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3 along a single line of sight       
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
@@ -597,7 +637,7 @@ class gwcosmoLikelihood(object):
                 self.pDG = self.pD_H0G(H0)
         
             if complete==True:
-                likelihood = pxG/self.pDG
+                likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
         
             else:
                 if all(self.pGD)==None:
@@ -609,13 +649,13 @@ class gwcosmoLikelihood(object):
                     
                 pxnG = self.px_H0nG(H0,GW_data,skymap2d,EM_counterpart)
     
-                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG)
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
             if self.whole_cat == False:
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,GW_data,skymap2d,allsky=False)
 
-                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky)
+                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky) # Eq 4
 
             
         return likelihood/np.sum(likelihood)/dH0

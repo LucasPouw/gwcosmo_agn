@@ -76,6 +76,18 @@ parser = OptionParser(
             help="DEC: Declination of counterpart"),
         Option("-z", "--counterpart_z", metavar="REDSHIFT", default=None,
             help="REDSHIFT: Redshift of counterpart"),
+        Option("-d", "--omega_m", metavar="OMEGAM", default='0.308', type=float,
+            help="OMEGAM: Set value for omega_m."),
+        Option("-s", "--Mstar_obs", metavar="MSTAROBS", default='-20.457', type=float,
+            help="MSTAROBS: Set value for Mstar_obs."),
+        Option("-l", "--alpha", metavar="ALPHA", default='-1.07', type=float,
+            help="ALPHA: Set value for alpha."),
+        Option("-n", "--Mmin_obs", metavar="MMINOBS", default='-22.96', type=float,
+            help="MMINOBS: Set value for Mmin_obs."),
+        Option("-q", "--Mmax_obs", metavar="MMAXOBS", default='-12.96', type=float,
+            help="MMAXOBS: Set value for Mmax_obs."),
+        Option("--mth", metavar="MTH", default=None,
+            help="MTH: Set value for MTH."),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
             help="OUTPUTFILE: Name of output file"),
         Option("-p", "--plot", metavar="PLOT", default=None,
@@ -142,6 +154,7 @@ else:
 
     if opts.method == 'counterpart':
         galaxy_weighting = False
+        weights = 'schechter'
         completion = True
         if opts.counterpart_ra is not None:
             counterpart_ra = float(opts.counterpart_ra)
@@ -158,6 +171,17 @@ else:
     uncertainty = str2bool(opts.uncertainty)
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
+    omega_m = float(opts.omega_m)
+    Mstar_obs=float(opts.Mstar_obs)
+    alpha=float(opts.alpha)
+    Mmin_obs=float(opts.Mmin_obs)
+    Mmax_obs=float(opts.Mmax_obs)
+    
+    if opts.mth is not None:
+        mth = float(opts.mth)
+        print(mth)
+    else:
+        mth = None
     
     if opts.psd is not None:
         psd = str(opts.psd)
@@ -177,7 +201,9 @@ else:
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         if posterior_samples[-4:] == 'hdf5':
             samples.load_posterior_samples_hdf5(posterior_samples)
-        else:
+        if posterior_samples[-3:] == 'hdf':
+            samples.load_posterior_samples_hdf(posterior_samples)
+        if posterior_samples[-3:] == 'dat':
             samples.load_posterior_samples(posterior_samples)
         skymap3d = None
         if opts.skymap is not None:
@@ -215,7 +241,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=omega_m,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic,Mstar_obs=Mstar_obs,alpha=alpha,Mmin_obs=Mmin_obs,Mmax_obs=Mmax_obs,mth=mth)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
