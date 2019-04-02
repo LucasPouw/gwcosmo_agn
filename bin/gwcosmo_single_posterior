@@ -78,6 +78,8 @@ parser = OptionParser(
             help="REDSHIFT: Redshift of counterpart"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
             help="OUTPUTFILE: Name of output file"),
+		Option("--rate_evolution", metavar="RATEEVOLUTION", default='constant',
+            help="RATEEVOLUTION: Set of rate evolution: constant or evolving"),
         Option("-p", "--plot", metavar="PLOT", default=None,
             help="PLOT: Plot .npz file")
     ])
@@ -159,6 +161,7 @@ else:
     uncertainty = str2bool(opts.uncertainty)
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
+    rate_evolution = str(opts.rate_evolution)
     
     if opts.psd is not None:
         psd = str(opts.psd)
@@ -218,7 +221,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic,rate=rate_evolution)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

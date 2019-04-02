@@ -72,7 +72,7 @@ class gwcosmoLikelihood(object):
         specifies rate evolution model, 'const' or 'evolving'
     """
 
-    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False,rate='const'):
+    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False,rate='constant'):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
@@ -83,7 +83,7 @@ class gwcosmoLikelihood(object):
         self.radec_lim = radec_lim
         self.basic = basic
         self.uncertainty = uncertainty
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5,basic=self.basic)
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5000,basic=self.basic)
         
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
@@ -121,11 +121,12 @@ class gwcosmoLikelihood(object):
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
         self.rate = rate
+        print(self.rate)
         
     def __ps_z(self,z):
-        if self.rate == 'const':
+        if self.rate == 'constant':
             return 1.0
-        else:
+        if self.rate == 'evolving':
             return (1.0+z)**3.0
 
     def px_H0G(self,H0,GW_data,skymap2d,EM_counterpart=None):
