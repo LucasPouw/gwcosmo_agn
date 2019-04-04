@@ -40,6 +40,7 @@ The term $p(N_{det}|H_0)$ is the likelihood of detecting $N_{det}$ events for a 
 The remaining term factorises into likelihoods for each detected event,
 which can each be written as $p(x_{\text{GW}}|H_0,D_{\text{GW}},I)$.
 \begin{equation}
+\label{Eq.xD}
 \begin{aligned}
 p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \dfrac{p(D_{\text{GW}}|x_{\text{GW}},H_0,I)p(x_{\text{GW}}|H_0,I)}{p(D_{\text{GW}}|H_0,I)},
 \\ &= \dfrac{p(x_{\text{GW}}|H_0,I)}{p(D_{\text{GW}}|H_0,I)},
@@ -53,9 +54,9 @@ In the statistical case, the EM information enters the analysis as a prior, in t
 In order to do so, we marginalise the likelihood over the case where the host galaxy is, and is not, in the catalogue (denoted by $G$ and $\bar{G}$ respectively):
 \begin{equation} \label{Eq:sum G}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0,D_{\text{GW}},I)
-\\ &= \sum_{g=G,\bar{G}} p(x_{\text{GW}}|H_0,g,D_{\text{GW}},I) p(g|H_0,D_{\text{GW}},I)
-\\ &= p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) p(G|H_0,D_{\text{GW}},I) + p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) p(\bar{G}|H_0,D_{\text{GW}},I)
+p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|D_{\text{GW}},H_0,I)
+\\ &= \sum_{g=G,\bar{G}} p(x_{\text{GW}}|g,D_{\text{GW}},H_0,I) p(g|D_{\text{GW}},H_0,I)
+\\ &= p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I) p(G|D_{\text{GW}},H_0,I) + p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I) p(\bar{G}|D_{\text{GW}},H_0,I)
 \end{aligned} 
 \end{equation}
 
@@ -64,8 +65,8 @@ p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|H_0
 While in general the statistical method in gwcosmo is designed for use with a galaxy catalogue which covers the entire sky, a small modification allows the use of catalogues which only cover a patch of sky, as long as the patch can be specified using limits in RA and Dec.  If we represent the sky area covered by the catalogue as $\Omega_{\text{cat}}$, and the area outside the catalogue as $\Omega_{\text{rest}}$, such that $\Omega_{\text{cat}}+\Omega_{\text{rest}}$ covers the whole sky, this can be written as follows:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \int p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega
-\\&=  \int^{\Omega_{\text{cat}}} p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega + \int^{\Omega_{\text{rest}}}p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I)p(\Omega|I) d\Omega.
+p(x_{\text{GW}}|D_{\text{GW}},H_0,I) &= \int p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I)p(\Omega|I) d\Omega
+\\&=  \int^{\Omega_{\text{cat}}} p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I)p(\Omega|I) d\Omega + \int^{\Omega_{\text{rest}}}p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I)p(\Omega|I) d\Omega.
 \end{aligned} 
 \end{equation}
 The first term is equivalent to Eq. \ref{Eq:sum G} with limits on the integral over $\Omega$, while the second term has no $G$ and $\bar{G}$ terms, and covers the rest of the sky from redshift 0 to $\infty$.
@@ -77,7 +78,7 @@ The method outlined above is for the statistical $H_0$ case, in which no EM coun
 Similar to above, we can express the likelihood in this case as follows:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},I) &= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,I) p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,I)}
+p(x_{\text{GW}},x_{\text{EM}}|D_{\text{GW}},D_{\text{EM}},H_0,I) &= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,I) p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,I)}
 \\&= \dfrac{p(x_{\text{GW}},x_{\text{EM}}|H_0,I)}{p(D_{\text{GW}},D_{\text{EM}}|H_0,I)}.
 \end{aligned} 
 \end{equation}
@@ -86,7 +87,7 @@ We take $p(D_{\text{GW}},D_{\text{EM}}|x_{\text{GW}},x_{\text{EM}},H_0,I)=1$ whe
 Both the numerator and denominator can now be expanded:
 \begin{equation} \label{Eq:counterpart}
 \begin{aligned}
-p(x_{\text{GW}},x_{\text{EM}}|H_0,D_{\text{GW}},D_{\text{EM}},I) &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{EM}}|D_{\text{GW}},H_0,I) p(D_{\text{GW}}|H_0,I)} 
+p(x_{\text{GW}},x_{\text{EM}}|D_{\text{GW}},D_{\text{EM}},H_0,I) &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{EM}}|D_{\text{GW}},H_0,I) p(D_{\text{GW}}|H_0,I)} 
 \\ &= \dfrac{p(x_{\text{GW}}|H_0,I) p(x_{\text{EM}}|H_0,I)}{p(D_{\text{GW}}|H_0,I)} 
 \end{aligned} 
 \end{equation}
@@ -97,7 +98,7 @@ In general, the assumption with the EM counterpart case is that observation of t
 From here, the counterpart case can be broken down into two further methods: ``direct'' and ``pencil-beam''. 
 
 \subsubsection{Direct}
-This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$ (note that this is independent of galaxy catalogue data).
+This method assumes that the counterpart has been unambiguously linked to the host galaxy of the GW event, such that the redshift and sky location of that galaxy can be taken to be the redshift and sky location of the GW event with certainty.  In this case the likelihood from Eq. \ref{Eq:counterpart} can be calculated by evaluating the GW likelihood at the delta function location of the counterpart in $z$ and $\Omega$, and evaluating $p(D_{\text{GW}}|H_0,I)$ as $\iiint p(D_{\text{GW}}|z,\Omega,H_0,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM$ (note that this is independent of galaxy catalogue data).
 
 
 
@@ -152,20 +153,35 @@ Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in t
 
 \subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I)$}
 
-
-Marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
+First expanding as in Eq. \ref{Eq.xD}:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,G,z,\Omega,m,M,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|s,H_0,G,I) dz d\Omega dm dM}
+p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|G,H_0,I)}{p(D_{\text{GW}}|G,H_0,I)}
 \end{aligned}
 \end{equation}
-which is true \emph{if} we can assume that both $x_{\text{GW}}$ and $D_{\text{GW}}$ are independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
+
+Focussing on the numerator, and marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}}|H_0,G,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,H_0,I) p(z,\Omega,M,m|s,G,H_0,I) dz d\Omega dm dM
+\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|s,G,H_0,I) dz d\Omega dm dM
+\end{aligned}
+\end{equation}
+which is true if we can assume that $x_{\text{GW}}$ is independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
 
 As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care:
 \begin{equation}
 \begin{aligned}
-p(z,\Omega,m,M|s,H_0,G,I) &= p(M|s,H_0,z,\Omega,m,G,I)p(z,\Omega,m|s,H_0,G,I)
+p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|H_0,G,I)}{p(s|G,H_0,I)}
+\\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
+\\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
+\\ &= \dfrac{p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
+\end{aligned}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+p(z,\Omega,M,m|s,G,H_0,I) &= p(M|z,\Omega,m,s,G,H_0,I)p(z,\Omega,m|s,H_0,G,I)
 \\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
 \\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
 \\ &= \dfrac{p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
