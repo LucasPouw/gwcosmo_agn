@@ -212,20 +212,29 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \iiiint p(G,z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
-\\ &= \iiiint p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,D_{\text{GW}},I) dz d\Omega dm dM
-\\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dm dM
-\\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,m,M,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}},z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
-\\ &=  \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM} 
+p(G|D_{\text{GW}},H_0,I) &= \iiiint p(z,\Omega,M,m,G|H_0,D_{\text{GW}},I) dz d\Omega dM dm
+\\ &= \iiiint p(G|z,\Omega,M,m,D_{\text{GW}},H_0,I) p(z,\Omega,M,m|D_{\text{GW}},H_0,I) dz d\Omega dM dm
+\\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|z,\Omega,M,m,H_0,I) p(z,\Omega,M,m|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dM dm 
+\\ &=  \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|H_0,I) dz d\Omega dM dm.
 \end{aligned}
 \end{equation}
-where $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ is a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
+Here $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.  
 
 \begin{equation}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)\delta(m - m(z,H_0,M)) dz d\Omega dm dM}
-\\ &= \dfrac{\iiint \Theta[m_{\text{th}}-m(z,H_0,M)] p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(G|H_0,D_{\text{GW}},I) &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)\delta(m - m(z,M,H_0)) dz d\Omega dM dm
+\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiint \Theta[m_{\text{th}}-m(z,M,H_0)] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)dz d\Omega dM
+\end{aligned}
+\end{equation}
+
+Translating the Heaviside step function into a limit on the integral over $z$, and using the definition of $p(D_{\text{GW}}|H_0,I)$ as:
+\begin{equation}
+\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z|I)p(\Omega|I)p(M|H_0,I) dz d\Omega dM
+\end{equation}
+yields the final result of:
+\begin{equation}
+\begin{aligned}
+\\ &= \dfrac{\int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z|I)p(\Omega|I)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
