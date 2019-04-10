@@ -107,29 +107,26 @@ The pencil-beam method makes the assumption that while the sky location of the g
 
 
 
-\subsection{A brief note on luminosity weighting}
-Whenever there is ambiguity about the host of a GW event, the possibility of luminosity weighting must be considered.
+\subsection{A note on luminosity weighting and redshift evolution}
+Whenever there is ambiguity about the host of a GW event, the probability that some galaxies make more likely hosts than others must be considered.  This materialises in two ways.  First, that more luminous galaxies can be considered to be more likely hosts, due to being a tracer for the overall mass of the galaxy or its star-formation rates, depending on the luminosity band.  Second, that galaxies at higher redshifts are more likely to be hosts, due to the assumption that CBC mergers are more common further back in time.
 
-Included in the term $I$ on the right-hand side of all of these equations is one very important assumption: that there really was a GW source (here we shall denote it $s$), and the detection was not a false alarm.  In the majority of calculations, the presence of this term can be taken as granted and safely ignored, as it has no bearing on the result.  For example:
+Included in the term $I$ on the right-hand side of all probability terms is an important assumption: that there is a GW source, which we shall denote $s$, when needing to refer to it explicitly).  When considering the terms $x_\text{GW}$ and $D_\text{GW}$ we can see that this assumption is already in place, as the implicit assumption is that a real gravitational wave has been detected, and it is not a false alarm.  Thus, for the majority of the time, the term $s$ remains invisible, and it is only when considering other parameters that its existence becomes important.
+
+For example, when we consider our priors on the galaxy distribution in the universe (denoted in later sections as $p(z,\Omega,M,m|H_0,I)$), we must recognise that what we are actually interested in is not the prior on all galaxies in the universe, but on host galaxies for GW events.  Thus, $s$ becomes an important term, and must be written out explicitly.  Take the example below, in which we have prior distributions on galaxy redshift, sky-location and absolute magnitude, and the prior on apparent magnitude is a delta-function coming from this knowledge:
 \begin{equation}
+\label{Eq:expand_prior}
 \begin{aligned}
-p(z|s,I) &= \dfrac{p(s|z,I) p(z|I)}{p(s|I)} 
-\\ &= \dfrac{p(s|I) p(z|I)}{p(s|I)} 
-\\ &= p(z|I),
+p(z,\Omega,M,m|s,H_0,I) &=  p(m|z,\Omega,M,s,H_0,I)p(z,\Omega,M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))p(z|s,H_0,I)p(\Omega|s,H_0,I)p(M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))p(z|s,I)p(\Omega|I)p(M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))\dfrac{p(s|z,I)p(z|I)}{p(s|I)}p(\Omega|I)\dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)}
+\\ &= \delta(m - m(z,M,H_0))\dfrac{1}{p(s|I)p(s|H_0,I)}p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)
 \end{aligned}
 \end{equation}
-as we do not modify our prior on $z$ because of our knowledge.
+Here, $p(z|I)$ becomes the prior distribution of galaxies in the universe, taken to be uniform in comoving volume-time. $p(\Omega|I)$ is the prior on galaxy sky location, taken to be uniform across the sky. And  $p(M|H_0,I)$ is defined as a distribution of absolute magnitudes represented by the Schechter function, as we believe this mirrors the distribution of absolute magnitudes for all the galaxies in the universe. 
 
-However, there is an important case in which this assumption is true only part of the time:
-\begin{equation}
-\begin{aligned}
-p(M|s,H_0,I) &= \dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)} 
-\\ &= p(M|H_0,I) 
-\end{aligned}
-\end{equation}
-which is \emph{only} true if we believe that the probability of a particular galaxy being host to a gravitational wave event is independent of the galaxy's absolute magnitude. That is, when there is no luminosity weighting.
 
-In general, we define $p(M|H_0,I)$ as a distribution of absolute magnitudes represented by the Schechter function, as we believe this mirrors the distribution of absolute magnitudes for all the galaxies in the universe.  If we believe that the probability of a given galaxy being host to the gravitational wave source is dependent on the galaxy's absolute magnitude, then $p(s|M,H_0,I)$ takes some non-constant value.  For example:
+If we believe that the probability of a given galaxy being host to the gravitational wave source is dependent on the galaxy's absolute magnitude, then $p(s|M,H_0,I)$ takes some non-constant value.  Eg:
 \begin{equation}
 \begin{aligned}
 p(s|M,H_0,I) &\propto 
@@ -139,8 +136,18 @@ L(M(H_0)) & \text{if luminosity weighted}\\
 \end{cases}
 \end{aligned}
 \end{equation}
+Similarly, in terms of redshift evolution:
+\begin{equation}
+\begin{aligned}
+p(s|z,I) &\propto 
+\begin{cases}
+(1+z)^3 & \text{if rate evolves with redshift}\\
+\text{const} & \text{if rate is constant with redshift}
+\end{cases}
+\end{aligned}
+\end{equation}
 
-As will be seen below, all $p(s|H_0,I)$ terms will cancel out in the numerator and denominator, and therefore can be safely ignored.
+As will be seen below, all $p(s|H_0,I)$ and $p(s|I)$ terms cancel out in the numerator and denominator, and therefore can be safely ignored.
 
 
 
@@ -151,7 +158,7 @@ As will be seen below, all $p(s|H_0,I)$ terms will cancel out in the numerator a
 Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in the cases where the integration limits are not specified, they can be assumed to cover the full parameter space.
 
 
-\subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I)$}
+\subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I)$}
 
 First expanding as in Eq. \ref{Eq.xD}:
 \begin{equation}
@@ -207,7 +214,7 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 
 
 
-\subsection{Probability the host galaxy is in the galaxy catalogue: $p(G|H_0,D_{\text{GW}},I)$}
+\subsection{Probability the host galaxy is in the galaxy catalogue: $p(G|D_{\text{GW}},H_0,I)$}
 
 
 \begin{equation}
@@ -221,17 +228,7 @@ p(G|D_{\text{GW}},H_0,I) &= \iiiint p(z,\Omega,M,m,G|D_{\text{GW}},H_0,I) dz d\O
 \end{equation}
 Here $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
-Looking purely at the term $p(z,\Omega,M,m|H_0,I)$, this is the point at which it becomes important to consider the term $s$, which was previously included in $I$ on the right-hand side.  We now write it out explicitly, and see that the expression can be expanded in the following way:
-\begin{equation}
-\label{Eq:expand_prior}
-\begin{aligned}
-p(z,\Omega,M,m|s,H_0,I) &=  p(m|z,\Omega,M,s,H_0,I)p(z,\Omega,M|s,H_0,I)
-\\ &= \delta(m - m(z,M,H_0))p(z|s,H_0,I)p(\Omega|s,H_0,I)p(M|s,H_0,I)
-\\ &= \delta(m - m(z,M,H_0))p(z|s,I)p(\Omega|I)p(M|s,H_0,I)
-\\ &= \delta(m - m(z,M,H_0))\dfrac{p(s|z,I)p(z|I)}{p(s|I)}p(\Omega|I)\dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)}
-\end{aligned}
-\end{equation}
-Substituting this into Eq \ref{Eq:G_DH0_start}, and utilising the properties of the delta-function, gives:
+Expanding $p(z,\Omega,M,m|H_0,I)$ as in Eq \ref{Eq:expand_prior}, and substituting this into Eq \ref{Eq:G_DH0_start}, then utilising the properties of the delta-function, gives:
 \begin{equation}
 \label{Eq:G_DH0_mid}
 \begin{aligned}
@@ -256,12 +253,12 @@ Substituting this back into Eq \ref{Eq:G_DH0_mid}, the terms $p(s|I)$ and $p(s|H
 
 
 
-\subsection{Probability the host galaxy is not in the galaxy catalogue: $p(\bar{G}|H_0,D_{\text{GW}},I)$}
+\subsection{Probability the host galaxy is not in the galaxy catalogue: $p(\bar{G}|D_{\text{GW}},H_0,I)$}
 
-As the probabilities of being in the catalogue and not in the catalogue must add up the one, we can calculate the counterpart to $p(G|H_0,D_{\text{GW}},I)$ as follows:
+As the probabilities of being in the catalogue and not in the catalogue must add up the one, we can calculate the counterpart to $p(G|D_{\text{GW}},H_0,I)$ as follows:
 \begin{equation}
 \begin{aligned}
-p(\bar{G}|H_0,D_{\text{GW}},I) &= 1 - p(G|H_0,D_{\text{GW}},I)
+p(\bar{G}|D_{\text{GW}},H_0,I) &= 1 - p(G|D_{\text{GW}},H_0,I)
 \end{aligned}
 \end{equation}
 
