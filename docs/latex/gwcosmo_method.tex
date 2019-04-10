@@ -107,10 +107,10 @@ The pencil-beam method makes the assumption that while the sky location of the g
 
 
 
-\subsection{A note on luminosity weighting and redshift evolution}
-Whenever there is ambiguity about the host of a GW event, the probability that some galaxies make more likely hosts than others must be considered.  This materialises in two ways.  First, that more luminous galaxies can be considered to be more likely hosts, due to being a tracer for the overall mass of the galaxy or its star-formation rates, depending on the luminosity band.  Second, that galaxies at higher redshifts are more likely to be hosts, due to the assumption that CBC mergers are more common further back in time.
+\subsection{A note on luminosity weighting and redshift evolution \label{Sec: s term}}
+Whenever there is ambiguity about the host of a GW event, the probability that some galaxies make more likely hosts than others must be considered.  This materialises in two ways.  First, that more luminous galaxies can be considered to be more likely hosts, due to being a tracer for the overall mass of the galaxy or its star-formation rate, depending on the luminosity band.  Second, that galaxies at higher redshifts are more likely to be hosts, due to the assumption that CBC mergers are more common further back in time.
 
-Included in the term $I$ on the right-hand side of all probability terms is an important assumption: that there is a GW source, which we shall denote $s$, when needing to refer to it explicitly).  When considering the terms $x_\text{GW}$ and $D_\text{GW}$ we can see that this assumption is already in place, as the implicit assumption is that a real gravitational wave has been detected, and it is not a false alarm.  Thus, for the majority of the time, the term $s$ remains invisible, and it is only when considering other parameters that its existence becomes important.
+Included in the term $I$ on the right-hand side of all probability terms is an important assumption: that there is a GW source, which we shall denote $s$, when needing to refer to it explicitly.  When considering the terms $x_\text{GW}$ and $D_\text{GW}$ we can see that this assumption is already in place, as the implicit assumption is that a real gravitational wave has been detected, and it is not a false alarm.  Thus, for the majority of the time, the term $s$ remains invisible, and it is only when considering other parameters that its existence becomes important.
 
 For example, when we consider our priors on the galaxy distribution in the universe (denoted in later sections as $p(z,\Omega,M,m|H_0,I)$), we must recognise that what we are actually interested in is not the prior on all galaxies in the universe, but on host galaxies for GW events.  Thus, $s$ becomes an important term, and must be written out explicitly.  Take the example below, in which we have prior distributions on galaxy redshift, sky-location and absolute magnitude, and the prior on apparent magnitude is a delta-function coming from this knowledge:
 \begin{equation}
@@ -170,30 +170,24 @@ p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|G,H_0,I)}{p(D_{
 Focussing on the numerator, and marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,H_0,I) p(z,\Omega,M,m|s,G,H_0,I) dz d\Omega dm dM
-\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|s,G,H_0,I) dz d\Omega dm dM
+p(x_{\text{GW}}|H_0,G,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,H_0,I) p(z,\Omega,M,m|G,H_0,I) dz d\Omega dM dm
+\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|G,H_0,I) dz d\Omega dM dm
 \end{aligned}
 \end{equation}
-which is true if we can assume that $x_{\text{GW}}$ is independent of $G$, $m$ and $M$.  Here, the dependence of the priors on $G$ simply means that we take the prior to be the galaxies within the catalogue, as a series of delta functions with specific $z$, $\Omega$ and $m$ values.
+which is true if we can assume that $x_{\text{GW}}$ is independent of $G$, $m$ and $M$.  
 
-As the priors on $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care:
+The dependence of the priors on $G$ means that we take the prior to be the galaxies within the catalogue, as a series of delta functions\footnote{See section \ref{Sec:redshift uncertainties} for details on moving beyond this basic assumption.} with specific $z$, $\Omega$ and $m$ values.  Because the values of $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care.  As in section \ref{Sec: s term}, we must also start writing $s$ explicitly.
 \begin{equation}
 \begin{aligned}
-p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|H_0,G,I)}{p(s|G,H_0,I)}
-\\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
-\\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
-\\ &= \dfrac{p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
+p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|G,H_0,I)}{p(s|G,H_0,I)}
+\\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(M|z,\Omega,m,G,H_0,I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)}
+\\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ??
+\\&= \dfrac{p(s|z,\Omega,M(z,m,H_0),m,G,H_0,I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ??
+\\&= \dfrac{p(s|z,M(z,m,H_0),I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ????
 \end{aligned}
 \end{equation}
+\note{And as $M$ depends on $z$ in this case, I don't see a way of expanding out the term $p(s|z,M(z,m,H_0),I)$ in a way that makes logical sense.}
 
-\begin{equation}
-\begin{aligned}
-p(z,\Omega,M,m|s,G,H_0,I) &= p(M|z,\Omega,m,s,G,H_0,I)p(z,\Omega,m|s,H_0,G,I)
-\\ &= \dfrac{p(s|M,H_0,z,\Omega,m,G,I) p(M|H_0,z,\Omega,m,G,I)}{p(s|H_0,z,\Omega,m,G,I)} \dfrac{p(s|H_0,z,\Omega,m,G,I) p(z,\Omega,m|H_0,G,I)}{p(s|H_0,G,I)} 
-\\ &= \dfrac{p(s|M,I) \delta(M-M(H_0,z,m)) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
-\\ &= \dfrac{p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I)}{p(s|H_0,G,I)}
-\end{aligned}
-\end{equation}
 
 
 Substituting this back in:
@@ -373,7 +367,7 @@ p(M_{\text{1,obs}},M_{\text{2,obs}}) &\propto \dfrac{1}{M_{\text{1,source}}(M_{\
 As all redshift (and hence $H_0$) dependence has been removed in this case, no correction is required for the differing priors.  This will not be the case for any $\alpha \neq -1$, and so this choice should be investigated thoroughly in future.
 
 
-\subsection{Redshift Uncertainties}
+\subsection{Redshift Uncertainties \label{Sec:redshift uncertainties}}
 Most galaxy catalogs provide estimates of redshifts that use machine learning or Bayesian frameworks by assigning a redshift estimate to galaxies based on their color and apparent magnitude information which is usually compared to a spectroscopic sample that was used to train the algorithm, we refer to these redshift estimates here as photoz's.
 
 For machine learning based estimates a median (or mean) $z_\text{photo}$ and an error estimate $\sigma_{z_\text{photo}}$ is provided. Given the frequentist nature of ML estimates there is usually no more information other than a few quality flags that classify the redshifts in terms of how trustworthy these are. 
