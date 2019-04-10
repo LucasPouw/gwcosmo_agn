@@ -211,41 +211,49 @@ p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_
 
 
 \begin{equation}
+\label{Eq:G_DH0_start}
 \begin{aligned}
-p(G|D_{\text{GW}},H_0,I) &= \iiiint p(z,\Omega,M,m,G|H_0,D_{\text{GW}},I) dz d\Omega dM dm
+p(G|D_{\text{GW}},H_0,I) &= \iiiint p(z,\Omega,M,m,G|D_{\text{GW}},H_0,I) dz d\Omega dM dm
 \\ &= \iiiint p(G|z,\Omega,M,m,D_{\text{GW}},H_0,I) p(z,\Omega,M,m|D_{\text{GW}},H_0,I) dz d\Omega dM dm
 \\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|z,\Omega,M,m,H_0,I) p(z,\Omega,M,m|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dM dm 
 \\ &=  \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|H_0,I) dz d\Omega dM dm.
 \end{aligned}
 \end{equation}
-Here $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.  
+Here $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
+Looking purely at the term $p(z,\Omega,M,m|H_0,I)$, this is the point at which it becomes important to consider the term $s$, which was previously included in $I$ on the right-hand side.  We now write it out explicitly, and see that the expression can be expanded in the following way:
 \begin{equation}
+\label{Eq:expand_prior}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)\delta(m - m(z,M,H_0)) dz d\Omega dM dm
-\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiint \Theta[m_{\text{th}}-m(z,M,H_0)] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)dz d\Omega dM
+p(z,\Omega,M,m|s,H_0,I) &=  p(m|z,\Omega,M,s,H_0,I)p(z,\Omega,M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))p(z|s,H_0,I)p(\Omega|s,H_0,I)p(M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))p(z|s,I)p(\Omega|I)p(M|s,H_0,I)
+\\ &= \delta(m - m(z,M,H_0))\dfrac{p(s|z,I)p(z|I)}{p(s|I)}p(\Omega|I)\dfrac{p(s|M,H_0,I)p(M|H_0,I)}{p(s|H_0,I)}
+\end{aligned}
+\end{equation}
+Substituting this into Eq \ref{Eq:G_DH0_start}, and utilising the properties of the delta-function, gives:
+\begin{equation}
+\label{Eq:G_DH0_mid}
+\begin{aligned}
+p(G|H_0,D_{\text{GW}},I) &= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiint \Theta[m_{\text{th}}-m(z,M,H_0)] p(D_{\text{GW}}|z,\Omega,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+\\&= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 
-Translating the Heaviside step function into a limit on the integral over $z$, and using the definition of $p(D_{\text{GW}}|H_0,I)$ as:
-\begin{equation}
-\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z|I)p(\Omega|I)p(M|H_0,I) dz d\Omega dM
-\end{equation}
-yields the final result of:
+The denominator, $p(D_{\text{GW}}|H_0,I)$, can be expanded in a similar way, to give:
 \begin{equation}
 \begin{aligned}
-\\ &= \dfrac{\int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(z|I)p(\Omega|I)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z|I)p(\Omega|I)p(M|H_0,I) dz d\Omega dM}
+p(D_{\text{GW}}|H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)}\iiint p(D_{\text{GW}}|H_0,z,\Omega,I)p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+\end{aligned}
+\end{equation}
+Substituting this back into Eq \ref{Eq:G_DH0_mid}, the terms $p(s|I)$ and $p(s|H_0,I)$ cancel in numerator and denominator, giving a final expression of:
+\begin{equation}
+\label{Eq:G_DH0_end}
+\begin{aligned}
+\\ p(G|H_0,D_{\text{GW}},I)&= \dfrac{\int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
-
-\subsubsection{The luminosity weighted case}
-In the case where we consider luminosity weighting, this takes the following form:
-\begin{equation}
-\begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{\int^{z(H_0,m_{\text{th}},M)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I)}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
-\end{aligned}
-\end{equation}
 
 
 \subsection{Probability the host galaxy is not in the galaxy catalogue: $p(\bar{G}|H_0,D_{\text{GW}},I)$}
@@ -260,29 +268,44 @@ p(\bar{G}|H_0,D_{\text{GW}},I) &= 1 - p(G|H_0,D_{\text{GW}},I)
 
 
 
-\subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I)$}
-Similarly:
+\subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I)$}
+
+First expanding as in Eq. \ref{Eq.xD}:
+\begin{equation}
+\label{Eq:px_H0GbarD}
+\begin{aligned}
+p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|\bar{G},H_0,I)}{p(D_{\text{GW}}|\bar{G},H_0,I)}
+\end{aligned}
+\end{equation}
+Looking firstly at the numerator, this can be expanded as follows:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,\bar{G},z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z,\Omega,m,M|H_0,\bar{G},I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \dfrac{p(\bar{G}|H_0,z,\Omega,m,M,I)p(z,\Omega,m,M|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dm dM}
-\\ &= \dfrac{p(\bar{G}|H_0,I)}{p(\bar{G}|H_0,I)}\dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(\bar{G}|m,I)p(z,\Omega,m,M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}{\iiiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m-m_{\text{th}})p(z)p(\Omega)\delta(m-m(z,H_0,M))p(M|H_0,I) dz d\Omega dm dM}
-\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}}) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) \Theta(m(z,H_0,M)-m_{\text{th}})p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
-\\ &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z)p(\Omega)p(M|H_0,I) dz d\Omega dM}
+p(x_{\text{GW}}|\bar{G},H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,\bar{G},H_0,I) p(z,\Omega,M,m|\bar{G},H_0,I) dz d\Omega dM dm
+\\&= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|\bar{G},H_0,I) dz d\Omega dM dm
+\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \dfrac{p(\bar{G}|z,\Omega,M,m,H_0,I)p(z,\Omega,M,m|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dM dm
+\\ &= \dfrac{1}{p(\bar{G}|H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \Theta(m-m_{\text{th}})p(z,\Omega,M,m|H_0,I) dz d\Omega dM dm
+\end{aligned}
+\end{equation}
+The prior term, $p(z,\Omega,M,m|H_0,I)$ can now be expanded as it was in Eq \ref{Eq:expand_prior}, and substituting this in gives:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}}|\bar{G},H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \Theta(m(z,M,H_0)-m_{\text{th}}) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+\\&=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+\end{aligned}
+\end{equation}
+Expanding the denominator, $p(D_{\text{GW}}|\bar{G},H_0,I)$, in the same way gives an equivalent term:
+\begin{equation}
+\begin{aligned}
+p(D_{\text{GW}}|\bar{G},H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+\end{aligned}
+\end{equation}
+And substituting this back into Eq \ref{Eq:px_H0GbarD}, the factors out the front cancel and the final expression becomes:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I) &= \dfrac{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}
 \end{aligned}
 \end{equation}
 
-
-\subsubsection{The luminosity weighted case}
-In the case where we consider luminosity weighting, this takes the following form:
-\begin{equation}
-\begin{aligned}
-p(x_{\text{GW}}|H_0,\bar{G},D_{\text{GW}},I) &= \dfrac{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(x_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}{\int^\infty_{z(H_0,m_{\text{th}},M)} \iint p(D_{\text{GW}}|H_0,z,\Omega,I) p(z) p(\Omega) p(s|M,I) p(M|H_0,I) dz d\Omega dM}
-\end{aligned}
-\end{equation}
 
 
 
