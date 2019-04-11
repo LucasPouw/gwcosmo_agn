@@ -176,13 +176,9 @@ else:
     
     if opts.posterior_samples is not None:
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-        if posterior_samples[-4:] == 'hdf5':
-            samples.load_posterior_samples_hdf5(posterior_samples)
-        if posterior_samples[-3:] == 'hdf':
-            samples.load_posterior_samples_hdf(posterior_samples)
-        else:
-            samples.load_posterior_samples(posterior_samples)
+        samples.load_posterior_samples(posterior_samples)
         skymap3d = None
+        
         if opts.skymap is not None:
             skymap2d = gwcosmo.likelihood.skymap.skymap2d(skymap)
         else:
