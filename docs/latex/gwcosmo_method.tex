@@ -162,6 +162,7 @@ Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in t
 
 First expanding as in Eq. \ref{Eq.xD}:
 \begin{equation}
+\label{Eq:x_GDH0}
 \begin{aligned}
 p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|G,H_0,I)}{p(D_{\text{GW}}|G,H_0,I)}
 \end{aligned}
@@ -181,30 +182,37 @@ The dependence of the priors on $G$ means that we take the prior to be the galax
 \begin{aligned}
 p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|G,H_0,I)}{p(s|G,H_0,I)}
 \\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(M|z,\Omega,m,G,H_0,I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)}
-\\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ??
-\\&= \dfrac{p(s|z,\Omega,M(z,m,H_0),m,G,H_0,I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ??
-\\&= \dfrac{p(s|z,M(z,m,H_0),I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)} ????
+\\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|G,I)}{p(s|G,H_0,I)}
 \end{aligned}
 \end{equation}
-\note{And as $M$ depends on $z$ in this case, I don't see a way of expanding out the term $p(s|z,M(z,m,H_0),I)$ in a way that makes logical sense.}
-
-
-
-Substituting this back in:
+Substituting this back into the equation above:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{p(s|H_0,G,I)}{p(s|H_0,G,I)} \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\iiint p(x_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}{\iiint p(D_{\text{GW}}|H_0,z,\Omega,I) p(s|M(H_0,z,m),I) p(z,\Omega,m|G,I) dz d\Omega dm}
-\\ &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}{\sum^N_{i=1} p(D_{\text{GW}}|H_0,z_i,\Omega_i,I) p(s|M(H_0,z_i,m_i),I)}
+p(x_{\text{GW}}|H_0,G,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|G,I)}{p(s|G,H_0,I)} dz d\Omega dM dm
+\\ &= \dfrac{1}{p(s|G,H_0,I)}\iiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(s|z,\Omega,M(z,m,H_0),m,G,H_0,I)p(z,\Omega,m|G,I) dz d\Omega dm
+\end{aligned}
+\end{equation}
+Now explicitly changing the integral to a sum over galaxies within the galaxy catalogue:
+\begin{equation}
+\begin{aligned}
+p(x_{\text{GW}}|H_0,G,I) &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,\Omega_i,M(z_i,m_i,H_0),m_i,H_0,I)
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,M(z_i,m_i,H_0),I)
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(z_i,M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i,M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(z_i|s,I)p(M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i|I)p(M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(s|z_i,I)p(z_i|I)p(s|M(z_i,m_i,H_0),I) p(M(z_i,m_i,H_0)|I)p(s|I)}{p(s|I)p(s|I)p(z_i|I)p(M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{p(s|I)}
+\\ &= \dfrac{1}{p(s|I)p(s|G,H_0,I)} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)
 \end{aligned}
 \end{equation}
 
-In the unweighted case, this simplifies to the following:
+Expanding the denominator, $p(D_{\text{GW}}|G,H_0,I)$, in the same way, then substituting both back into Eq \ref{Eq:x_GDH0}, the factors out front cancel, and the final expression becomes:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,G,D_{\text{GW}},I) &= \dfrac{\sum^N_{i=1} p(x_{\text{GW}}|H_0,z_i,\Omega_i,I) }{\sum^N_{i=1} p(D_{\text{GW}}|H_0,z_i,\Omega_i,I)}
+\dfrac{p(x_{\text{GW}}|H_0,G,I)}{p(D_{\text{GW}}|G,H_0,I)} &= \dfrac{ \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{\sum^N_{i=1} p(D_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}
 \end{aligned}
 \end{equation}
+
+
 
 
 
