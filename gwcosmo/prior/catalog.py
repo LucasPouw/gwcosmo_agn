@@ -35,17 +35,6 @@ class galaxy(object):
         self.z = z
         self.m = m
         self.sigmaz = sigmaz
-
-    def blue_luminosity_from_mag(self):
-        """
-        Returns the blue luminosity in units of L_10 given the apparent
-        magnitude and the redshift of a galaxy object assuming a Hubble constant of 70.
-        """
-        coverh = (const.c.to('km/s') / ( 70 * u.km / u.s / u.Mpc )).value
-        M_blue_solar = 5.48 # Binney & Tremaine
-        MB = self.m - 5.0 * np.log10( self.z*coverh / 10.0e-6 )
-        lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
-        return lumB
         
 class galaxyCatalog(object):
     """
