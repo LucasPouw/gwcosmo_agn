@@ -391,24 +391,24 @@ In order to take into account the fact that galaxy catalogues have varying level
 
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},I) &= \int p(x_{\text{GW}},\Omega|H_0,D_{\text{GW}},I) d\Omega
-\\ & = \int p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I) p(\Omega|H_0,D_{\text{GW}},I) d\Omega
-\\ & = \int p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I) \dfrac{p(D_{\text{GW}}|H_0,\Omega,I)p(\Omega|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  d\Omega
-\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \int p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega,I) p(D_{\text{GW}}|H_0,\Omega,I)p(\Omega|I) d\Omega
-\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \sum^{N_{\text{pix}}}_i \bigg[p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega_i,I) p(D_{\text{GW}}|H_0,\Omega_i,I)p(\Omega_i|I)\bigg]
+p(x_{\text{GW}}|D_{\text{GW}},H_0,I) &= \int p(x_{\text{GW}},\Omega|D_{\text{GW}},H_0,I) d\Omega
+\\ & = \int p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I) p(\Omega|D_{\text{GW}},H_0,I) d\Omega
+\\ & = \int p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I) \dfrac{p(D_{\text{GW}}|\Omega,H_0,I)p(\Omega|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  d\Omega
+\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \int p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I) p(D_{\text{GW}}|\Omega,H_0,I)p(\Omega|I) d\Omega
+\\ &= \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \sum^{N_{\text{pix}}}_i \bigg[p(x_{\text{GW}}|\Omega_i,D_{\text{GW}},H_0,I) p(D_{\text{GW}}|\Omega_i,H_0,I)p(\Omega_i|I)\bigg]
 \end{aligned} 
 \end{equation}
 
-Looking specifically at $p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega_i,I)$ and expanding as in previous sections:
+Looking specifically at $p(x_{\text{GW}}|\Omega_i,D_{\text{GW}},H_0,I)$ and expanding as in previous sections:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},\Omega_i,I) &= \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D_{\text{GW}}|H_0,G,\Omega_i,I)} p(G|H_0,D_{\text{GW}},\Omega_i,I) + \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D_{\text{GW}}|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D_{\text{GW}},\Omega_i,I),
+p(x_{\text{GW}}|\Omega_i,D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|\Omega_i,G,H_0,I)}{p(D_{\text{GW}}|\Omega_i,G,H_0,I)} p(G|\Omega_i,D_{\text{GW}},H_0,I) + \dfrac{p(x_{\text{GW}}|\Omega_i,\bar{G},H_0,I)}{p(D_{\text{GW}}|\Omega_i,\bar{G},H_0,I)} p(\bar{G}|\Omega_i,D_{\text{GW}},H_0,I),
 \end{aligned}
 \end{equation}
 and so the final expression becomes:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|H_0,D_{\text{GW}},I) = \dfrac{1}{p(D_{\text{GW}}|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x_{\text{GW}}|H_0,G,\Omega_i,I)}{p(D_{\text{GW}}|H_0,G,\Omega_i,I)} p(G|H_0,D_{\text{GW}},\Omega_i,I) \\ &+ \dfrac{p(x_{\text{GW}}|H_0,\bar{G},\Omega_i,I)}{p(D_{\text{GW}}|H_0,\bar{G},\Omega_i,I)} p(\bar{G}|H_0,D_{\text{GW}},\Omega_i,I) \bigg) \times p(D_{\text{GW}}|H_0,\Omega_i,I)p(\Omega_i|I) \Bigg]
+p(x_{\text{GW}}|D_{\text{GW}},H_0,I) = \dfrac{1}{p(D_{\text{GW}}|H_0,I)} &\sum^{N_{\text{pix}}}_i \Bigg[ \bigg( \dfrac{p(x_{\text{GW}}|\Omega_i,G,H_0,I)}{p(D_{\text{GW}}|\Omega_i,G,H_0,I)} p(G|\Omega_i,D_{\text{GW}},H_0,I) \\ &+ \dfrac{p(x_{\text{GW}}|\Omega_i,\bar{G},H_0,I)}{p(D_{\text{GW}}|\Omega_i,\bar{G},H_0,I)} p(\bar{G}|\Omega_i,D_{\text{GW}},H_0,I) \bigg) \times p(D_{\text{GW}}|\Omega_i,H_0,I)p(\Omega_i|I) \Bigg]
 \end{aligned} 
 \end{equation}
 
