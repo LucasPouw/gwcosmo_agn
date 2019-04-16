@@ -11,6 +11,8 @@ from ligo.skymap.moc import nest2uniq,uniq2nest
 
 import pickle
 import pkg_resources
+import time
+import progressbar
 
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
@@ -117,7 +119,10 @@ class galaxyCatalog(object):
         
         galaxies = {}
         index = np.arange(len(z_uncert))
-        for i in index:
+        
+        bar = progressbar.ProgressBar()
+        print("Loading galaxy catalog.")
+        for i in bar(index):
             gal = gwcosmo.prior.catalog.galaxy()
             gal.ra = ra_uncert[i]
             gal.dec = dec_uncert[i]

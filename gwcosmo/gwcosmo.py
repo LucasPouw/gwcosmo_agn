@@ -38,6 +38,9 @@ import gwcosmo
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
 
+import time
+import progressbar
+
 class gwcosmoLikelihood(object):
     """
     A class to hold all the individual components of the posterior for H0,
@@ -181,7 +184,9 @@ class gwcosmoLikelihood(object):
 
         else:
             # loop over all possible galaxies
-            for i in range(nGal):
+            bar = progressbar.ProgressBar()
+            print("Calculating p(x|H0,G)")
+            for i in bar(range(nGal)):
                 gal = self.galaxy_catalog.get_galaxy(i)
                 if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                     nGal_patch += 1.0
@@ -230,8 +235,11 @@ class gwcosmoLikelihood(object):
         nGal = self.galaxy_catalog.nGal()   
         nGal_patch = 0.0     
 
-        den = np.zeros(len(H0))       
-        for i in range(nGal):
+        den = np.zeros(len(H0))
+        
+        bar = progressbar.ProgressBar()
+        print("Calculating p(D|H0,G)")
+        for i in bar(range(nGal)):
             gal = self.galaxy_catalog.get_galaxy(i)
             if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                 nGal_patch += 1.0
@@ -275,8 +283,9 @@ class gwcosmoLikelihood(object):
         den = np.zeros(len(H0))
         
         # TODO: vectorize this if possible
-        for i in range(len(H0)):
-            
+        bar = progressbar.ProgressBar()
+        print("Calculating p(G|H0,D)")
+        for i in bar(range(len(H0))):
             def I(z,M):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
@@ -364,7 +373,9 @@ class gwcosmoLikelihood(object):
             """
             return splev(dl,temp,ext=3)
 
-        for i in range(len(H0)):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(x|H0,bar{G})")
+        for i in bar(range(len(H0))):
 
             def Inum(z,M):
                 temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
@@ -435,7 +446,9 @@ class gwcosmoLikelihood(object):
                 
         norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
         
-        for i in range(len(H0)):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(D|H0,bar{G})")
+        for i in bar(range(len(H0))):
 
             def I(z,M):
                 if self.basic:
@@ -527,8 +540,10 @@ class gwcosmoLikelihood(object):
             p(D|H0)  
         """
         den = np.zeros(len(H0))
-
-        for i in range(len(H0)):
+        
+        bar = progressbar.ProgressBar()
+        print("Calculating p(D|H0)")
+        for i in bar(range(len(H0))):
 
             def I(z,M):
                 if self.basic:
