@@ -20,7 +20,7 @@
 \section{Introduction}
 Outlined in this document is the maths which has gone into the gwcosmo pipeline, designed to calculate the Hubble constant, $H_0$, using gravitational wave (GW) data from binary black holes (BBHs) and binary neutron stars (BNSs), in combination with EM data in the form of galaxy catalogues or EM counterparts.
 
-Section \ref{Sec: Overview} introduces the Bayesian approach for the statistical and counterpart cases.  Section \ref{Sec: Components} takes a closer look at the individual components which go into the statistical case, and derives mathematical expressions for each of them.  Section \ref{Sec: maths2code} discusses some adjustments and approximations which have been made to the maths in section \ref{Sec: Components} in order to allow the approach to be efficiently adapted into a pipeline.  And section \ref{Sec: Future} outlines a method which will be implemented during O3, in order to improve upon current approximations.
+Section \ref{Sec: Overview} introduces the Bayesian approach for the catalogue and counterpart cases.  Section \ref{Sec: Components} takes a closer look at the individual components which go into the catalogue case, and derives mathematical expressions for each of them.  Section \ref{Sec: maths2code} discusses some adjustments and approximations which have been made to the maths in section \ref{Sec: Components} in order to allow the approach to be efficiently adapted into a pipeline.  And section \ref{Sec: Future} outlines a method which will be implemented during O3, in order to improve upon current approximations.
 
 
 \section{An Overview of the Method \label{Sec: Overview}}
@@ -48,8 +48,8 @@ p(x_{\text{GW}}|D_{\text{GW}},H_0,I) &= \dfrac{p(D_{\text{GW}}|x_{\text{GW}},H_0
 \end{equation}
 in the case where $x_{\text{GW}}$ passes some SNR threshold and $p(D_{\text{GW}}|x_{\text{GW}},H_0,I)=1$.
 
-\subsection{The statistical method}
-In the statistical case, the EM information enters the analysis as a prior, in the form of a galaxy catalogue, made up of a series of delta functions \footnote{when uncertainties are ignored} on redshift, RA and Dec.  As we are in the regime where (especially for BBHs) galaxy catalogues cannot be considered complete out to the distances to which GW events are detectable, we have to consider the possibility that the host galaxy is not contained within the galaxy catalogue, but lies somewhere beyond it.
+\subsection{The catalogue method}
+In the catalogue case, the EM information enters the analysis as a prior, in the form of a galaxy catalogue, made up of a series of delta functions \footnote{when uncertainties are ignored} on redshift, RA and Dec.  As we are in the regime where (especially for BBHs) galaxy catalogues cannot be considered complete out to the distances to which GW events are detectable, we have to consider the possibility that the host galaxy is not contained within the galaxy catalogue, but lies somewhere beyond it.
 
 In order to do so, we marginalise the likelihood over the case where the host galaxy is, and is not, in the catalogue (denoted by $G$ and $\bar{G}$ respectively):
 \begin{equation} \label{Eq:sum G}
@@ -62,7 +62,7 @@ p(x_{\text{GW}}|D_{\text{GW}},H_0,I) &= \sum_{g=G,\bar{G}} p(x_{\text{GW}},g|D_{
 
 
 \subsubsection{The catalogue patch case}
-While in general the statistical method in gwcosmo is designed for use with a galaxy catalogue which covers the entire sky, a small modification allows the use of catalogues which only cover a patch of sky, as long as the patch can be specified using limits in RA and Dec.  If we represent the sky area covered by the catalogue as $\Omega_{\text{cat}}$, and the area outside the catalogue as $\Omega_{\text{rest}}$, such that $\Omega_{\text{cat}}+\Omega_{\text{rest}}$ covers the whole sky, this can be written as follows:
+While in general the catalogue method in gwcosmo is designed for use with a galaxy catalogue which covers the entire sky, a small modification allows the use of catalogues which only cover a patch of sky, as long as the patch can be specified using limits in RA and Dec.  If we represent the sky area covered by the catalogue as $\Omega_{\text{cat}}$, and the area outside the catalogue as $\Omega_{\text{rest}}$, such that $\Omega_{\text{cat}}+\Omega_{\text{rest}}$ covers the whole sky, this can be written as follows:
 \begin{equation}
 \begin{aligned}
 p(x_{\text{GW}}|D_{\text{GW}},H_0,I) &= \int p(x_{\text{GW}}|\Omega,D_{\text{GW}},H_0,I)p(\Omega|I) d\Omega
@@ -73,7 +73,7 @@ The first term is equivalent to Eq. \ref{Eq:sum G} with limits on the integral o
 
 
 \subsection{The EM counterpart method}
-The method outlined above is for the statistical $H_0$ case, in which no EM counterpart is observed, or expected (eg. for BBHs).  We now consider the case where we expect to observe an EM counterpart (eg. BNSs).  The main difference this change implies is the inclusion of a likelihood term for the EM counterpart data, \emph{in addition} to the galaxy catalogue already in use.
+The method outlined above is for the catalogue $H_0$ case, in which no EM counterpart is observed, or expected (eg. for BBHs).  We now consider the case where we expect to observe an EM counterpart (eg. BNSs).  The main difference this change implies is the inclusion of a likelihood term for the EM counterpart data, \emph{in addition} to the galaxy catalogue already in use.
 
 Similar to above, we can express the likelihood in this case as follows:
 \begin{equation}
@@ -103,7 +103,7 @@ This method assumes that the counterpart has been unambiguously linked to the ho
 
 
 \subsubsection{Pencil-beam}
-The pencil-beam method makes the assumption that while the sky location of the galaxy associated with the counterpart is that of the GW event, the true host may be hidden behind that galaxy, and therefore there returns the question of whether the host is inside or outside the galaxy catalogue.  In this case, the likelihood takes the same form as in the statistical case, but evaluated along the line of sight of the counterpart\footnote{In the future, this (and the ``direct'' method) should be expanded to cover a finite patch of sky, if more than one potential host galaxy (or none at all) could be associated with the counterpart.}.
+The pencil-beam method makes the assumption that while the sky location of the galaxy associated with the counterpart is that of the GW event, the true host may be hidden behind that galaxy, and therefore there returns the question of whether the host is inside or outside the galaxy catalogue.  In this case, the likelihood takes the same form as in the catalogue case, but evaluated along the line of sight of the counterpart\footnote{In the future, this (and the ``direct'' method) should be expanded to cover a finite patch of sky, if more than one potential host galaxy (or none at all) could be associated with the counterpart.}.
 
 
 
@@ -154,7 +154,7 @@ As will be seen below, all $p(s|H_0,I)$ and $p(s|I)$ terms cancel out in the num
 
 
 
-\section{Individual components of the statistical case \label{Sec: Components}}
+\section{Individual components of the catalogue case \label{Sec: Components}}
 Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in the cases where the integration limits are not specified, they can be assumed to cover the full parameter space.
 
 
@@ -242,7 +242,7 @@ p(G|H_0,D_{\text{GW}},I) &= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}
 The denominator, $p(D_{\text{GW}}|H_0,I)$, can be expanded in a similar way, to give:
 \begin{equation}
 \begin{aligned}
-p(D_{\text{GW}}|H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)}\iiint p(D_{\text{GW}}|H_0,z,\Omega,I)p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+p(D_{\text{GW}}|H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)}\iiint p(D_{\text{GW}}|z,\Omega,H_0,I)p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 Substituting this back into Eq \ref{Eq:G_DH0_mid}, the terms $p(s|I)$ and $p(s|H_0,I)$ cancel in numerator and denominator, giving a final expression of:
