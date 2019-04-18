@@ -155,32 +155,32 @@ As will be seen below, all $p(s|H_0,I)$ and $p(s|I)$ terms cancel out in the num
 
 
 \section{Individual components of the catalogue case \label{Sec: Components}}
-Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in the cases where the integration limits are not specified, they can be assumed to cover the full parameter space.
+Now to consider the individual components of Eq. \ref{Eq:sum G}.  Note that in the cases where the integration limits are not specified, they can be assumed to cover the full parameter space. We also begin explicitly writing the parameter $s$, for clarity.
 
 
-\subsection{Likelihood when host is in catalogue: $p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I)$}
+\subsection{Likelihood when host is in catalogue: \boldmath$p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I)$}
 
 First expanding as in Eq. \ref{Eq.xD}:
 \begin{equation}
 \label{Eq:x_GDH0}
 \begin{aligned}
-p(x_{\text{GW}}|G,D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|G,H_0,I)}{p(D_{\text{GW}}|G,H_0,I)}
+p(x_{\text{GW}}|G,D_{\text{GW}},s,H_0,I) &= \dfrac{p(x_{\text{GW}}|G,s,H_0,I)}{p(D_{\text{GW}}|G,s,H_0,I)}
 \end{aligned}
 \end{equation}
 
-Focussing on the numerator, and marginalising over redshift, sky location, apparent magnitude and absolute magnitude:
+Focussing on the numerator, and marginalising over redshift, sky location, absolute magnitude and apparent magnitude:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|G,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,H_0,I) p(z,\Omega,M,m|G,H_0,I) dz d\Omega dM dm
-\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|G,H_0,I) dz d\Omega dM dm
+p(x_{\text{GW}}|G,s,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,s,H_0,I) p(z,\Omega,M,m|G,s,H_0,I) dz d\Omega dM dm
+\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) p(z,\Omega,M,m|G,s,H_0,I) dz d\Omega dM dm
 \end{aligned}
 \end{equation}
 which is true if we can assume that $x_{\text{GW}}$ is independent of $G$, $m$ and $M$.  
 
-The dependence of the priors on $G$ means that we take the prior to be the galaxies within the catalogue, as a series of delta functions\footnote{See section \ref{Sec:redshift uncertainties} for details on moving beyond this basic assumption.} with specific $z$, $\Omega$ and $m$ values.  Because the values of $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care.  As in section \ref{Sec: s term}, we must also start writing $s$ explicitly.
+The dependence of the priors on $G$ means that we take the prior to be the galaxies within the catalogue, as a series of delta functions\footnote{See section \ref{Sec:redshift uncertainties} for details on moving beyond this basic assumption.} with specific $z$, $\Omega$ and $m$ values.  Because the values of $z$, $\Omega$, $m$ and $M$ are connected through the specific galaxies inside the catalogue, expanding must be done with care.
 \begin{equation}
 \begin{aligned}
-p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|G,H_0,I)}{p(s|G,H_0,I)}
+p(z,\Omega,M,m|G,s,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|G,H_0,I)}{p(s|G,H_0,I)}
 \\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(M|z,\Omega,m,G,H_0,I)p(z,\Omega,m|H_0,G,I)}{p(s|G,H_0,I)}
 \\&= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|G,I)}{p(s|G,H_0,I)}
 \end{aligned}
@@ -188,27 +188,27 @@ p(z,\Omega,M,m|s,G,H_0,I) &= \dfrac{p(s|z,\Omega,M,m,G,H_0,I)p(z,\Omega,M,m|G,H_
 Substituting this back into the equation above:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|G,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|G,I)}{p(s|G,H_0,I)} dz d\Omega dM dm
-\\ &= \dfrac{1}{p(s|G,H_0,I)}\iiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(s|z,\Omega,M(z,m,H_0),m,G,H_0,I)p(z,\Omega,m|G,I) dz d\Omega dm
+p(x_{\text{GW}}|G,s,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) \dfrac{p(s|z,\Omega,M,m,G,H_0,I)\delta(M - M(z,m,H_0))p(z,\Omega,m|G,I)}{p(s|G,H_0,I)} dz d\Omega dM dm
+\\ &= \dfrac{1}{p(s|G,H_0,I)}\iiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) p(s|z,\Omega,M(z,m,H_0),m,G,H_0,I)p(z,\Omega,m|G,I) dz d\Omega dm
 \end{aligned}
 \end{equation}
 Now explicitly changing the integral to a sum over $N$ galaxies within the galaxy catalogue:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|G,H_0,I) &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N}\sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,\Omega_i,M(z_i,m_i,H_0),m_i,H_0,I)
-\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,M(z_i,m_i,H_0),I)
-\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(z_i,M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i,M(z_i,m_i,H_0)|I)}
-\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(z_i|s,I)p(M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i|I)p(M(z_i,m_i,H_0)|I)}
-\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(s|z_i,I)p(z_i|I)p(s|M(z_i,m_i,H_0),I) p(M(z_i,m_i,H_0)|I)p(s|I)}{p(s|I)p(s|I)p(z_i|I)p(M(z_i,m_i,H_0)|I)}
-\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) \dfrac{p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{p(s|I)}
-\\ &= \dfrac{1}{p(s|I)p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)
+p(x_{\text{GW}}|G,s,H_0,I) &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N}\sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,\Omega_i,M(z_i,m_i,H_0),m_i,H_0,I)
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,M(z_i,m_i,H_0),I)
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) \dfrac{p(z_i,M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i,M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) \dfrac{p(z_i|s,I)p(M(z_i,m_i,H_0)|s,I)p(s|I)}{p(z_i|I)p(M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) \dfrac{p(s|z_i,I)p(z_i|I)p(s|M(z_i,m_i,H_0),I) p(M(z_i,m_i,H_0)|I)p(s|I)}{p(s|I)p(s|I)p(z_i|I)p(M(z_i,m_i,H_0)|I)}
+\\ &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) \dfrac{p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{p(s|I)}
+\\ &= \dfrac{1}{p(s|I)p(s|G,H_0,I)} \dfrac{1}{N} \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)
 \end{aligned}
 \end{equation}
 
-Expanding the denominator, $p(D_{\text{GW}}|G,H_0,I)$, in the same way, then substituting both back into Eq \ref{Eq:x_GDH0}, the factors out front cancel, and the final expression becomes:
+Expanding the denominator, $p(D_{\text{GW}}|s,G,H_0,I)$, in the same way, then substituting both back into Eq \ref{Eq:x_GDH0}, the factors out front cancel, and the final expression becomes:
 \begin{equation}
 \begin{aligned}
-\dfrac{p(x_{\text{GW}}|G,H_0,I)}{p(D_{\text{GW}}|G,H_0,I)} &= \dfrac{ \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{\sum^N_{i=1} p(D_{\text{GW}}|z_i,\Omega_i,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}
+\dfrac{p(x_{\text{GW}}|G,s,H_0,I)}{p(D_{\text{GW}}|G,s,H_0,I)} &= \dfrac{ \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{\sum^N_{i=1} p(D_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}
 \end{aligned}
 \end{equation}
 
@@ -216,92 +216,92 @@ Expanding the denominator, $p(D_{\text{GW}}|G,H_0,I)$, in the same way, then sub
 
 
 
-\subsection{Probability the host galaxy is in the galaxy catalogue: $p(G|D_{\text{GW}},H_0,I)$}
+\subsection{Probability the host galaxy is in the galaxy catalogue: \boldmath$p(G|D_{\text{GW}},H_0,I)$}
 
 
 \begin{equation}
 \label{Eq:G_DH0_start}
 \begin{aligned}
-p(G|D_{\text{GW}},H_0,I) &= \iiiint p(z,\Omega,M,m,G|D_{\text{GW}},H_0,I) dz d\Omega dM dm
-\\ &= \iiiint p(G|z,\Omega,M,m,D_{\text{GW}},H_0,I) p(z,\Omega,M,m|D_{\text{GW}},H_0,I) dz d\Omega dM dm
-\\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|z,\Omega,M,m,H_0,I) p(z,\Omega,M,m|H_0,I)}{p(D_{\text{GW}}|H_0,I)}  dz d\Omega dM dm 
-\\ &=  \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|H_0,I) dz d\Omega dM dm.
+p(G|D_{\text{GW}},s,H_0,I) &= \iiiint p(z,\Omega,M,m,G|D_{\text{GW}},s,H_0,I) dz d\Omega dM dm
+\\ &= \iiiint p(G|z,\Omega,M,m,D_{\text{GW}},s,H_0,I) p(z,\Omega,M,m|D_{\text{GW}},s,H_0,I) dz d\Omega dM dm
+\\ &= \iiiint \Theta[m_{\text{th}}-m] \dfrac{p(D_{\text{GW}}|z,\Omega,M,m,s,H_0,I) p(z,\Omega,M,m|s,H_0,I)}{p(D_{\text{GW}}|s,H_0,I)}  dz d\Omega dM dm 
+\\ &=  \dfrac{1}{p(D_{\text{GW}}|s,H_0,I)} \iiiint \Theta[m_{\text{th}}-m] p(D_{\text{GW}}|z,\Omega,s,H_0,I) p(z,\Omega,M,m|s,H_0,I) dz d\Omega dM dm.
 \end{aligned}
 \end{equation}
-Here $p(G|H_0,D_{\text{GW}},z,\Omega,m,M,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
+Here $p(G|z,\Omega,M,m,D_{\text{GW}},s,H_0,I)$ becomes a Heaviside step function around $m = m_{\text{th}}$: the apparent magnitude threshold of the galaxy catalogue\footnote{Here $m_{\text{th}}$ is assumed to be uniform across the sky.  In the future this assumption will be replaced by an $m_{\text{th}}$ which is allowed to vary over the sky.}.
 
-Expanding $p(z,\Omega,M,m|H_0,I)$ as in Eq \ref{Eq:expand_prior}, and substituting this into Eq \ref{Eq:G_DH0_start}, then utilising the properties of the delta-function, gives:
+Expanding $p(z,\Omega,M,m|s,H_0,I)$ as in Eq \ref{Eq:expand_prior}, and substituting this into Eq \ref{Eq:G_DH0_start}, then utilising the properties of the delta-function, gives:
 \begin{equation}
 \label{Eq:G_DH0_mid}
 \begin{aligned}
-p(G|H_0,D_{\text{GW}},I) &= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \iiint \Theta[m_{\text{th}}-m(z,M,H_0)] p(D_{\text{GW}}|z,\Omega,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
-\\&= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|H_0,I)} \int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+p(G|D_{\text{GW}},s,H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|s,H_0,I)} \iiint \Theta[m_{\text{th}}-m(z,M,H_0)] p(D_{\text{GW}}|z,\Omega,s,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+\\&= \dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(D_{\text{GW}}|s,H_0,I)} \int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,s,H_0,I) \\ &\times p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 
-The denominator, $p(D_{\text{GW}}|H_0,I)$, can be expanded in a similar way, to give:
+The denominator, $p(D_{\text{GW}}|s,H_0,I)$, can be expanded in a similar way, to give:
 \begin{equation}
 \begin{aligned}
-p(D_{\text{GW}}|H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)}\iiint p(D_{\text{GW}}|z,\Omega,H_0,I)p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
+p(D_{\text{GW}}|s,H_0,I) &= \dfrac{1}{p(s|I)p(s|H_0,I)}\iiint p(D_{\text{GW}}|z,\Omega,s,H_0,I)p(s|z,I) p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM
 \end{aligned}
 \end{equation}
 Substituting this back into Eq \ref{Eq:G_DH0_mid}, the terms $p(s|I)$ and $p(s|H_0,I)$ cancel in numerator and denominator, giving a final expression of:
 \begin{equation}
 \label{Eq:G_DH0_end}
 \begin{aligned}
-\\ p(G|H_0,D_{\text{GW}},I)&= \dfrac{\int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM}
+\\ p(G|D_{\text{GW}},s,H_0,I)&= \dfrac{\int^{z(M,m_{\text{th}},H_0)}_0 dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,s,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\iiint p(D_{\text{GW}}|z,\Omega,s,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM}
 \end{aligned}
 \end{equation}
 
 
 
-\subsection{Probability the host galaxy is not in the galaxy catalogue: $p(\bar{G}|D_{\text{GW}},H_0,I)$}
+\subsection{Probability the host galaxy is not in the galaxy catalogue: \boldmath$p(\bar{G}|D_{\text{GW}},H_0,I)$}
 
-As the probabilities of being in the catalogue and not in the catalogue must add up the one, we can calculate the counterpart to $p(G|D_{\text{GW}},H_0,I)$ as follows:
+As the probabilities of being in the catalogue and not in the catalogue must add up the one, we can calculate the counterpart to $p(G|D_{\text{GW}},s,H_0,I)$ as follows:
 \begin{equation}
 \begin{aligned}
-p(\bar{G}|D_{\text{GW}},H_0,I) &= 1 - p(G|D_{\text{GW}},H_0,I)
+p(\bar{G}|D_{\text{GW}},s,H_0,I) &= 1 - p(G|D_{\text{GW}},s,H_0,I)
 \end{aligned}
 \end{equation}
 
 
 
 
-\subsection{Likelihood when host is not in catalogue: $p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I)$}
+\subsection{Likelihood when host is not in catalogue: \boldmath$p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I)$}
 
 First expanding as in Eq. \ref{Eq.xD}:
 \begin{equation}
 \label{Eq:px_H0GbarD}
 \begin{aligned}
-p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I) &= \dfrac{p(x_{\text{GW}}|\bar{G},H_0,I)}{p(D_{\text{GW}}|\bar{G},H_0,I)}
+p(x_{\text{GW}}|\bar{G},D_{\text{GW}},s,H_0,I) &= \dfrac{p(x_{\text{GW}}|\bar{G},s,H_0,I)}{p(D_{\text{GW}}|\bar{G},s,H_0,I)}
 \end{aligned}
 \end{equation}
 Looking firstly at the numerator, this can be expanded as follows:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|\bar{G},H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,\bar{G},H_0,I) p(z,\Omega,M,m|\bar{G},H_0,I) dz d\Omega dM dm
-\\&= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) p(z,\Omega,M,m|\bar{G},H_0,I) dz d\Omega dM dm
-\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \dfrac{p(\bar{G}|z,\Omega,M,m,H_0,I)p(z,\Omega,M,m|H_0,I)}{p(\bar{G}|H_0,I)} dz d\Omega dM dm
-\\ &= \dfrac{1}{p(\bar{G}|H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \Theta(m-m_{\text{th}})p(z,\Omega,M,m|H_0,I) dz d\Omega dM dm
+p(x_{\text{GW}}|\bar{G},s,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,\bar{G},s,H_0,I) p(z,\Omega,M,m|\bar{G},s,H_0,I) dz d\Omega dM dm
+\\&= \iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) p(z,\Omega,M,m|\bar{G},s,H_0,I) dz d\Omega dM dm
+\\ &= \iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) \dfrac{p(\bar{G}|z,\Omega,M,m,s,H_0,I)p(z,\Omega,M,m|s,H_0,I)}{p(\bar{G}|s,H_0,I)} dz d\Omega dM dm
+\\ &= \dfrac{1}{p(\bar{G}|s,H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) \Theta(m-m_{\text{th}})p(z,\Omega,M,m|s,H_0,I) dz d\Omega dM dm
 \end{aligned}
 \end{equation}
-The prior term, $p(z,\Omega,M,m|H_0,I)$ can now be expanded as it was in Eq \ref{Eq:expand_prior}, and substituting this in gives:
+The prior term, $p(z,\Omega,M,m|s,H_0,I)$ can now be expanded as it was in Eq \ref{Eq:expand_prior}, and substituting this in gives:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|\bar{G},H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,H_0,I) \Theta(m(z,M,H_0)-m_{\text{th}}) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
-\\&=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+p(x_{\text{GW}}|\bar{G},s,H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|s,H_0,I)}\iiiint p(x_{\text{GW}}|z,\Omega,s,H_0,I) \Theta(m(z,M,H_0)-m_{\text{th}}) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+\\&=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|s,H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,s,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
 \end{aligned}
 \end{equation}
-Expanding the denominator, $p(D_{\text{GW}}|\bar{G},H_0,I)$, in the same way gives an equivalent term:
+Expanding the denominator, $p(D_{\text{GW}}|\bar{G},s,H_0,I)$, in the same way gives an equivalent term:
 \begin{equation}
 \begin{aligned}
-p(D_{\text{GW}}|\bar{G},H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
+p(D_{\text{GW}}|\bar{G},s,H_0,I) &=\dfrac{1}{p(s|I)p(s|H_0,I)} \dfrac{1}{p(\bar{G}|s,H_0,I)}\int^\infty_{z(H_0,m_{\text{th}},M)}dz \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,s,H_0,I) \\&\times p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I) dz d\Omega dM dm
 \end{aligned}
 \end{equation}
 And substituting this back into Eq \ref{Eq:px_H0GbarD}, the factors out the front cancel and the final expression becomes:
 \begin{equation}
 \begin{aligned}
-p(x_{\text{GW}}|\bar{G},D_{\text{GW}},H_0,I) &= \dfrac{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}
+p(x_{\text{GW}}|\bar{G},D_{\text{GW}},s,H_0,I) &= \dfrac{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(x_{\text{GW}}|z,\Omega,s,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}{\int^\infty_{z(M,m_{\text{th}},H_0)} \int d\Omega \int dM p(D_{\text{GW}}|z,\Omega,s,H_0,I) p(s|z,I)p(z|I)p(\Omega|I)p(s|M,H_0,I)p(M|H_0,I)}
 \end{aligned}
 \end{equation}
 
@@ -329,7 +329,7 @@ Also, we bear in mind that when we create a KDE over the event's posterior sampl
 
 
 
-\subsection{Sky-averaged $p(D|H_0,I)$}
+\subsection{Sky-averaged \boldmath$p(D|H_0,I)$}
 While in reality the probability of detecting a GW event varies across the sky due to antenna patterns, in the code we marginalise over the sky location in order to reduce the number of integrals required to calculate $p(D|H_0,I)$.  This is similar (but not identical) to marginalising over time of detection due to the rotation of the earth.  Ideally in the future, neither of these approximations will be used.
 
 
