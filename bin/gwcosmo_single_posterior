@@ -116,6 +116,9 @@ else:
 
     if opts.galaxy_catalog is None:
         parser.error('The statistical method requires a galaxy catalog. Please provide one.')
+		
+    if opts.psd is None:
+        parser.error('Please provide a PSD.')
 
     if opts.posterior_samples is not None:
             posterior_samples = str(opts.posterior_samples)
@@ -150,11 +153,7 @@ else:
     uncertainty = str2bool(opts.uncertainty)
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
-    
-    if opts.psd is not None:
-        psd = str(opts.psd)
-    else:
-        psd = None
+    psd = str(opts.psd)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
