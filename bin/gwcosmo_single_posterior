@@ -59,9 +59,7 @@ parser = OptionParser(
         Option("--psd", default=None,
             help="Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None)."), 
         Option("--galaxy_weighting", default='False',
-            help=" et galaxy catalog weighting"),
-        Option("--weights", default=None,
-            help="Choose galaxy catalog weight types."),        
+            help="Set galaxy catalog weighting"),
         Option("--completion", default='False',
             help="Assumes a complete catalog."),
         Option("--uncertainty", default='True',
@@ -131,17 +129,11 @@ else:
         galaxy_catalog = str(opts.galaxy_catalog)
 
     if opts.method == 'statistical':
-        if (str2bool(opts.galaxy_weighting) is True and
-        opts.weights is None):
-            parser.error('Provide choose galaxy weights: trivial or schechter weights')
-        else:
-            galaxy_weighting = str2bool(opts.galaxy_weighting)
-            weights = str(opts.weights)
+        galaxy_weighting = str2bool(opts.galaxy_weighting)
         completion = str2bool(opts.completion)
 
     if opts.method == 'counterpart':
         galaxy_weighting = False
-        weights = 'schechter'
         completion = True
         if opts.counterpart_ra is not None:
             counterpart_ra = float(opts.counterpart_ra)
@@ -214,7 +206,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

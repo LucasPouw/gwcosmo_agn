@@ -73,13 +73,12 @@ class gwcosmoLikelihood(object):
         If true, redshift uncertainty will be assumed and corrected for (default=False)
     """
 
-    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,weights='schechter',whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+    def __init__(self,event_type,galaxy_catalog,psd,Omega_m=0.3,linear=False,weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
-        self.weights = weights
         self.whole_cat = whole_cat
         self.radec_lim = radec_lim
         self.basic = basic
@@ -292,10 +291,7 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    if self.weights == 'trivial':
-                        return temp
-                    if self.weights == 'schechter':
-                        return temp*L_M(M)
+                    return temp*L_M(M)
                 else:
                     return temp
             
@@ -381,10 +377,7 @@ class gwcosmoLikelihood(object):
                 temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
-                    if self.weights == 'trivial':
-                        return temp
-                    if self.weights == 'schechter':
-                        return temp*L_M(M)
+                    return temp*L_M(M)
                 else:
                     return temp
 
@@ -456,10 +449,7 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    if self.weights == 'trivial':
-                        return temp
-                    if self.weights == 'schechter':
-                        return temp*L_M(M)
+                    return temp*L_M(M)
                 else:
                     return temp
 
@@ -551,10 +541,7 @@ class gwcosmoLikelihood(object):
                 else:
                     temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
-                    if self.weights == 'trivial':
-                        return temp
-                    if self.weights == 'schechter':
-                        return temp*L_M(M)
+                    return temp*L_M(M)
                 else:
                     return temp
 
