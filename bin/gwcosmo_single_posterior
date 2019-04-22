@@ -40,50 +40,47 @@ parser = OptionParser(
     description = __doc__,
     usage = "%prog [options]",
     option_list = [
-        Option("-m", "--method", metavar="METHOD", default=None,
-            help="METHOD: Select counterpart/statistical (required)"),
-        Option("-u", "--min_H0", metavar="MINH0", default='30.0', type=float,
-            help="MINH0: Set minimum value of H0 Posterior"),
-        Option("-v", "--max_H0", metavar="MAXH0", default='200.0', type=float,
-            help="MAXH0: Set maximum value of H0 Posterior"),
-        Option("-x", "--bins_H0", metavar="BINSH0", default='200', type=int,
-            help="BINSH0: Set number of H0 Posterior bins"),
-        Option("-k", "--posterior_samples", metavar="SAMPLES", default=None,
-            help="SAMPLES: LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
-        Option("-t", "--mass_distribution", metavar="MASS_DISTRIBUTION", default=None,
-            help="MASS_DISTRIBUTION: Choose between BNS or BBH mass distributions for Pdet calculation."),
-        Option("-i", "--skymap", metavar="SKYMAP", default=None,
-            help="SKYMAP: LALinference 3D skymap file in format (.fits)"),
-        Option("-g", "--galaxy_catalog", metavar="GALAXY_CATALOG", default=None,
-            help="GALAXY_CATALOG: Load galaxy catalog in pickle format"),
-        Option("-j", "--psd", metavar="PSD", default=None,
-            help="PSD: Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None)."), 
-        Option("-w", "--galaxy_weighting", metavar="WEIGHTING", default='False',
-            help="WEIGHTING: Set galaxy catalog weighting"),
-        Option("-y", "--weights", metavar="WEIGHTS", default=None,
-            help="WEIGHTS: Choose galaxy catalog weight types."),        
-        Option("-c", "--completion", metavar="COMPLETENESS", default='False',
-            help="COMPLETENESS: Assumes a complete catalog."),
-        Option("-a", "--uncertainty", metavar="UNCERTAINTY", default='True',
-            help="UNCERTAINTY: Apply redshift uncertainties."),
-        Option("-f", "--linear_cosmology", metavar="LINEAR", default='False',
-            help="LINEAR: Assume a linear cosmology."),
-        Option("-e", "--basic_pdet", metavar="BASIC", default='False',
-            help="BASIC: Allow for masses to be redshifted in Pdet using False."),
-        Option("-r", "--counterpart_ra", metavar="RA", default=None,
-            help="RA: Right ascension of counterpart"),
-        Option("-o", "--counterpart_dec", metavar="DEC", default=None,
-            help="DEC: Declination of counterpart"),
-        Option("-z", "--counterpart_z", metavar="REDSHIFT", default=None,
-            help="REDSHIFT: Redshift of counterpart"),
-        Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior',
-            help="OUTPUTFILE: Name of output file"),
-        Option("-p", "--plot", metavar="PLOT", default=None,
-            help="PLOT: Plot .npz file")
+        Option("--method", default=None,
+            help="Select counterpart/statistical (required)"),
+        Option("--min_H0", default='30.0', type=float,
+            help="Set minimum value of H0 Posterior"),
+        Option("--max_H0", default='200.0', type=float,
+            help="Set maximum value of H0 Posterior"),
+        Option("--bins_H0", default='200', type=int,
+            help="Set number of H0 Posterior bins"),
+        Option("--posterior_samples", default=None,
+            help="LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
+        Option("--mass_distribution", default=None,
+            help="Choose between BNS or BBH mass distributions for Pdet calculation."),
+        Option("--skymap", default=None,
+            help="LALinference 3D skymap file in format (.fits)"),
+        Option("--galaxy_catalog", default=None,
+            help="Load galaxy catalog in pickle format"),
+        Option("--psd", default=None,
+            help="Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None)."), 
+        Option("--galaxy_weighting", default='False',
+            help="Set galaxy catalog weighting"),
+        Option("--completion", default='False',
+            help="Assumes a complete catalog."),
+        Option("--uncertainty", default='True',
+            help="Apply redshift uncertainties."),
+        Option("--linear_cosmology", default='False',
+            help="Assume a linear cosmology."),
+        Option("--basic_pdet", default='False',
+            help="Allow for masses to be redshifted in Pdet using False."),
+        Option("--counterpart_ra", default=None,
+            help="Right ascension of counterpart"),
+        Option("--counterpart_dec", default=None,
+            help="Declination of counterpart"),
+        Option("--counterpart_z", default=None,
+            help="Redshift of counterpart"),
+        Option("--outputfile", default='Posterior',
+            help="Name of output file"),
+        Option("--plot", default=None,
+            help="Plot .npz file")
     ])
 opts, args = parser.parse_args()
 print(opts)
-print(args)
 
 # Check for missing required arguments
 missing = []
@@ -119,6 +116,9 @@ else:
 
     if opts.galaxy_catalog is None:
         parser.error('The statistical method requires a galaxy catalog. Please provide one.')
+		
+    if opts.psd is None:
+        parser.error('Please provide a PSD.')
 
     if opts.posterior_samples is not None:
             posterior_samples = str(opts.posterior_samples)
@@ -132,17 +132,11 @@ else:
         galaxy_catalog = str(opts.galaxy_catalog)
 
     if opts.method == 'statistical':
-        if (str2bool(opts.galaxy_weighting) is True and
-        opts.weights is None):
-            parser.error('Provide choose galaxy weights: trivial or schechter weights')
-        else:
-            galaxy_weighting = str2bool(opts.galaxy_weighting)
-            weights = str(opts.weights)
+        galaxy_weighting = str2bool(opts.galaxy_weighting)
         completion = str2bool(opts.completion)
 
     if opts.method == 'counterpart':
         galaxy_weighting = False
-        weights = 'schechter'
         completion = True
         if opts.counterpart_ra is not None:
             counterpart_ra = float(opts.counterpart_ra)
@@ -159,13 +153,7 @@ else:
     uncertainty = str2bool(opts.uncertainty)
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
-    
-    if opts.psd is not None:
-        psd = str(opts.psd)
-        print(psd)
-    else:
-        psd = None
-        print(psd)
+    psd = str(opts.psd)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -175,20 +163,19 @@ else:
     dH0 = H0[1] - H0[0]
     
     if opts.posterior_samples is not None:
+        print("Loading posterior samples.")
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-        if posterior_samples[-4:] == 'hdf5':
-            samples.load_posterior_samples_hdf5(posterior_samples)
-        if posterior_samples[-3:] == 'hdf':
-            samples.load_posterior_samples_hdf(posterior_samples)
-        else:
-            samples.load_posterior_samples(posterior_samples)
+        samples.load_posterior_samples(posterior_samples)
+        
         skymap3d = None
         if opts.skymap is not None:
+            print("Loading 2D skymap.")
             skymap2d = gwcosmo.likelihood.skymap.skymap2d(skymap)
         else:
             skymap2d = None
     else:
         #TODO: Implement 3D skymap here for pixel method
+        print("Loading 3D skymap.")
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
 
     if galaxy_catalog[-2:] == '.p':
@@ -218,7 +205,7 @@ else:
         counterpart = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,weights=weights,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
     likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood

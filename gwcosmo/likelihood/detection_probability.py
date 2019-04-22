@@ -30,12 +30,12 @@ class DetectionProbability(object):
     ----------
     mass_distribution : str
         choice of mass distribution ('BNS-gaussian', 'BNS-uniform', 'BBH-powerlaw' or 'BBH-flatlog')
+    psd : str
+        Select between 'O1', 'O2'  or the 'MDC' PSDs.
     detectors : list of str, optional
         list of detector names (default=['H1','L1'])
-    psd : str, optional
-        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None).
     Nsamps : int, optional
-        Number of samples for monte carlo integration (default=1000)
+        Number of samples for monte carlo integration (default=5000)
     snr_theshold : float, optional
         snr threshold for an individual detector (default=8)
     Nside : int, optional
@@ -44,18 +44,17 @@ class DetectionProbability(object):
         matter fraction of the universe (default=0.3)
     linear : bool, optional
         if True, use linear cosmology (default=False)
+    basic : bool, optional
+        if True, don't redshift masses (for use with the MDC only) (default=False)
     precomputed : bool, optional
-        if True, use precomputed values.  NOTE if False, precomputed values will be overwritten
+        if True, use precomputed values.  NOTE if False, precomputed values will be overwritten (default=True)
     """
-    def __init__(self, mass_distribution, detectors=['H1','L1'], psd=None, Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, basic=False, precomputed=True):
+    def __init__(self, mass_distribution, psd, detectors=['H1','L1'], Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3, linear=False, basic=False, precomputed=True):
         self.detectors = detectors
         self.psd = psd
         self.snr_threshold = snr_threshold
         data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
-        if psd==None:
-            self.psds = np.vectorize(lambda f: np.sqrt(lalsim.SimNoisePSDaLIGOZeroDetHighPower(f)))
-            print('analytic')
-        elif psd=='MDC':
+        if psd=='MDC':
             PSD_data = np.genfromtxt(data_path + 'PSD_L1_H1_mid.txt')
             self.psds = interp1d(PSD_data[:,0],PSD_data[:,1])
         else:
@@ -63,11 +62,11 @@ class DetectionProbability(object):
             if psd=='O1':
                 for det in detectors:
                     PSD_data[det] = np.genfromtxt(data_path + det + '_O1_strain.txt')
-                print('o1')
-            if psd=='O2':
+            elif psd=='O2':
                 for det in detectors:
                     PSD_data[det] = np.genfromtxt(data_path + det + '_O2_strain.txt')
-                print('o2')                
+            else:
+                raise Exception("Please choose between 'O1', 'O2', and 'MDC' for PSD ")
             freqs = {}
             psds = {}
             for det in detectors:
@@ -117,7 +116,7 @@ class DetectionProbability(object):
         self.M_min = np.min(self.m1)+np.min(self.m2)
         self.__interpolnum = self.__numfmax_fmax(self.M_min)
         
-        
+        print("Calculating pdet with " + self.psd + " sensitivity and " + self.mass_distribution + " mass distribution.")
         if basic==True:
             self.interp_average_basic = self.__pD_dl_basic(self.dl_array)
         else:
@@ -127,7 +126,6 @@ class DetectionProbability(object):
             if (os.path.isfile(interp_av_path) and precomputed==True):
                 z,H0,prob = pickle.load(open(interp_av_path,'rb'))
             else:
-                print("calculating pdet")
                 z,H0,prob = self.__pD_zH0_array(self.H0vec)
             # TODO: test how different interpolations and fill values effect results.  Do values go below 0 and above 1?
             self.interp_average = interp2d(z,H0,prob,kind='cubic')
