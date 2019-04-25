@@ -23,9 +23,13 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 import numpy as np
-import gwcosmo
 
+import gwcosmo
 from gwcosmo.utilities.posterior_utilities import confidence_interval
+
+import astropy.constants as const
+speed_of_light = const.c.to('km/s').value
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -74,6 +78,8 @@ parser = OptionParser(
             help="Declination of counterpart"),
         Option("--counterpart_z", default=None,
             help="Redshift of counterpart"),
+        Option("--counterpart_v", default=None,
+            help="Peculiar velocity correction of counterpart in km/sec"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -144,6 +150,8 @@ else:
             counterpart_dec = float(opts.counterpart_dec)
         if opts.counterpart_z is not None:
             counterpart_z = float(opts.counterpart_z)
+        if opts.counterpart_v is not None:
+            counterpart_v = float(opts.counterpart_v)
 
     # Set command line arguments
     min_H0 = float(opts.min_H0)
@@ -200,7 +208,7 @@ else:
             counterpart.get_galaxy(0).ra = counterpart_ra*np.pi/180.
             counterpart.get_galaxy(0).dec = counterpart_dec*np.pi/180.
             counterpart.get_galaxy(0).z = counterpart_z
-            counterpart.get_galaxy(0).sigmaz = 6.671e-4 #200/c
+            counterpart.get_galaxy(0).sigmaz = counterpart_z/speed_of_light
     else:
         counterpart = None
 
