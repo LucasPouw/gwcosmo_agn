@@ -120,7 +120,7 @@ else:
     if opts.mass_distribution is None:
             parser.error('Provide a mass distribution to use for Pdet calculation.')
 
-    if opts.galaxy_catalog is None:
+    if (opts.galaxy_catalog is None and opts.method == 'statistical'):
         parser.error('The statistical method requires a galaxy catalog. Please provide one.')
 		
     if opts.psd is None:
@@ -182,23 +182,26 @@ else:
         else:
             skymap2d = None
     else:
-        #TODO: Implement 3D skymap here for pixel method
         print("Loading 3D skymap.")
         skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
-
-    if galaxy_catalog[-2:] == '.p':
-        catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
-    else:
-        print('Not a compatible catalog.')
-
-    if catalog.skypatch['allsky'] is not None:
-        allsky = False
-        radeclims = catalog.skypatch['allsky']
-    else:
-        allsky = True
-        radeclims = None
+        
+    if opts.method == 'statistical':
+        if galaxy_catalog[-2:] == '.p':
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+        else:
+            print('Not a compatible catalog.')
+        
+        if catalog.skypatch['allsky'] is not None:
+            allsky = False
+            radeclims = catalog.skypatch['allsky']
+        else:
+            allsky = True
+            radeclims = None
+        
+        counterpart = None
 
     if opts.method == 'counterpart':
+        catalog = gwcosmo.prior.catalog.galaxyCatalog()
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
         if (opts.counterpart_ra is None or
             opts.counterpart_dec is None or
@@ -209,8 +212,8 @@ else:
             counterpart.get_galaxy(0).dec = counterpart_dec*np.pi/180.
             counterpart.get_galaxy(0).z = counterpart_z
             counterpart.get_galaxy(0).sigmaz = counterpart_z/speed_of_light
-    else:
-        counterpart = None
+            allsky = True
+            radeclims = None
 
     # compute likelihood
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
