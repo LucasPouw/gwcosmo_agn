@@ -115,7 +115,7 @@ if opts.plot is not None:
 else:
     if (opts.posterior_samples is None and
         opts.skymap is None):
-            parser.error('Provide either posterior samples and skymap.')
+            parser.error('Provide either posterior samples or skymap.')
 
     if opts.mass_distribution is None:
             parser.error('Provide a mass distribution to use for Pdet calculation.')
@@ -174,16 +174,16 @@ else:
         print("Loading posterior samples.")
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples(posterior_samples)
+        distanceAnsat = False
         
-        skymap3d = None
         if opts.skymap is not None:
             print("Loading 2D skymap.")
-            skymap2d = gwcosmo.likelihood.skymap.skymap2d(skymap)
-        else:
-            skymap2d = None
-    else:
+            skymap = gwcosmo.likelihood.skymap.skymap(skymap)
+            
+    if opts.posterior_samples is None:
         print("Loading 3D skymap.")
-        skymap3d = gwcosmo.likelihood.skymap.skymap(skymap)
+        skymap = gwcosmo.likelihood.skymap.skymap(skymap)
+        samples = None
         
     if opts.method == 'statistical':
         if galaxy_catalog[-2:] == '.p':
@@ -216,8 +216,10 @@ else:
             radeclims = None
 
     # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,catalog,psd,Omega_m=0.3,linear=linear,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
-    likelihood = me.likelihood(H0,samples,skymap2d=skymap2d,EM_counterpart=counterpart,complete=completion,counterpart_case='direct')
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,samples,skymap,catalog,psd,EM_counterpart=counterpart,Omega_m=0.3,linear=linear\
+                                           ,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic)
+
+    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
     prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')
