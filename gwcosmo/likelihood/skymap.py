@@ -84,7 +84,7 @@ class skymap(object):
     def lineofsight_distance(self,ra,dec):
         ipix = ipix_from_ra_dec(self.nside,ra,dec,nest=self.nested)
         r = np.linspace(0, 500, 500)
-        dp_dr = r**2 * self.distnorm[ipix] * norm(self.distmu[ipix], self.distsigma[ipix]).pdf(r)
+        dp_dr = r**2 * self.distnorm[ipix] * scipy.stats.norm(self.distmu[ipix], self.distsigma[ipix]).pdf(r)
         return r, dp_dr
 
     def probability(self, ra, dec, dist):
