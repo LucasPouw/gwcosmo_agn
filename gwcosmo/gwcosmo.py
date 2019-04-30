@@ -93,10 +93,15 @@ class gwcosmoLikelihood(object):
 
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
-            self.EM_counterpart = EM_counterpart
+            self.EM_counterpart = None
+            if EM_counterpart is not None:
+                self.EM_counterpart = EM_counterpart
         else:
-            self.EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
-            self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
+            if galaxy_catalog is not None:
+                self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
+            self.EM_counterpart = None
+            if EM_counterpart is not None:
+                self.EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
         
         if GW_data is not None:
             distkernel = GW_data.lineofsight_distance()
@@ -104,8 +109,10 @@ class gwcosmoLikelihood(object):
             distmin = 0.5*np.amin(GW_data.distance)
             dl_array = np.linspace(distmin,distmax,500)
             vals = distkernel(dl_array)
+            
         if (GW_data is None and self.EM_counterpart is None):
             dl_array, vals = self.skymap.marginalized_distance()
+            
         if (GW_data is None and self.EM_counterpart is not None):
             counterpart = self.EM_counterpart.get_galaxy(0)
             dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra,counterpart.dec)
