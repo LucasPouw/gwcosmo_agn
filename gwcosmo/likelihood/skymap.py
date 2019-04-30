@@ -7,6 +7,7 @@ import scipy.stats
 from astropy.io import fits
 import healpy as hp
 from scipy import interpolate
+from scipy.stats import norm
 import sys
 
 # RA and dec from HEALPix index
@@ -84,7 +85,7 @@ class skymap(object):
     def lineofsight_distance(self,ra,dec):
         ipix = ipix_from_ra_dec(self.nside,ra,dec,nest=self.nested)
         r = np.linspace(0, 500, 500)
-        dp_dr = r**2 * self.distnorm[ipix] * scipy.stats.norm(self.distmu[ipix], self.distsigma[ipix]).pdf(r)
+        dp_dr = r**2 * self.distnorm[ipix] * norm(self.distmu[ipix], self.distsigma[ipix]).pdf(r)
         return r, dp_dr
 
     def probability(self, ra, dec, dist):
@@ -99,7 +100,7 @@ class skymap(object):
         (pixnums, weights) = \
             hp.get_interp_weights(self.nside, theta, ra, nest=self.nested, lonlat = False)
         
-        dist_pdfs = [scipy.stats.norm(loc = self.distmu[i], scale = self.distsigma[i]) for i in pixnums]
+        dist_pdfs = [norm(loc = self.distmu[i], scale = self.distsigma[i]) for i in pixnums]
         # Step 2: compute p(ra,dec)
         # p(ra, dec) = sum_i weight_i p(pixel_i)
         probvals = np.array([self.distnorm[i] * dist_pdfs[i].pdf(dist) for i,pixel in enumerate(pixnums)])
