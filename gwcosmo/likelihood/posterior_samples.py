@@ -14,14 +14,13 @@ import h5py
 class posterior_samples(object):
     ''' Class for lalinference posterior samples
     '''
-    def __init__(self,distance=1,longitude=1,latitude=1,weight=1,nsamples=1,ngalaxies=1):
+    def __init__(self,distance=1,ra=1,dec=1,nsamples=1,ngalaxies=1):
         """Posterior samples class... (empty by default)
         Parameters
         """
         self.distance = distance
-        self.longitude = longitude
-        self.latitude = latitude
-        self.weight = weight
+        self.ra = ra
+        self.dec = dec
         self.nsamples = nsamples
 
     def load_posterior_samples(self, samples_file_path):
@@ -31,10 +30,9 @@ class posterior_samples(object):
         if samples_file_path[-3:] == 'dat':
             lalinference_data = np.genfromtxt(samples_file_path, names=True)
             self.distance = lalinference_data['distance']
-            self.longitude = lalinference_data['ra']
-            self.latitude = lalinference_data['dec']
-            self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
-            self.nsamples = len(self.weight)
+            self.ra = lalinference_data['ra']
+            self.dec = lalinference_data['dec']
+            self.nsamples = len(self.distance)
         
         #TODO: handle this better
         if samples_file_path[-4:] == 'hdf5':
@@ -46,10 +44,9 @@ class posterior_samples(object):
                 f1 = h5py.File(samples_file_path, 'r')
                 lalinference_data = f1[dataset_name]
                 self.distance = lalinference_data['luminosity_distance_Mpc']
-                self.longitude = lalinference_data['right_ascension']
-                self.latitude = lalinference_data['declination']
-                self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
-                self.nsamples = len(self.weight)
+                self.ra = lalinference_data['right_ascension']
+                self.dec = lalinference_data['declination']
+                self.nsamples = len(self.distance)
                 f1.close()
             else:    
                 group_name = 'lalinference_mcmc'
@@ -58,19 +55,17 @@ class posterior_samples(object):
                 group = f1[group_name]
                 lalinference_data = group[dataset_name]
                 self.distance = lalinference_data['dist']
-                self.longitude = lalinference_data['ra']
-                self.latitude = lalinference_data['dec']
-                self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
-                self.nsamples = len(self.weight)
+                self.ra = lalinference_data['ra']
+                self.dec = lalinference_data['dec']
+                self.nsamples = len(self.distance)
                 f1.close()
 
         if samples_file_path[-3:] == 'hdf':
             fp = h5py.File(samples_file_path, 'r')
             self.distance = fp['samples/distance'][:]
-            self.longitude = fp['samples/ra'][:]
-            self.latitude = fp['samples/dec'][:]
-            self.weight = np.ones(len(self.latitude))/(self.distance**2 * np.cos(self.latitude))
-            self.nsamples = len(self.weight)
+            self.ra = fp['samples/ra'][:]
+            self.dec = fp['samples/dec'][:]
+            self.nsamples = len(self.distance)
             fp.close()
 
     def lineofsight_distance(self):
