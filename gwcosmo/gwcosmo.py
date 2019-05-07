@@ -222,7 +222,7 @@ class gwcosmoLikelihood(object):
                         if gal.z == 0:
                             tempdist = 0.0
                         else:
-                            tempdist = px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
+                            tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
                         num += tempdist*tempsky*weight*self.ps_z(gal.z)
                     else:
                         continue
@@ -272,7 +272,7 @@ class gwcosmoLikelihood(object):
                     prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
                 else:
                     prob = self.pdet.pD_zH0_eval(gal.z,H0)
-                den += np.reshape(prob,len(H0))*weight*self.__ps_z(gal.z)
+                den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
             else:
                 continue
 
@@ -309,9 +309,9 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.__ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.__ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -375,7 +375,7 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
 
             def Inum(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i])(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
@@ -442,9 +442,9 @@ class gwcosmoLikelihood(object):
 
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.__ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.__ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
