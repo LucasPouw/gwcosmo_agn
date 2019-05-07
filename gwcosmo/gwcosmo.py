@@ -75,10 +75,12 @@ class gwcosmoLikelihood(object):
         If True, uses pdet suitable for MDC analysis (default=False)
     uncertainty : bool, optional
         If true, redshift uncertainty will be assumed and corrected for (default=False)
+    rate : str, optional
+        specifies rate evolution model, 'const' or 'evolving'
     """
 
     def __init__(self,event_type,GW_data,skymap,galaxy_catalog,psd,EM_counterpart=None,Omega_m=0.3,linear=False, \
-                 weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False):
+                 weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False,rate='constant'):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
@@ -151,7 +153,14 @@ class gwcosmoLikelihood(object):
         
         self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
-    
+        self.rate = rate
+
+    def ps_z(self,z):
+        if self.rate == 'constant':
+            return 1.0
+        if self.rate == 'evolving':
+            return (1.0+z)**3.0
+
     def px_dl(self,dl):
         """
         Returns a probability for a given distance dl from the interpolated function.
@@ -213,8 +222,8 @@ class gwcosmoLikelihood(object):
                         if gal.z == 0:
                             tempdist = 0.0
                         else:
-                            tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
-                        num += tempdist*tempsky*weight
+                            tempdist = px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
+                        num += tempdist*tempsky*weight*self.ps_z(gal.z)
                     else:
                         continue
                 else:
@@ -263,7 +272,7 @@ class gwcosmoLikelihood(object):
                     prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
                 else:
                     prob = self.pdet.pD_zH0_eval(gal.z,H0)
-                den += np.reshape(prob,len(H0))*weight
+                den += np.reshape(prob,len(H0))*weight*self.__ps_z(gal.z)
             else:
                 continue
 
@@ -300,9 +309,9 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.__ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.__ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -366,8 +375,8 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
 
             def Inum(z,M):
-                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i])(M)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -433,9 +442,9 @@ class gwcosmoLikelihood(object):
 
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.__ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.__ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
