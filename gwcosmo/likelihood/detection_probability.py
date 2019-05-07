@@ -103,12 +103,15 @@ class DetectionProbability(object):
             self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BNS-uniform':
             m1, m2 = BNS_uniform_distribution(N,mmin=1.2,mmax=1.6)
-            self.dl_array = np.linspace(1.0e-100,400.0,500)           
+            self.dl_array = np.linspace(1.0e-100,400.0,500)
         if self.mass_distribution == 'BBH-powerlaw':
-            m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-2.3)
+            m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-1.6)
             self.dl_array = np.linspace(1.0e-100,2500.0,500)
         if self.mass_distribution == 'BBH-flatlog':
             m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-1)
+            self.dl_array = np.linspace(1.0e-100,2500.0,500)
+        if self.mass_distribution == 'BBH-powerlaw-2.3':
+            m1, m2 = BBH_mass_distribution(N,mmin=5.,mmax=50.,alpha=-2.3)
             self.dl_array = np.linspace(1.0e-100,2500.0,500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
