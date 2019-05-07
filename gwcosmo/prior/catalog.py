@@ -11,6 +11,8 @@ from ligo.skymap.moc import nest2uniq,uniq2nest
 
 import pickle
 import pkg_resources
+import time
+import progressbar
 
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo', 'data/catalog_data/')
@@ -35,17 +37,6 @@ class galaxy(object):
         self.z = z
         self.m = m
         self.sigmaz = sigmaz
-
-    def blue_luminosity_from_mag(self):
-        """
-        Returns the blue luminosity in units of L_10 given the apparent
-        magnitude and the redshift of a galaxy object assuming a Hubble constant of 70.
-        """
-        coverh = (const.c.to('km/s') / ( 70 * u.km / u.s / u.Mpc )).value
-        M_blue_solar = 5.48 # Binney & Tremaine
-        MB = self.m - 5.0 * np.log10( self.z*coverh / 10.0e-6 )
-        lumB = np.power( 10, (M_blue_solar - MB)/2.5 - 10.0 ) 
-        return lumB
         
 class galaxyCatalog(object):
     """
@@ -128,7 +119,10 @@ class galaxyCatalog(object):
         
         galaxies = {}
         index = np.arange(len(z_uncert))
-        for i in index:
+        
+        bar = progressbar.ProgressBar()
+        print("Loading galaxy catalog.")
+        for i in bar(index):
             gal = gwcosmo.prior.catalog.galaxy()
             gal.ra = ra_uncert[i]
             gal.dec = dec_uncert[i]
