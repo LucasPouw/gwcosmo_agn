@@ -11,11 +11,14 @@ from astropy import constants as const
 from astropy.table import Table
 import h5py
 
+
 class posterior_samples(object):
-    ''' Class for lalinference posterior samples
     '''
-    def __init__(self,distance=1,ra=1,dec=1,nsamples=1,ngalaxies=1):
-        """Posterior samples class... (empty by default)
+    Class for lalinference posterior samples
+    '''
+    def __init__(self, distance=1, ra=1, dec=1, nsamples=1, ngalaxies=1):
+        """
+        Posterior samples class... (empty by default)
         Parameters
         """
         self.distance = distance
@@ -24,8 +27,9 @@ class posterior_samples(object):
         self.nsamples = nsamples
 
     def load_posterior_samples(self, samples_file_path):
-        """ Loads posterior samples into class 
-            Currently it supports .dat, .hdf5, .hdf posterior samples format.
+        """
+        Loads posterior samples into class
+        Currently it supports .dat, .hdf5, .hdf posterior samples format.
         """
         if samples_file_path[-3:] == 'dat':
             lalinference_data = np.genfromtxt(samples_file_path, names=True)
@@ -33,8 +37,8 @@ class posterior_samples(object):
             self.ra = lalinference_data['ra']
             self.dec = lalinference_data['dec']
             self.nsamples = len(self.distance)
-        
-        #TODO: handle this better
+
+        # TODO: handle this better
         if samples_file_path[-4:] == 'hdf5':
             if samples_file_path[-11:] == 'GWTC-1.hdf5':
                 if samples_file_path[-20:] == 'GW170817_GWTC-1.hdf5':
@@ -48,7 +52,7 @@ class posterior_samples(object):
                 self.dec = lalinference_data['declination']
                 self.nsamples = len(self.distance)
                 f1.close()
-            else:    
+            else:
                 group_name = 'lalinference_mcmc'
                 dataset_name = 'posterior_samples'
                 f1 = h5py.File(samples_file_path, 'r')

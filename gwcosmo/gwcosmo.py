@@ -10,14 +10,15 @@ p(D|z,H0): pdet.pD_zH0_eval(z,H0)
 p(s|M(H0)): L_M(M) or L_mdl(m,dl(z,H0))
 p(z): zprior(z)
 p(M|H0): SchechterMagFunction(H0)(M)
-p(\Omega): this term comes out the front and cancels in most cases, and so does not appear explicitly.
+p(\Omega): this term comes out the front and cancels in most cases,
+and so does not appear explicitly.
 """
 from __future__ import absolute_import
 
 import lal
 import numpy as np
 import sys
-import matplotlib 
+import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import healpy as hp
@@ -26,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-from scipy.interpolate import splev,splrep
+from scipy.interpolate import splev, splrep
 from astropy import constants as const
 from astropy import units as u
 
@@ -38,11 +39,12 @@ from .utilities.schechter_function import *
 import time
 import progressbar
 
+
 class gwcosmoLikelihood(object):
     """
     A class to hold all the individual components of the posterior for H0,
     and methods to stitch them together in the right way.
-    
+
     Parameters
     ----------
     event_type : str
@@ -54,7 +56,8 @@ class gwcosmoLikelihood(object):
     galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
         The relevant galaxy catalog
     psd : str, optional
-        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None).
+        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at
+        design sensitivity (default=None).
     EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
         EM_counterpart data (default=None)
         If not None, will default to using this over the galaxy_catalog 
@@ -65,22 +68,27 @@ class gwcosmoLikelihood(object):
     weighted : bool, optional
         Use luminosity weighting (default=False)
     weights : str, optional
-        Specifies type of luminosity weighting to use, 'schechter' or 'trivial' (default='schechter')
-        'trivial' is only for testing purposes and should not be used in analysis
+        Specifies type of luminosity weighting to use: 'schechter' or 'trivial'
+        (default='schechter') 'trivial' is only for testing purposes and
+        should not be used in analysis
     whole_cat : bool, optional
         Does the galaxy catalog provided cover the whole sky? (default=True)
     radec_lim : array_like, optional
-        Needed if whole_cat=False. RA and Dec limits on the catalog in the format np.array([ramin,ramax,decmin,decmax]) in radians
+        Needed if whole_cat=False. RA and Dec limits on the catalog in the
+        format np.array([ramin,ramax,decmin,decmax]) in radians
     basic : bool, optional
         If True, uses pdet suitable for MDC analysis (default=False)
     uncertainty : bool, optional
-        If true, redshift uncertainty will be assumed and corrected for (default=False)
+        If true, redshift uncertainty will be assumed and corrected
+        for (default=False)
     rate : str, optional
         specifies rate evolution model, 'const' or 'evolving'
     """
 
-    def __init__(self,event_type,GW_data,skymap,galaxy_catalog,psd,EM_counterpart=None,Omega_m=0.3,linear=False, \
-                 weighted=False,whole_cat=True,radec_lim=None,basic=False,uncertainty=False,rate='constant'):
+    def __init__(self, event_type, GW_data, skymap, galaxy_catalog, psd,
+                 EM_counterpart=None, Omega_m=0.3, linear=False,
+                 weighted=False, whole_cat=True, radec_lim=None,
+                 basic=False, uncertainty=False, rate='constant'):
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
@@ -90,7 +98,7 @@ class gwcosmoLikelihood(object):
         self.radec_lim = radec_lim
         self.basic = basic
         self.uncertainty = uncertainty
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type,psd=self.psd,Nsamps=5000,basic=self.basic)
+        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type, psd=self.psd, Nsamps=5000, basic=self.basic)
         self.skymap = skymap
 
         if self.uncertainty == False:
@@ -109,7 +117,7 @@ class gwcosmoLikelihood(object):
             distkernel = GW_data.lineofsight_distance()
             distmax = 2.0*np.amax(GW_data.distance)
             distmin = 0.5*np.amin(GW_data.distance)
-            dl_array = np.linspace(distmin,distmax,500)
+            dl_array = np.linspace(distmin, distmax, 500)
             vals = distkernel(dl_array)
             
         if (GW_data is None and self.EM_counterpart is None):
@@ -117,14 +125,13 @@ class gwcosmoLikelihood(object):
             
         if (GW_data is None and self.EM_counterpart is not None):
             counterpart = self.EM_counterpart.get_galaxy(0)
-            dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra,counterpart.dec)
-            
-        self.temp = splrep(dl_array,vals)
+            dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra, counterpart.dec)
 
-        self.mth = galaxy_catalog.mth() # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
-        
+        self.temp = splrep(dl_array,vals)
+        # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
+        self.mth = galaxy_catalog.mth()
         if self.whole_cat == False:
-            if all(radec_lim)==None:
+            if all(radec_lim) == None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
             else:
                 self.ra_min = radec_lim[0]
@@ -140,8 +147,10 @@ class gwcosmoLikelihood(object):
         self.pGD = None
         self.pnGD = None
         self.pDnG = None
-        
-        # Note that zmax is an artificial limit that should be well above any redshift value that could impact the results for the considered H0 values.
+
+        # Note that zmax is an artificial limit that
+        # should be well above any redshift value that could
+        # impact the results for the considered H0 values.
         if event_type == 'BNS-gaussian':
             self.zmax = 0.5
         elif event_type == 'BNS-uniform':
@@ -151,28 +160,30 @@ class gwcosmoLikelihood(object):
         elif event_type == 'BBH-flatlog':
             self.zmax = 4.0
         
-        self.zprior = redshift_prior(Omega_m=self.Omega_m,linear=self.linear)
-        self.cosmo = fast_cosmology(Omega_m=self.Omega_m,linear=self.linear)
+        self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
+        self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.rate = rate
 
-    def ps_z(self,z):
+    def ps_z(self, z):
         if self.rate == 'constant':
             return 1.0
         if self.rate == 'evolving':
             return (1.0+z)**3.0
 
-    def px_dl(self,dl):
+    def px_dl(self, dl):
         """
-        Returns a probability for a given distance dl from the interpolated function.
+        Returns a probability for a given distance dl
+        from the interpolated function.
         """
-        return splev(dl,self.temp,ext=3)
+        return splev(dl, self.temp, ext=3)
 
-    def px_H0G(self,H0):
+    def px_H0G(self, H0):
         """
         Returns p(x|H0,G) for given values of H0.
         This corresponds to the numerator of Eq 12 in the method doc.
-        The likelihood of the GW data given H0 and conditioned on the source being inside the galaxy catalog
-        
+        The likelihood of the GW data given H0 and conditioned on
+        the source being inside the galaxy catalog
+
         Parameters
         ----------
         H0 : float or array_like
@@ -185,22 +196,24 @@ class gwcosmoLikelihood(object):
         """
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
-        
+
         prob_sorted = np.sort(self.skymap.prob)[::-1]
         prob_sorted_cum = np.cumsum(prob_sorted)
-        idx = np.searchsorted(prob_sorted_cum,0.999) # find index of array which bounds the 99.9% confidence interval
+        # find index of array which bounds the 99.9% confidence interval
+        idx = np.searchsorted(prob_sorted_cum, 0.999)
         minskypdf = prob_sorted[idx]*self.skymap.npix
 
         count = 0
         nGal_patch = 0
-        
-        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
-        if self.EM_counterpart != None:
+
+        # TODO: expand this case to look at a skypatch
+        # around the counterpart ('pencilbeam')
+        if self.EM_counterpart is not None:
             nGalEM = self.EM_counterpart.nGal()
             for i in range(nGalEM):
                 counterpart = self.EM_counterpart.get_galaxy(i)
-                tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
-                tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+                tempsky = self.skymap.skyprob(counterpart.ra, counterpart.dec)*self.skymap.npix
+                tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0))/self.cosmo.dl_zH0(counterpart.z, H0)**2 # remove dl^2 prior from samples
                 numnorm += tempdist*tempsky
 
         else:
@@ -211,25 +224,24 @@ class gwcosmoLikelihood(object):
                 gal = self.galaxy_catalog.get_galaxy(i)
                 if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                     nGal_patch += 1.0
-                    tempsky = self.skymap.skyprob(gal.ra,gal.dec)*self.skymap.npix
+                    tempsky = self.skymap.skyprob(gal.ra, gal.dec)*self.skymap.npix
                     if tempsky >= minskypdf:
                         count += 1
                         if self.weighted:
-                            weight = L_mdl(gal.m,self.cosmo.dl_zH0(gal.z,H0))
+                            weight = L_mdl(gal.m, self.cosmo.dl_zH0(gal.z, H0))
                         else:
                             weight = 1.0
-                    
                         if gal.z == 0:
                             tempdist = 0.0
                         else:
-                            tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z,H0))/self.cosmo.dl_zH0(gal.z,H0)**2 # remove dl^2 prior from samples
+                            tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z, H0))/self.cosmo.dl_zH0(gal.z, H0)**2 # remove dl^2 prior from samples
                         num += tempdist*tempsky*weight*self.ps_z(gal.z)
                     else:
                         continue
                 else:
                     continue
             print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
-            
+
             if self.whole_cat == True:
                 numnorm = num/nGal
             else:
@@ -604,4 +616,3 @@ class gwcosmoLikelihood(object):
 
             
         return likelihood/np.sum(likelihood)/dH0
-    
