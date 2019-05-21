@@ -87,10 +87,10 @@ class gwcosmoLikelihood(object):
         specifies rate evolution model, 'const' or 'evolving'
     """
 
-    def __init__(self, event_type, GW_data, skymap, galaxy_catalog, psd,
-                 EM_counterpart=None, Omega_m=0.3, linear=False,
-                 weighted=False, whole_cat=True, radec_lim=None,
+    def __init__(self, event_type, GW_data, skymap, galaxy_catalog, psd, EM_counterpart=None,
+                 Omega_m=0.3, linear=False, weighted=False, whole_cat=True, radec_lim=None,
                  basic=False, uncertainty=False, rate='constant', Nside=None):
+
         self.event_type = event_type
         self.psd = psd
         self.Omega_m = Omega_m
