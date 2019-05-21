@@ -2,7 +2,6 @@
 Detection probability
 Rachel Gray, John Veitch, Ignacio Magana
 """
-# from __future__ import absolute_import
 import lal
 from lal import ComputeDetAMResponse
 import lalsimulation as lalsim
@@ -51,28 +50,38 @@ class DetectionProbability(object):
         if True, use linear cosmology (default=False)
     basic : bool, optional
         if True, don't redshift masses (for use with the MDC) (default=False)
-    precomputed : bool, optional
-        if True, use precomputed values. NOTE: if False, precomputed values
-        will be overwritten (default=True)
     """
     def __init__(self, mass_distribution, psd, detectors=['H1', 'L1'],
                  Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3,
-                 linear=False, basic=False, precomputed=True):
-        self.detectors = detectors
+                 linear=False, basic=False):
+        self.mass_distribution = mass_distribution
         self.psd = psd
-        self.snr_threshold = snr_threshold
+
         data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
-        if psd == 'MDC':
+        #interp_av_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd, self.mass_distribution)
+        # load pdet object if it already exists
+        #if os.path.isfile(interp_av_path) is True:
+        #    z, H0, prob = pickle.load(open(interp_av_path, 'rb'))
+        #else: 
+        self.detectors = detectors
+        self.Nsamps = Nsamps
+        self.snr_threshold = snr_threshold
+        self.Nside = Nside
+        self.Omega_m = Omega_m
+        self.linear = linear
+        self.basic = basic
+
+        if self.psd == 'MDC':
             PSD_data = np.genfromtxt(data_path + 'PSD_L1_H1_mid.txt')
             self.psds = interp1d(PSD_data[:, 0], PSD_data[:, 1])
         else:
             PSD_data = {}
-            if psd == 'O1':
-                for det in detectors:
+            if self.psd == 'O1':
+                for det in self.detectors:
                     PSD_data[det] = np.genfromtxt(data_path + det +
                                                   '_O1_strain.txt')
-            elif psd == 'O2':
-                for det in detectors:
+            elif self.psd == 'O2':
+                for det in self.detectors:
                     PSD_data[det] = np.genfromtxt(data_path + det +
                                                   '_O2_strain.txt')
             else:
@@ -80,7 +89,7 @@ class DetectionProbability(object):
                                  and 'MDC' for PSD")
             freqs = {}
             psds = {}
-            for det in detectors:
+            for det in self.detectors:
                 ff = np.zeros(len(PSD_data[det]))
                 pxx = np.zeros(len(PSD_data[det]))
                 for k in range(0, len(PSD_data[det])):
@@ -92,12 +101,8 @@ class DetectionProbability(object):
             # TODO: check if extrapolation causes weird behaviour
             self.psds = interp1d(freqs['L1'], PSD, fill_value='extrapolate')
         self.__lal_detectors = [lal.cached_detector_by_prefix[name]
-                                for name in detectors]
-        self.Nsamps = Nsamps
-        self.Nside = Nside
-        self.mass_distribution = mass_distribution
-        self.Omega_m = Omega_m
-        self.linear = linear
+                                for name in self.detectors]
+
         self.H0vec = np.linspace(10, 200, 50)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         # TODO: For higher values of z (z=10) this goes
@@ -138,17 +143,10 @@ class DetectionProbability(object):
         if basic is True:
             self.interp_average_basic = self.__pD_dl_basic(self.dl_array)
         else:
-            if psd is not None:
-                interp_av_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd, self.mass_distribution)
-            # precompute values which will be called
-            # multiple times, if not precomputed
-            if (os.path.isfile(interp_av_path) and precomputed is True):
-                z, H0, prob = pickle.load(open(interp_av_path, 'rb'))
-            else:
-                z, H0, prob = self.__pD_zH0_array(self.H0vec)
+            prob = self.__pD_zH0_array(self.H0vec)
             # TODO: test how different interpolations and fill
             # values effect results.  Do values go below 0 and above 1?
-            self.interp_average = interp2d(z, H0, prob, kind='cubic')
+            self.interp_average = interp2d(self.z_array, self.H0vec, prob, kind='cubic')
 
         if Nside is not None:
             self.interp_map = self.__pD_dlradec(self.Nside, self.dl_array)
@@ -429,10 +427,7 @@ class DetectionProbability(object):
         list of arrays?
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
-        prob = np.array([self.__pD_zH0(H0) for H0 in H0vec])
-        path = pkg_resources.resource_filename('gwcosmo', 'data/{}PSD_{}_{}Nsamps_z_H0_pD_array.p'.format(self.psd, self.mass_distribution, self.Nsamps))
-        pickle.dump((self.z_array, H0vec, prob), open(path, 'wb'))
-        return (self.z_array, H0vec, prob)
+        return np.array([self.__pD_zH0(H0) for H0 in H0vec])
 
     def pD_dlH0_eval(self, dl, H0):
         """
