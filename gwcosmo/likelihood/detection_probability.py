@@ -151,7 +151,7 @@ class DetectionProbability(object):
             self.interp_average = interp2d(z, H0, prob, kind='cubic')
 
         if Nside is not None:
-            self.interp_map = self.__pD_dlradec(self.Nside, self.dl_array)
+            self.interp_map = self.__pD_dlradec(self.Nside, self.dl_array, self.H0vec)
 
     def mchirp(self, m1, m2):
         """
@@ -594,7 +594,7 @@ class DetectionProbability(object):
         return splev(dl, self.spl, ext=1)
 
     # TODO: repair pixel-based functions
-    def __pD_dlradec(self, Nside, dl_array):
+    def __pD_dlradec(self, Nside, dl_array, H0):
         """
         NEEDS FIXING
         Detection probability over a range of distances,
@@ -610,7 +610,7 @@ class DetectionProbability(object):
         for k in range(no_pix):
             rho = np.zeros((self.Nsamps, 1))
             for n in range(self.Nsamps):
-                rhosqs = [self.__snr_squared(RA_map[k], Dec_map[k], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0) for det in self.__lal_detectors]
+                rhosqs = [self.__snr_squared(RA_map[k], Dec_map[k], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0,self.z_array[n], H0) for det in self.__lal_detectors]
                 rho[n] = np.sum(rhosqs)
 
             DLcopy = dl_array.reshape((dl_array.size, 1))
