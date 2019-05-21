@@ -54,15 +54,9 @@ class DetectionProbability(object):
     def __init__(self, mass_distribution, psd, detectors=['H1', 'L1'],
                  Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3,
                  linear=False, basic=False):
+        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.psd = psd
-
-        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
-        #interp_av_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd, self.mass_distribution)
-        # load pdet object if it already exists
-        #if os.path.isfile(interp_av_path) is True:
-        #    z, H0, prob = pickle.load(open(interp_av_path, 'rb'))
-        #else: 
         self.detectors = detectors
         self.Nsamps = Nsamps
         self.snr_threshold = snr_threshold

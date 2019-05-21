@@ -100,8 +100,15 @@ class gwcosmoLikelihood(object):
         self.radec_lim = radec_lim
         self.basic = basic
         self.uncertainty = uncertainty
-        self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type, psd=self.psd, Nsamps=5000, basic=self.basic, Nside=Nside)
         self.skymap = skymap
+
+        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
+        pdet_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd, self.event_ype)
+        # load pdet object if it already exists
+        if os.path.isfile(pdet_path) is True:
+            self.pdet = pickle.load(open(pdet_path, 'rb'))
+        else: 
+            self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type, psd=self.psd, Nsamps=5000, basic=self.basic, Nside=Nside)
 
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
