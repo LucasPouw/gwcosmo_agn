@@ -4,9 +4,11 @@ This script computes H0 as a function of H0 bins.
 Ignacio Magana, Rachel Gray, Ankan Sur
 """
 # System imports
+import pkg_resources
 import os
 import sys
 from optparse import Option, OptionParser
+import pickle
 
 #Global Imports
 import matplotlib 
@@ -29,7 +31,7 @@ from gwcosmo.utilities.posterior_utilities import confidence_interval
 
 import astropy.constants as const
 speed_of_light = const.c.to('km/s').value
-
+data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -56,6 +58,8 @@ parser = OptionParser(
             help="LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
         Option("--mass_distribution", default=None,
             help="Choose between BNS or BBH mass distributions for Pdet calculation."),
+        Option("--powerlaw_slope", default='1.6', type=float,
+            help="Set powerlaw slope for BBH powelaw mass distribution for Pdet calculation."),
         Option("--skymap", default=None,
             help="LALinference 3D skymap file in format (.fits)"),
         Option("--galaxy_catalog", default=None,
@@ -165,6 +169,7 @@ else:
     basic = str2bool(opts.basic_pdet)
     rate_evolution = str(opts.rate_evolution)
     psd = str(opts.psd)
+    alpha = float(opts.powerlaw_slope)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -217,10 +222,23 @@ else:
             counterpart.get_galaxy(0).sigmaz = counterpart_z/speed_of_light
             allsky = True
             radeclims = None
-
-    # compute likelihood
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(mass_distribution,samples,skymap,catalog,psd,EM_counterpart=counterpart,Omega_m=0.3,linear=linear\
-                                           ,weighted=galaxy_weighting,whole_cat=allsky,radec_lim=radeclims,uncertainty=uncertainty,basic=basic,rate=rate_evolution)
+    
+    if mass_distribution == 'BBH-powerlaw':
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
+        if os.path.isfile(pdet_path) is True:
+            pdet = pickle.load(open(pdet_path, 'rb'))
+            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity'.format(mass_distribution, alpha, psd))
+        else: 
+            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic)
+    if (mass_distribution == 'BNS-gaussian' or mass_distribution == 'BNS-uniform'):
+        pdet_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution)
+        if os.path.isfile(pdet_path) is True:
+            pdet = pickle.load(open(pdet_path, 'rb'))
+            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity'.format(mass_distribution, psd))
+    
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
+                                           linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
+                                           radec_lim=radeclims,uncertainty=uncertainty,basic=basic,rate=rate_evolution)
 
     likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')

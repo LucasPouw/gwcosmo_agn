@@ -14,7 +14,6 @@ p(\Omega): this term comes out the front and cancels in most cases,
 and so does not appear explicitly.
 """
 from __future__ import absolute_import
-
 import lal
 import numpy as np
 import sys
@@ -87,12 +86,12 @@ class gwcosmoLikelihood(object):
         specifies rate evolution model, 'const' or 'evolving'
     """
 
-    def __init__(self, event_type, GW_data, skymap, galaxy_catalog, psd, EM_counterpart=None,
-                 Omega_m=0.3, linear=False, weighted=False, whole_cat=True, radec_lim=None,
-                 basic=False, uncertainty=False, rate='constant', Nside=None):
-
-        self.event_type = event_type
-        self.psd = psd
+    def __init__(self, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
+                 Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
+                 basic=False, uncertainty=False, rate='constant'):
+        self.pdet = pdet
+        self.event_type = pdet.mass_distribution
+        self.psd = pdet.psd
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
@@ -101,14 +100,6 @@ class gwcosmoLikelihood(object):
         self.basic = basic
         self.uncertainty = uncertainty
         self.skymap = skymap
-
-        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
-        pdet_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(self.psd, self.event_ype)
-        # load pdet object if it already exists
-        if os.path.isfile(pdet_path) is True:
-            self.pdet = pickle.load(open(pdet_path, 'rb'))
-        else: 
-            self.pdet = gwcosmo.detection_probability.DetectionProbability(self.event_type, psd=self.psd, Nsamps=5000, basic=self.basic, Nside=Nside)
 
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
@@ -160,13 +151,11 @@ class gwcosmoLikelihood(object):
         # Note that zmax is an artificial limit that
         # should be well above any redshift value that could
         # impact the results for the considered H0 values.
-        if event_type == 'BNS-gaussian':
+        if self.event_type == 'BNS-gaussian':
             self.zmax = 0.5
-        elif event_type == 'BNS-uniform':
+        elif self.event_type == 'BNS-uniform':
             self.zmax = 0.5
-        elif event_type == 'BBH-powerlaw':
-            self.zmax = 4.0
-        elif event_type == 'BBH-flatlog':
+        elif self.event_type == 'BBH-powerlaw':
             self.zmax = 4.0
         
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
@@ -651,7 +640,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
     weighted : boolean
         Use luminosity weighting?
     """
-    def __init__(self, H0, skymap3d, GMST, event_type, GW_data, skymap, galaxy_catalog, psd, EM_counterpart=None, 
+    def __init__(self, H0, skymap3d, GMST, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None, 
                  Omega_m=0.3, linear=False, weighted=False, whole_cat=True, radec_lim=None, basic=False,
                  uncertainty=False, rate='constant'):
         
@@ -662,10 +651,10 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         self.nside = hp.npix2nside(self.npix)
         self.gmst = GMST
     
-        super(PixelBasedLikelihood, self).__init__(event_type, GW_data, skymap, galaxy_catalog,
-                                                   psd, EM_counterpart=None, Omega_m=0.3, linear=False,
+        super(PixelBasedLikelihood, self).__init__(GW_data, skymap, galaxy_catalog,
+                                                   pdet, EM_counterpart=None, Omega_m=0.3, linear=False,
                                                    weighted=False, whole_cat=True, radec_lim=None,
-                                                   basic=False, uncertainty=False, rate='constant', Nside = self.nside)
+                                                   basic=False, uncertainty=False, rate='constant')
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
         self.pixel_cats = galaxy_catalog.pixelCatalogs(skymap3d)# dict of list of galaxies, indexed by NUNIQ

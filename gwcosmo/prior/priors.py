@@ -41,11 +41,11 @@ def pH0(H0, prior='log'):
         return 1./H0
 
 
-def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=-1):
+def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
     """
     Returns p(m1,m2)
-    The prior on the mass distribution that follows a power law (or flat in
-    log when alpha = -1) for BBHs.
+    The prior on the mass distribution that follows a power
+    law for BBHs.
 
     Parameters
     ----------
@@ -56,19 +56,22 @@ def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=-1):
     mmax : float
         maximum mass
     alpha : float
-        slope of the power law
+        slope of the power law p(m) = m^-\alpha where alpha > 0
 
     Returns
     -------
     float or array_like
         m1, m2
     """
+    alpha_ = -1*alpha
     u = np.random.rand(N)
-    if alpha != -1:
-        m1 = (u*(mmax**(alpha+1)-mmin**(alpha+1)) +
-              mmin**(alpha+1))**(1.0/(alpha+1))
+    if alpha_ != -1:
+        m1 = (u*(mmax**(alpha_+1)-mmin**(alpha_+1)) +
+              mmin**(alpha_+1))**(1.0/(alpha_+1))
+        print('Powerlaw mass distribution with alpha = ' + str(alpha))
     else:
         m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
+        print('Flat in log mass distribution')
     m2 = np.random.uniform(low=5.0, high=m1)
     return m1, m2
 

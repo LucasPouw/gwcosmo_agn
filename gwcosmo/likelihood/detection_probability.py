@@ -52,9 +52,9 @@ class DetectionProbability(object):
         if True, don't redshift masses (for use with the MDC) (default=False)
     """
     def __init__(self, mass_distribution, psd, detectors=['H1', 'L1'],
-                 Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.3,
-                 linear=False, basic=False):
-        data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
+                 Nsamps=5000, snr_threshold=8, Nside=None, Omega_m=0.308,
+                 linear=False, basic=False, alpha=1.6):
+        self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.psd = psd
         self.detectors = detectors
@@ -64,19 +64,20 @@ class DetectionProbability(object):
         self.Omega_m = Omega_m
         self.linear = linear
         self.basic = basic
+        self.alpha = alpha
 
         if self.psd == 'MDC':
-            PSD_data = np.genfromtxt(data_path + 'PSD_L1_H1_mid.txt')
+            PSD_data = np.genfromtxt(self.data_path + 'PSD_L1_H1_mid.txt')
             self.psds = interp1d(PSD_data[:, 0], PSD_data[:, 1])
         else:
             PSD_data = {}
             if self.psd == 'O1':
                 for det in self.detectors:
-                    PSD_data[det] = np.genfromtxt(data_path + det +
+                    PSD_data[det] = np.genfromtxt(self.data_path + det +
                                                   '_O1_strain.txt')
             elif self.psd == 'O2':
                 for det in self.detectors:
-                    PSD_data[det] = np.genfromtxt(data_path + det +
+                    PSD_data[det] = np.genfromtxt(self.data_path + det +
                                                   '_O2_strain.txt')
             else:
                 raise Exception("Please choose between 'O1', 'O2', \
@@ -94,8 +95,6 @@ class DetectionProbability(object):
             PSD = (psds['L1'] + psds['H1'])/2.
             # TODO: check if extrapolation causes weird behaviour
             self.psds = interp1d(freqs['L1'], PSD, fill_value='extrapolate')
-        self.__lal_detectors = [lal.cached_detector_by_prefix[name]
-                                for name in self.detectors]
 
         self.H0vec = np.linspace(10, 200, 50)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
@@ -118,13 +117,7 @@ class DetectionProbability(object):
             m1, m2 = BNS_uniform_distribution(N, mmin=1.2, mmax=1.6)
             self.dl_array = np.linspace(1.0e-100, 400.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
-            m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=-1.6)
-            self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
-        if self.mass_distribution == 'BBH-flatlog':
-            m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=-1)
-            self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
-        if self.mass_distribution == 'BBH-powerlaw-2.3':
-            m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=-2.3)
+            m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=self.alpha)
             self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
@@ -137,10 +130,10 @@ class DetectionProbability(object):
         if basic is True:
             self.interp_average_basic = self.__pD_dl_basic(self.dl_array)
         else:
-            prob = self.__pD_zH0_array(self.H0vec)
+            self.prob = self.__pD_zH0_array(self.H0vec)
             # TODO: test how different interpolations and fill
             # values effect results.  Do values go below 0 and above 1?
-            self.interp_average = interp2d(self.z_array, self.H0vec, prob, kind='cubic')
+            self.interp_average = interp2d(self.z_array, self.H0vec, self.prob, kind='cubic')
 
         if Nside is not None:
             self.interp_map = self.__pD_dlradec(self.Nside, self.dl_array)
@@ -390,6 +383,8 @@ class DetectionProbability(object):
         interpolated probabilities of detection over an array of
         luminosity distances, for a specific value of H0
         """
+        lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
+                                for name in self.detectors]
         rho = np.zeros((self.Nsamps, 1))
         prob = np.zeros(len(self.z_array))
         for i in range(len(self.z_array)):
@@ -397,7 +392,7 @@ class DetectionProbability(object):
                 rhosqs = [self.__snr_squared(self.RAs[n], self.Decs[n],
                           self.m1[n], self.m2[n], self.incs[n], self.psis[n],
                           det, 0.0, self.z_array[i], H0)
-                          for det in self.__lal_detectors]
+                          for det in lal_detectors]
                 rho[n] = np.sum(rhosqs)
 
             effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
@@ -553,9 +548,11 @@ class DetectionProbability(object):
         interpolated probabilities of detection over an array of luminosity
         distances, for a specific value of H0.
         """
+        lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
+                                for name in self.detectors]
         rho = np.zeros((self.Nsamps, len(self.dl_array)))
         for n in range(self.Nsamps):
-            rhosqs = [self.__snr_squared_basic(self.RAs[n], self.Decs[n], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0, self.dl_array) for det in self.__lal_detectors]
+            rhosqs = [self.__snr_squared_basic(self.RAs[n], self.Decs[n], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0, self.dl_array) for det in lal_detectors]
             rho[n] = np.sum(rhosqs, 0)
 
         effective_threshold = np.sqrt(len(self.detectors)) * self.snr_threshold
@@ -589,6 +586,8 @@ class DetectionProbability(object):
         Detection probability over a range of distances,
         at each pixel on a healpy map.
         """
+        lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
+                                for name in self.detectors]
         no_pix = hp.pixelfunc.nside2npix(Nside)
         pix_ind = range(0, no_pix)
         theta, phi = hp.pixelfunc.pix2ang(Nside, pix_ind)
@@ -599,7 +598,7 @@ class DetectionProbability(object):
         for k in range(no_pix):
             rho = np.zeros((self.Nsamps, 1))
             for n in range(self.Nsamps):
-                rhosqs = [self.__snr_squared_basic(RA_map[k], Dec_map[k], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0, self.dl_array) for det in self.__lal_detectors]
+                rhosqs = [self.__snr_squared_basic(RA_map[k], Dec_map[k], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0, self.dl_array) for det in lal_detectors]
                 rho[n] = np.sum(rhosqs)
 
             DLcopy = dl_array.reshape((dl_array.size, 1))
