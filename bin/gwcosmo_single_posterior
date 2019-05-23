@@ -86,6 +86,8 @@ parser = OptionParser(
             help="Peculiar velocity correction of counterpart in km/sec"),
         Option("--rate_evolution", default='constant',
             help="Set rate evolution: constant or evolving"),
+        Option("--Lambda", default='3.0', type=float,
+            help="Set rate evolution parameter Lambda"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -168,6 +170,7 @@ else:
     linear = str2bool(opts.linear_cosmology)
     basic = str2bool(opts.basic_pdet)
     rate_evolution = str(opts.rate_evolution)
+    Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
 
@@ -238,7 +241,8 @@ else:
     
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
-                                           radec_lim=radeclims,uncertainty=uncertainty,basic=basic,rate=rate_evolution)
+                                           radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
+                                           rate=rate_evolution,Lambda=Lambda)
 
     likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')

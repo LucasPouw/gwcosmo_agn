@@ -88,7 +88,7 @@ class gwcosmoLikelihood(object):
 
     def __init__(self, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
-                 basic=False, uncertainty=False, rate='constant'):
+                 basic=False, uncertainty=False, rate='constant', Lambda=3.0):
         self.pdet = pdet
         self.event_type = pdet.mass_distribution
         self.psd = pdet.psd
@@ -161,12 +161,15 @@ class gwcosmoLikelihood(object):
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.rate = rate
+        self.Lambda = Lambda
 
     def ps_z(self, z):
         if self.rate == 'constant':
+            print('Constant rate evolution')
             return 1.0
         if self.rate == 'evolving':
-            return (1.0+z)**3.0
+            print('Rate evolution parameter is Lambda = ' + str(self.Lambda))
+            return (1.0+z)*self.Lambda
 
     def px_dl(self, dl):
         """
