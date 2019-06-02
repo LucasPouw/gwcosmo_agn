@@ -24,6 +24,7 @@ sns.set_palette('colorblind')
 
 import numpy as np
 import gwcosmo
+from gwcosmo.utilities.posterior_utilities import confidence_interval
 
 # Command line options
 parser = OptionParser(
@@ -64,7 +65,6 @@ for path, subdirs, files in os.walk(dir):
             
 
 outputfile = str(opts.outputfile)
-plotmdc = str2bool(opts.mdc)
 
 "Compute combined P(H0)"
 
@@ -128,7 +128,7 @@ plt.axvline(a_uniform,ls='--',c=c[0])
 plt.axvline(b_uniform,ls='--',c=c[0])
 plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
 plt.axvline(a_log,ls='--',c=c[1])
-plt.axvline(b_low,ls='--',c=c[1])
+plt.axvline(b_log,ls='--',c=c[1])
 plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
 plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
 for n in range(Nevents):
