@@ -258,9 +258,16 @@ else:
     np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
 
 print("Uniform Prior")
-MAP_uniform, a_uniform, b_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683)
+confidence_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683,verbose=True)
+MAP_uniform = confidence_uniform.map
+a_uniform = confidence_uniform.lower_level
+b_uniform = confidence_uniform.upper_level
+
 print("Log Prior")
-MAP_log, a_log, b_log = confidence_interval(posterior_log_norm,H0,level=0.683)
+confidence_log = confidence_interval(posterior_log_norm,H0,level=0.683)
+MAP_log = confidence_log.map
+a_log = confidence_log.lower_level
+b_log = confidence_log.upper_level
 
 ymin = 0
 ymax = 1.1*max(posterior_log_norm)
