@@ -13,7 +13,8 @@ import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
 from gwcosmo.prior.priors import *
 import pickle
-
+import time
+import progressbar
 import pkg_resources
 import os
 """
@@ -134,9 +135,6 @@ class DetectionProbability(object):
             # TODO: test how different interpolations and fill
             # values effect results.  Do values go below 0 and above 1?
             self.interp_average = interp2d(self.z_array, self.H0vec, self.prob, kind='cubic')
-
-        if Nside is not None:
-            self.interp_map = self.__pD_dlradec(self.Nside, self.dl_array)
 
     def mchirp(self, m1, m2):
         """
@@ -595,7 +593,9 @@ class DetectionProbability(object):
         Dec_map = np.pi/2.0 - theta
 
         pofd_dLRADec = []
-        for k in range(no_pix):
+        bar = progressbar.ProgressBar()
+        print("Calculating pD_dlradec")
+        for k in bar(range(no_pix)):
             rho = np.zeros((self.Nsamps, 1))
             for n in range(self.Nsamps):
                 rhosqs = [self.__snr_squared_basic(RA_map[k], Dec_map[k], self.m1[n], self.m2[n], self.incs[n], self.psis[n], det, 0.0, self.dl_array) for det in lal_detectors]
@@ -614,11 +614,12 @@ class DetectionProbability(object):
 
         return pofd_dLRADec
 
-    def pDdl_radec(self, RA, Dec, gmst):
+    def pDdl_radec(self, RA, Dec, gmst, Nside):
         """
         NEEDS FIXING
         Returns the probability of detection function
         for a specific ra, dec, and time.
         """
-        ipix = hp.ang2pix(self.Nside, np.pi/2.0-Dec, RA-gmst)
+        self.interp_map = self.__pD_dlradec(Nside, self.dl_array)
+        ipix = hp.ang2pix(Nside, np.pi/2.0-Dec, RA-gmst)
         return self.interp_map[ipix]

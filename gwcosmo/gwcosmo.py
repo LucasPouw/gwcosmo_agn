@@ -29,7 +29,7 @@ from scipy.stats import ncx2, norm
 from scipy.interpolate import splev, splrep
 from astropy import constants as const
 from astropy import units as u
-from ligo.skymap.bayestar import rasterize
+from ligo.skymap.moc import rasterize
 from ligo.skymap.core import uniq2ang
 
 import gwcosmo
@@ -651,13 +651,13 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         self.pixelmap = rasterize(self.moc_map)
         self.skymap3d = skymap3d
         self.npix = len(self.pixelmap)
+        print(self.npix)
         self.nside = hp.npix2nside(self.npix)
         self.gmst = GMST
     
-        super(PixelBasedLikelihood, self).__init__(GW_data, skymap, galaxy_catalog,
-                                                   pdet, EM_counterpart=None, Omega_m=0.3, linear=False,
-                                                   weighted=False, whole_cat=True, radec_lim=None,
-                                                   basic=False, uncertainty=False, rate='constant')
+        super(PixelBasedLikelihood, self).__init__(GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
+                                                   Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
+                                                   basic=False, uncertainty=False, rate='constant', Lambda=3.0)
         
         # For each pixel in the sky map, build a list of galaxies and the effective magnitude threshold
         self.pixel_cats = galaxy_catalog.pixelCatalogs(skymap3d)# dict of list of galaxies, indexed by NUNIQ
@@ -676,7 +676,6 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
             Only use pixels within the cum_prob credible interval
         """
         from ligo.skymap.moc import uniq2pixarea
-
         moc_areas = uniq2pixarea(self.moc_map['UNIQ'])
         moc_probs = moc_areas * self.moc_map['PROBDENSITY']
         
@@ -713,7 +712,9 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         pixel : np.uint64
             UNIQ pixel index
         """
+        print("calculate pG")
         pG = self.pixel_pG_D(H0,pixel)
+        print("calculate pnG")
         pnG = self.pixel_pnG_D(H0,pixel,pG=pG)
         return self.pixel_pD(H0,pixel)*(self.pixel_likelihood_G(H0,pixel)*pG \
                 + self.pixel_likelihood_notG(H0,pixel)*pnG)      
@@ -733,11 +734,12 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
-        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         weight,distmu,distsigma,distnorm = self.skymap3d(np.array([[ra,dec]]),distances=True)
-        
+        bar = progressbar.ProgressBar()
+        print("Calculating p(x | H0, D, G, pix)")
         val = np.zeros(len(H0))
-        for i,h0 in enumerate(H0):
+        for i, h0 in bar(enumerate(H0)):
             for gal in self.pixel_cats[pixel]:
                 dl = self.cosmo.dl_zH0(gal.z,h0)
                 #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
@@ -759,7 +761,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
-        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         weight,distmu,distsigma,distnorm = self.skymap3d(np.array([[ra,dec]]),distances=True)
         
         #FIXME: Get correct mth
@@ -767,8 +769,9 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        
-        for i,h0 in enumerate(H0):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(x | H0, D, notG, pix)")
+        for i,h0 in bar(enumerate(H0)):
             Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
                 #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(self.cosmo.dl_zH0(z,h0),distmu,distsigma)/distnorm
@@ -816,12 +819,13 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
-        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         mth = self.mths[pixel]
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        
-        for i,h0 in enumerate(H0):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(G|D, pix)")
+        for i,h0 in bar(enumerate(H0)):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
@@ -871,10 +875,11 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         theta, ra = uniq2ang(pixel)
         dec = np.pi/2.0 - theta
-        spl = self.pdet.pDdl_radec(ra,dec,self.gmst)
+        spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         num = np.zeros(len(H0))
-        
-        for i,h0 in enumerate(H0):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(D|H0, pix)")
+        for i,h0 in bar(enumerate(H0)):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
@@ -900,8 +905,9 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         spl = self.pdet.interp_average
         num = np.zeros(len(H0))
-        
-        for i,h0 in enumerate(H0):
+        bar = progressbar.ProgressBar()
+        print("Calculating p(D|H0)")
+        for i,h0 in bar(enumerate(H0)):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
