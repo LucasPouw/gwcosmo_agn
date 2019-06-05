@@ -611,7 +611,6 @@ class DetectionProbability(object):
 
             norm = np.sum(survival, 0)/self.Nsamps
             pofd_dLRADec.append(splrep(dl_array, norm))
-
         return pofd_dLRADec
 
     def pDdl_radec(self, RA, Dec, gmst, Nside):

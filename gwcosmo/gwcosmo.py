@@ -111,12 +111,12 @@ class gwcosmoLikelihood(object):
                 self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
             self.EM_counterpart = None
             if EM_counterpart is not None:
-                self.EM_counterpart = EM_counterpart.redshiftUncertainty(nsmear=100000)
+                self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
         
         if GW_data is not None:
             distkernel = GW_data.lineofsight_distance()
-            distmax = 2.0*np.amax(GW_data.distance)
             distmin = 0.5*np.amin(GW_data.distance)
+            distmax = 2.0*np.amax(GW_data.distance)
             dl_array = np.linspace(distmin, distmax, 500)
             vals = distkernel(dl_array)
             
@@ -648,7 +648,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
                  uncertainty=False, rate='constant'):
         
         self.moc_map = skymap3d.as_healpix()
-        self.pixelmap = rasterize(self.moc_map)
+        self.pixelmap = rasterize(self.moc_map,order=4)
         self.skymap3d = skymap3d
         self.npix = len(self.pixelmap)
         print(self.npix)
@@ -736,15 +736,13 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         weight,distmu,distsigma,distnorm = self.skymap3d(np.array([[ra,dec]]),distances=True)
-        bar = progressbar.ProgressBar()
-        print("Calculating p(x | H0, D, G, pix)")
         val = np.zeros(len(H0))
-        for i, h0 in bar(enumerate(H0)):
+        for i, h0 in enumerate(H0):
             for gal in self.pixel_cats[pixel]:
                 dl = self.cosmo.dl_zH0(gal.z,h0)
                 #galprob = self.skymap.posterior_spherical(np.array([[gal.ra,gal.dec,dl]])) #TODO: figure out if using this version is okay normalisation-wise
                 galprob = weight*norm.pdf(dl,distmu,distsigma)/distnorm
-                detprob = self.pdet.pD_dl_eval(dl)
+                detprob = self.pdet.pD_zH0_eval(gal.z,h0)#self.pdet.pD_dl_eval_basic(dl)
                 val[i] += galprob/detprob
         return val
         
@@ -769,9 +767,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        bar = progressbar.ProgressBar()
-        print("Calculating p(x | H0, D, notG, pix)")
-        for i,h0 in bar(enumerate(H0)):
+        for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             def Inum(z,M):
                 #temp = self.zprior(z)*SchechterMagFunction(H0=h0)(M)*weight*norm.pdf(self.cosmo.dl_zH0(z,h0),distmu,distsigma)/distnorm
@@ -782,7 +778,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
                     return temp
 
             def Iden(z,M):
-                temp = Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                temp = Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -823,16 +819,14 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         mth = self.mths[pixel]
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        bar = progressbar.ProgressBar()
-        print("Calculating p(G|D, pix)")
-        for i,h0 in bar(enumerate(H0)):
+        for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -877,16 +871,14 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         dec = np.pi/2.0 - theta
         spl = self.pdet.pDdl_radec(ra,dec,self.gmst,self.nside)
         num = np.zeros(len(H0))
-        bar = progressbar.ProgressBar()
-        print("Calculating p(D|H0, pix)")
-        for i,h0 in bar(enumerate(H0)):
+        for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
@@ -905,16 +897,14 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         """
         spl = self.pdet.interp_average
         num = np.zeros(len(H0))
-        bar = progressbar.ProgressBar()
-        print("Calculating p(D|H0)")
-        for i,h0 in bar(enumerate(H0)):
+        for i,h0 in enumerate(H0):
             Schechter=SchechterMagFunction(H0=h0)
             if self.weighted:
                 def I(z,M):
-                    return L_M(M)*Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return L_M(M)*Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
             else:
                 def I(z,M):
-                    return Schechter(M)*self.pdet.pD_dl_eval(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
+                    return Schechter(M)*self.pdet.pD_zH0_eval(z,h0)*self.zprior(z)#self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,h0))*self.zprior(z)
         
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.

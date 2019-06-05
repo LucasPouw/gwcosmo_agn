@@ -86,14 +86,20 @@ class skymap(object):
         return self.prob[ipix_gal]
 
     def marginalized_distance(self):
-        dl = np.linspace(0, 500, 500)
+        mu = self.distmu[(self.distmu<np.inf) & (self.distmu>0)]
+        distmin = 0.5*min(mu)
+        distmax = 2*max(mu)
+        dl = np.linspace(distmin, distmax, 200)
         dp_dr = [np.sum(self.prob * r**2 * self.distnorm *
                         norm(self.distmu, self.distsigma).pdf(r)) for r in dl]
         return dl, dp_dr
 
     def lineofsight_distance(self, ra, dec):
         ipix = ipix_from_ra_dec(self.nside, ra, dec, nest=self.nested)
-        r = np.linspace(0, 500, 500)
+        mu = self.distmu[(self.distmu<np.inf) & (self.distmu>0)]
+        distmin = 0.5*min(mu)
+        distmax = 2*max(mu)
+        r = np.linspace(distmin, distmax, 200)
         dp_dr = r**2 * self.distnorm[ipix] * norm(self.distmu[ipix],
                                                   self.distsigma[ipix]).pdf(r)
         return r, dp_dr
