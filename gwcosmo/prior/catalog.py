@@ -108,13 +108,11 @@ class galaxyCatalog(object):
         """
         z_uncert = []
         ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()
-        if EM_counterpart is True:
+        if peculiarVelocityCorr is True:
             nsmear = 10000
-            zmaxmax = 3*zlist[0]
-            print(zmaxmax)
         else:
             nsmear = 10
-            zmaxmax = 1.0
+        zmaxmax = 1.0
         ra_uncert = np.repeat(ralist, nsmear)
         dec_uncert = np.repeat(declist, nsmear)
         m_uncert = np.repeat(mlist, nsmear)
