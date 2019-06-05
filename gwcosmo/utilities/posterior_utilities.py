@@ -32,7 +32,7 @@ class confidence_interval(object):
                 return ret
             else:
                 return 1e4
-        HDI_lowTailPr = fmin(intervalWidth, 1. - self.level, disp=False)[0]
+        HDI_lowTailPr = fmin(intervalWidth, 1. - self.level, disp=self.verbose)[0]
         return ppf(HDI_lowTailPr), ppf(HDI_lowTailPr + self.level)
 
 
