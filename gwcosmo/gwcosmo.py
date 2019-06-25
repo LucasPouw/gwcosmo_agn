@@ -165,10 +165,8 @@ class gwcosmoLikelihood(object):
 
     def ps_z(self, z):
         if self.rate == 'constant':
-            print('Constant rate evolution')
             return 1.0
         if self.rate == 'evolving':
-            print('Rate evolution parameter is Lambda = ' + str(self.Lambda))
             return (1.0+z)*self.Lambda
 
     def px_dl(self, dl):
