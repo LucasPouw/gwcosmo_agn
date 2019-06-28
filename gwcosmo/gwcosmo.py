@@ -494,7 +494,7 @@ class gwcosmoLikelihood(object):
             counterpart = self.EM_counterpart.get_galaxy(i)
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
             tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
-            numnorm = tempdist*tempsky
+            numnorm += tempdist*tempsky
         return numnorm
 
 
@@ -646,7 +646,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
                  uncertainty=False, rate='constant'):
         
         self.moc_map = skymap3d.as_healpix()
-        self.pixelmap = rasterize(self.moc_map,order=4)
+        self.pixelmap = rasterize(self.moc_map,order=1)
         self.skymap3d = skymap3d
         self.npix = len(self.pixelmap)
         print(self.npix)
