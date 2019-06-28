@@ -109,7 +109,7 @@ class DetectionProbability(object):
         r = np.random.rand(N)
         self.Decs = np.arcsin(2.0*r - 1.0)
         q = np.random.rand(N)
-        self.incs = np.arcsin(2.0*q - 1.0)
+        self.incs = np.arccos(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS-gaussian':
             m1, m2 = BNS_gaussian_distribution(N, mean=1.35, sigma=0.15)

@@ -167,7 +167,7 @@ class gwcosmoLikelihood(object):
         if self.rate == 'constant':
             return 1.0
         if self.rate == 'evolving':
-            return (1.0+z)*self.Lambda
+            return (1.0+z)**self.Lambda
 
     def px_dl(self, dl):
         """
@@ -488,7 +488,7 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(x|H0,counterpart)
         """
-        
+        numnorm = np.zeros(len(H0))
         nGalEM = self.EM_counterpart.nGal()
         for i in range(nGalEM):
             counterpart = self.EM_counterpart.get_galaxy(i)
