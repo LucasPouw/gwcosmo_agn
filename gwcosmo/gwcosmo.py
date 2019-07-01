@@ -293,7 +293,7 @@ class gwcosmoLikelihood(object):
             self.pDG = den/nGal_patch
         return self.pDG
 
-
+    @vectorize
     def pG_H0D(self,H0):
         """
         Returns p(G|H0,D)
@@ -311,31 +311,30 @@ class gwcosmoLikelihood(object):
             p(G|H0,D) 
         """  
         # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
-        num = np.zeros(len(H0)) 
-        den = np.zeros(len(H0))
+        #num = np.zeros(len(H0)) 
+        #den = np.zeros(len(H0))
         
-        # TODO: vectorize this if possible
-        bar = progressbar.ProgressBar()
         print("Calculating p(G|H0,D)")
-        for i in bar(range(len(H0))):
-            def I(z,M):
-                if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
-                else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
+        def I(z,M):
+            if self.basic:
+                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0)) \
+                *self.zprior(z)*self.ps_z(z)
+            else:
+                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)*self.ps_z(z)
+            if self.weighted:
+                return temp*L_M(M)
+            else:
+                return temp
             
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
             # TODO: test how sensitive this result is to changing Mmin and Mmax.
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0,-22.96)
+            Mmax = M_Mobs(H0,-12.96)
             
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
+                          epsabs=0,epsrel=1.49e-1)[0]
+            den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
 
         self.pGD = num/den
         return self.pGD    
@@ -362,7 +361,7 @@ class gwcosmoLikelihood(object):
         self.pnGD = 1.0 - self.pGD
         return self.pnGD
        
-        
+    @vectorize    
     def px_H0nG(self,H0,allsky=True):
         """
         Returns p(x|H0,bar{G}).
@@ -379,26 +378,24 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(x|H0,bar{G})
         """
-        distnum = np.zeros(len(H0))
+        #distnum = np.zeros(len(H0))
 
-        bar = progressbar.ProgressBar()
         print("Calculating p(x|H0,bar{G})")
-        for i in bar(range(len(H0))):
-
-            def Inum(z,M):
-                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i])(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
-
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
-            if allsky == True:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        def Inum(z,M):
+            temp = self.px_dl(self.cosmo.dl_zH0(z,H0))*self.zprior(z)*SchechterMagFunction(H0)(M) \
+            *self.ps_z(z)/self.cosmo.dl_zH0(z,H0)**2 # remove dl^2 prior from samples
+            if self.weighted:
+                return temp*L_M(M)
             else:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                return temp
+
+            Mmin = M_Mobs(H0,-22.96)
+            Mmax = M_Mobs(H0,-12.96)
+            if allsky == True:
+                distnum = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),
+                                     lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
+            else:
+                distnum = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if self.EM_counterpart != None:
@@ -421,7 +418,7 @@ class gwcosmoLikelihood(object):
             num = distnum*skynum
         return num
 
-
+    @vectorize
     def pD_H0nG(self,H0,allsky=True):
         """
         Returns p(D|H0,bar{G})
@@ -440,34 +437,34 @@ class gwcosmoLikelihood(object):
             p(D|H0,bar{G})     
         """  
         # TODO: same fixes as for pG_H0D 
-        den = np.zeros(len(H0))
+        #den = np.zeros(len(H0))
         
         def skynorm(dec,ra):
             return np.cos(dec)
                 
-        norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
-        
-        bar = progressbar.ProgressBar()
-        print("Calculating p(D|H0,bar{G})")
-        for i in bar(range(len(H0))):
+        norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,
+                       epsabs=0,epsrel=1.49e-1)[0]/(4.*np.pi)
 
-            def I(z,M):
-                if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
-                else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
+        def I(z,M):
+            if self.basic:
+                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0)) \
+                *self.zprior(z)*self.ps_z(z)
+            else:
+                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)*self.ps_z(z)
+            if self.weighted:
+                return temp*L_M(M)
+            else:
+                return temp
 
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
+            Mmin = M_Mobs(H0,-22.96)
+            Mmax = M_Mobs(H0,-12.96)
+
             if allsky == True:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
+                              lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
                 self.pDnG = den*norm
             else:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
                 self.pDnG = den*(1.-norm)
                 
         return self.pDnG
@@ -493,11 +490,12 @@ class gwcosmoLikelihood(object):
         for i in range(nGalEM):
             counterpart = self.EM_counterpart.get_galaxy(i)
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
-            tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+            tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z,H0)) \
+            /self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
             numnorm += tempdist*tempsky
         return numnorm
 
-
+    @vectorize
     def pD_H0(self,H0):
         """
         Returns p(D|H0).
@@ -513,27 +511,23 @@ class gwcosmoLikelihood(object):
         -------
         float or array_like
             p(D|H0)  
-        """
-        den = np.zeros(len(H0))
-        
-        bar = progressbar.ProgressBar()
+        """        
         print("Calculating p(D|H0)")
-        for i in bar(range(len(H0))):
+        def I(z,M):
+            if self.basic:
+                temp = SchechterMagFunction(H0)(M) \
+                *self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0))*self.zprior(z)
+            else:
+                temp = SchechterMagFunction(H0=H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)
+            if self.weighted:
+                return temp*L_M(M)
+            else:
+                return temp
 
-            def I(z,M):
-                if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
-                else:
-                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
-                if self.weighted:
-                    return temp*L_M(M)
-                else:
-                    return temp
+            Mmin = M_Mobs(H0,-22.96)
+            Mmax = M_Mobs(H0,-12.96)
 
-            Mmin = M_Mobs(H0[i],-22.96)
-            Mmax = M_Mobs(H0[i],-12.96)
-
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-1)[0]
 
         self.pDnG = den   
         return self.pDnG
