@@ -189,6 +189,7 @@ class gwcosmoLikelihood(object):
         """
         return splev(dl, self.temp, ext=3)
 
+    @vectorize(signature="(),()->()")
     def px_H0G(self, H0):
         """
         Returns p(x|H0,G) for given values of H0.
@@ -207,7 +208,7 @@ class gwcosmoLikelihood(object):
             p(x|H0,G)
         """
         nGal = self.galaxy_catalog.nGal()
-        num = np.zeros(len(H0))
+        num = 0#np.zeros(len(H0))
 
         prob_sorted = np.sort(self.skymap.prob)[::-1]
         prob_sorted_cum = np.cumsum(prob_sorted)
@@ -231,7 +232,7 @@ class gwcosmoLikelihood(object):
         else:
             # loop over all possible galaxies
             bar = progressbar.ProgressBar()
-            print("Calculating p(x|H0,G)")
+            #print("Calculating p(x|H0,G)")
             for i in bar(range(nGal)):
                 gal = self.galaxy_catalog.get_galaxy(i)
                 if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
@@ -252,7 +253,7 @@ class gwcosmoLikelihood(object):
                         continue
                 else:
                     continue
-            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
+            #print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
 
             if self.whole_cat == True:
                 numnorm = num/nGal
@@ -260,7 +261,7 @@ class gwcosmoLikelihood(object):
                 numnorm = num/nGal_patch
         return numnorm
 
-
+    @vectorize(signature="(),()->()")
     def pD_H0G(self,H0):
         """
         Returns p(D|H0,G) (the normalising factor for px_H0G).
@@ -280,7 +281,7 @@ class gwcosmoLikelihood(object):
         nGal = self.galaxy_catalog.nGal()   
         nGal_patch = 0.0     
 
-        den = np.zeros(len(H0))
+        den = 0#np.zeros(len(H0))
         
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,G)")
@@ -296,7 +297,7 @@ class gwcosmoLikelihood(object):
                     prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
                 else:
                     prob = self.pdet.pD_zH0_eval(gal.z,H0)
-                den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
+                den += prob*weight*self.ps_z(gal.z)
             else:
                 continue
 
