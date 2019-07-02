@@ -38,7 +38,6 @@ from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
 
 import time
-import progressbar
 
 from functools import wraps
 
@@ -208,7 +207,7 @@ class gwcosmoLikelihood(object):
             p(x|H0,G)
         """
         nGal = self.galaxy_catalog.nGal()
-        num = 0#np.zeros(len(H0))
+        num = 0
 
         prob_sorted = np.sort(self.skymap.prob)[::-1]
         prob_sorted_cum = np.cumsum(prob_sorted)
@@ -231,9 +230,7 @@ class gwcosmoLikelihood(object):
 
         else:
             # loop over all possible galaxies
-            bar = progressbar.ProgressBar()
-            #print("Calculating p(x|H0,G)")
-            for i in bar(range(nGal)):
+            for i in range(nGal):
                 gal = self.galaxy_catalog.get_galaxy(i)
                 if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                     nGal_patch += 1.0
@@ -281,11 +278,9 @@ class gwcosmoLikelihood(object):
         nGal = self.galaxy_catalog.nGal()   
         nGal_patch = 0.0     
 
-        den = 0#np.zeros(len(H0))
+        den = 0
         
-        bar = progressbar.ProgressBar()
-        print("Calculating p(D|H0,G)")
-        for i in bar(range(nGal)):
+        for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
             if (self.ra_min <= gal.ra <= self.ra_max and self.dec_min <= gal.dec <= self.dec_max):
                 nGal_patch += 1.0
@@ -555,7 +550,6 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(x|H0,D)
         """    
-        dH0 = H0[1]-H0[0]
         
         if self.EM_counterpart != None:
             
@@ -610,7 +604,7 @@ class gwcosmoLikelihood(object):
                 likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky) # Eq 4
 
             
-        return likelihood/np.sum(likelihood)/dH0
+        return likelihood
 
 
 ### Pixel Based Likelihood (WIP) *DO NOT REVIEW* ###
