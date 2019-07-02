@@ -9,6 +9,7 @@ import os
 import sys
 from optparse import Option, OptionParser
 import pickle
+import multiprocessing as mp
 
 #Global Imports
 import matplotlib 
@@ -88,6 +89,10 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
+        Option("--mpi", default='False',
+            help="Enable multiprocessing over the H0 vector (nthreads=4 by default)"),
+        Option("--nthreads", default=4,
+            help="number of threads to use for mpi"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -173,6 +178,9 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
+    
+    mpi = str2bool(opts.mpi)
+    nthreads = float(opts.nthreads)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -243,8 +251,15 @@ else:
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda)
+    if mpi is True:
+        def multiprocessLikelihood(H0):
+            return me.likelihood(H0,complete=completion,counterpart_case='direct')
 
-    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
+        pool = mp.Pool(processes=nthreads)
+        likelihood = pool.map(multiprocessLikelihood, H0)
+    else:
+        likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
+
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
     posterior_uniform = prior_uniform*likelihood
     prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')
