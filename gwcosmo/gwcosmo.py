@@ -42,7 +42,7 @@ import time
 from functools import wraps
 
 
-def vectorize(otypes=None, signature=None):
+def vectorize(otypes=None, signature="(),()->()"):
     """Numpy vectorization wrapper that works with instance methods."""
     def decorator(fn):
         vectorized = np.vectorize(fn, otypes=otypes, signature=signature)
@@ -176,6 +176,9 @@ class gwcosmoLikelihood(object):
         self.Lambda = Lambda
 
     def ps_z(self, z):
+        """
+        Merger rate evolution stuff
+        """
         if self.rate == 'constant':
             return 1.0
         if self.rate == 'evolving':
@@ -187,8 +190,32 @@ class gwcosmoLikelihood(object):
         from the interpolated function.
         """
         return splev(dl, self.temp, ext=3)
+    
+    def I(self,z,M):
+        """
+        Integral that needs to be evaluated to obtain both
+        denumerators.
+        """
+        if self.basic:
+            temp = SchechterMagFunction(H0)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0)) \
+            *self.zprior(z)*self.ps_z(z)
+        else:
+            temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)*self.ps_z(z)
+        if self.weighted:
+            return temp*L_M(M)
+        else:
+            return temp
 
-    @vectorize(signature="(),()->()")
+    def Mmin_max(self,H0):
+        """
+        Schechter function lower and upper integration limits
+        as a function of H0
+        """
+        Mmin = M_Mobs(H0,-22.96)
+        Mmax = M_Mobs(H0,-12.96)
+        return Mmin, Mmax
+
+    @vectorize()
     def px_H0G(self, H0):
         """
         Returns p(x|H0,G) for given values of H0.
@@ -258,7 +285,7 @@ class gwcosmoLikelihood(object):
                 numnorm = num/nGal_patch
         return numnorm
 
-    @vectorize(signature="(),()->()")
+    @vectorize()
     def pD_H0G(self,H0):
         """
         Returns p(D|H0,G) (the normalising factor for px_H0G).
@@ -302,7 +329,7 @@ class gwcosmoLikelihood(object):
             self.pDG = den/nGal_patch
         return self.pDG
 
-    @vectorize(signature="(),()->()")
+    @vectorize()
     def pG_H0D(self,H0):
         """
         Returns p(G|H0,D)
@@ -318,32 +345,20 @@ class gwcosmoLikelihood(object):
         -------
         float or array_like
             p(G|H0,D) 
-        """
-        def I(z,M):
-            if self.basic:
-                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0)) \
-                *self.zprior(z)*self.ps_z(z)
-            else:
-                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)*self.ps_z(z)
-            if self.weighted:
-                return temp*L_M(M)
-            else:
-                return temp
-            
+        """ 
         # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
         # Will want to change in future.
         # TODO: test how sensitive this result is to changing Mmin and Mmax.
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
+        Mmin, Mmax = self.Mmin_max(H0)
 
         num = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                      epsabs=0,epsrel=0.1)[0]
-        den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+                      epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
         return self.pGD    
 
-
+    @vectorize()
     def pnG_H0D(self,H0):
         """
         Returns 1.0 - pG_H0D(H0).
@@ -360,12 +375,12 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(bar{G}|H0,D) 
         """
-        if all(self.pGD)==None:
-            self.pGD = self.pG_H0D(H0)
+        #if all(self.pGD)==None:
+        self.pGD = self.pG_H0D(H0)
         self.pnGD = 1.0 - self.pGD
         return self.pnGD
        
-    @vectorize(signature="(),()->()")
+    @vectorize()
     def px_H0nG(self,H0,allsky=True):
         """
         Returns p(x|H0,bar{G}).
@@ -390,13 +405,12 @@ class gwcosmoLikelihood(object):
             else:
                 return temp
 
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
+        Mmin, Mmax = self.Mmin_max(H0)
         if allsky == True:
             distnum = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                                 lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+                                 lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
         else:
-            distnum = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+            distnum = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if self.EM_counterpart != None:
@@ -419,7 +433,7 @@ class gwcosmoLikelihood(object):
             num = distnum*skynum
         return num
 
-    @vectorize(signature="(),()->()")
+    @vectorize()
     def pD_H0nG(self,H0,allsky=True):
         """
         Returns p(D|H0,bar{G})
@@ -441,28 +455,16 @@ class gwcosmoLikelihood(object):
             return np.cos(dec)
                 
         norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,
-                       epsabs=0,epsrel=0.1)[0]/(4.*np.pi)
+                       epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
 
-        def I(z,M):
-            if self.basic:
-                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0)) \
-                *self.zprior(z)*self.ps_z(z)
-            else:
-                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)*self.ps_z(z)
-            if self.weighted:
-                return temp*L_M(M)
-            else:
-                return temp
-
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
+        Mmin, Mmax = self.Mmin_max(H0)
 
         if allsky == True:
             den = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                          lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+                          lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             self.pDnG = den*norm
         else:
-            den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+            den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
             self.pDnG = den*(1.-norm)
                 
         return self.pDnG
@@ -493,7 +495,7 @@ class gwcosmoLikelihood(object):
             numnorm += tempdist*tempsky
         return numnorm
 
-    @vectorize(signature="(),()->()")
+    @vectorize()
     def pD_H0(self,H0):
         """
         Returns p(D|H0).
@@ -509,22 +511,11 @@ class gwcosmoLikelihood(object):
         -------
         float or array_like
             p(D|H0)  
-        """        
-        def I(z,M):
-            if self.basic:
-                temp = SchechterMagFunction(H0)(M) \
-                *self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0))*self.zprior(z)
-            else:
-                temp = SchechterMagFunction(H0)(M)*self.pdet.pD_zH0_eval(z,H0)*self.zprior(z)
-            if self.weighted:
-                return temp*L_M(M)
-            else:
-                return temp
+        """
 
-        Mmin = M_Mobs(H0,-22.96)
-        Mmax = M_Mobs(H0,-12.96)
+        Mmin, Mmax = self.Mmin_max(H0)
 
-        den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
+        den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pDnG = den   
         return self.pDnG

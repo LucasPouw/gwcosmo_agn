@@ -180,7 +180,7 @@ else:
     alpha = float(opts.powerlaw_slope)
     
     mpi = str2bool(opts.mpi)
-    nthreads = float(opts.nthreads)
+    nthreads = int(opts.nthreads)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -257,6 +257,7 @@ else:
 
         pool = mp.Pool(processes=nthreads)
         likelihood = pool.map(multiprocessLikelihood, H0)
+        likelihood = np.array(likelihood)
     else:
         likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
 
