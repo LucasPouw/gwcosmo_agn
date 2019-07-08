@@ -351,9 +351,9 @@ class gwcosmoLikelihood(object):
         # TODO: test how sensitive this result is to changing Mmin and Mmax.
         Mmin, Mmax = self.Mmin_max(H0)
 
-        num = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                      epsabs=0,epsrel=1.49e-4)[0]
-        den = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        num = dblquad(self.I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
+                      epsabs=0,epsrel=0.1)[0]
+        den = dblquad(self.I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         self.pGD = num/den
         return self.pGD    
@@ -408,9 +408,9 @@ class gwcosmoLikelihood(object):
         Mmin, Mmax = self.Mmin_max(H0)
         if allsky == True:
             distnum = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                                 lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                                 lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
         else:
-            distnum = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            distnum = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if self.EM_counterpart != None:
@@ -455,16 +455,16 @@ class gwcosmoLikelihood(object):
             return np.cos(dec)
                 
         norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,
-                       epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
+                       epsabs=0,epsrel=0.1)[0]/(4.*np.pi)
 
         Mmin, Mmax = self.Mmin_max(H0)
 
         if allsky == True:
-            den = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
-                          lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den = dblquad(self.I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0,linear=self.linear),
+                          lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
             self.pDnG = den*norm
         else:
-            den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den = dblquad(self.I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
             self.pDnG = den*(1.-norm)
                 
         return self.pDnG
@@ -515,7 +515,7 @@ class gwcosmoLikelihood(object):
 
         Mmin, Mmax = self.Mmin_max(H0)
 
-        den = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(self.I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         self.pDnG = den   
         return self.pDnG
@@ -813,9 +813,9 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
         
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(mth,x),h0,linear=self.linear),epsabs=0,epsrel=0.1)[0]
             # TODO: Factorise into 2 1D integrals
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         return num/den
     
@@ -866,7 +866,7 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
             # TODO: Can this be factorised into 2 1D integrals?
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         return num
         
@@ -892,6 +892,6 @@ class PixelBasedLikelihood(gwcosmoLikelihood):
             Mmin = M_Mobs(h0,-22.96)
             Mmax = M_Mobs(h0,-12.96)
             # TODO: Factorise into 2 1D integrals
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=0.1)[0]
 
         return num
