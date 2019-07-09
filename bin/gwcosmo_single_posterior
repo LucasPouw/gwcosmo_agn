@@ -89,6 +89,8 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
+        Option("--magnitude_cut", default=None,
+              help="Set apparent magnitude cut for the catalog"),
         Option("--mpi", default='False',
             help="Enable multiprocessing over the H0 vector (nthreads=4 by default)"),
         Option("--nthreads", default=4,
@@ -178,6 +180,7 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
+    magnitude_cut = float(opts.magnitude_cut)
     
     mpi = str2bool(opts.mpi)
     nthreads = int(opts.nthreads)
@@ -216,7 +219,11 @@ else:
         else:
             allsky = True
             radeclims = None
-        
+            
+        if opts.magnitude_cut is not None:
+            print("Applying apparent magnitude cut of " + str(magnitude_cut))
+            catalog = catalog.apparentMagnitudeCut(magnitude_cut)
+
         counterpart = None
 
     if opts.method == 'counterpart':

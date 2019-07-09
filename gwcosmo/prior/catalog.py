@@ -100,6 +100,32 @@ class galaxyCatalog(object):
         if all(m) == 0:  # for mdc1 and mdc2
             m = np.ones(nGal)
         return ra, dec, z, m, sigmaz
+    
+    def apparentMagnitudeCut(self, mag_cut):
+        ra, dec, z, m, sigmaz = self.extract_galaxies()
+        
+        sel = np.where(m < mag_cut)[0]
+        ra = ra[sel]
+        dec = dec[sel]
+        z = z[sel]
+        m = m[sel]
+        sigmaz = sigmaz[sel]
+        
+        galaxies = {}
+        index = np.arange(len(sel))
+        
+        bar = progressbar.ProgressBar()
+        for i in bar(index):
+            gal = gwcosmo.prior.catalog.galaxy()
+            gal.ra = ra[i]
+            gal.dec = dec[i]
+            gal.z = z[i]
+            gal.m = m[i]
+            gal.sigmaz = sigmaz[i]
+            galaxies[str(i)] = gal
+        catalog = gwcosmo.prior.catalog.galaxyCatalog()
+        catalog.dictionary = galaxies
+        return catalog
 
     def redshiftUncertainty(self, peculiarVelocityCorr=False):
         """
