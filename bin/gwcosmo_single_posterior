@@ -180,7 +180,6 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
-    magnitude_cut = float(opts.magnitude_cut)
     
     mpi = str2bool(opts.mpi)
     nthreads = int(opts.nthreads)
@@ -221,6 +220,7 @@ else:
             radeclims = None
             
         if opts.magnitude_cut is not None:
+            magnitude_cut = float(opts.magnitude_cut)
             print("Applying apparent magnitude cut of " + str(magnitude_cut))
             catalog = catalog.apparentMagnitudeCut(magnitude_cut)
 
