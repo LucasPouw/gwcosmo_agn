@@ -60,6 +60,10 @@ class galaxyCatalog(object):
             self.dictionary = {'0': galaxy()}
             self.skypatch = None
 
+        self.ra, self.dec, self.z, self.m, self.sigmaz = self.extract_galaxies()
+        self.mth = self.mth()
+        self.ngal = self.nGal()
+
     def __load_catalog(self):
         cat = pickle.load(open(self.catalog_file, "rb"))
         dictionary = cat[0]
@@ -127,7 +131,7 @@ class galaxyCatalog(object):
         catalog.dictionary = galaxies
         return catalog
 
-    def redshiftUncertainty(self, peculiarVelocityCorr=False):
+    def redshiftUncertainty(self, peculiarVelocityCorr=False, nsmear=10):
         """
         A function which "smears" out galaxies in the catalog, therefore
         incorporating redshift uncetainties.
@@ -137,7 +141,8 @@ class galaxyCatalog(object):
         if peculiarVelocityCorr is True:
             nsmear = 10000
         else:
-            nsmear = 10
+            nsmear = nsmear
+            print(nsmear)
         zmaxmax = 1.0
         ra_uncert = np.repeat(ralist, nsmear)
         dec_uncert = np.repeat(declist, nsmear)
