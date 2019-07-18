@@ -29,6 +29,7 @@ import numpy as np
 
 import gwcosmo
 from gwcosmo.utilities.posterior_utilities import confidence_interval
+from gwcosmo.utilities.redshift_utilities import zhelio_to_zcmb
 
 import astropy.constants as const
 speed_of_light = const.c.to('km/s').value
@@ -82,9 +83,9 @@ parser = OptionParser(
         Option("--counterpart_dec", default=None,
             help="Declination of counterpart"),
         Option("--counterpart_z", default=None,
-            help="Redshift of counterpart"),
+            help="Redshift of counterpart or recessional velocity in km/sec (in heliocentric frame)"),
         Option("--counterpart_v", default=None,
-            help="Peculiar velocity correction of counterpart in km/sec"),
+            help="Peculiar velocity correction of counterpart in km/sec or unitless redshift"),
         Option("--rate_evolution", default='constant',
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
@@ -227,7 +228,7 @@ else:
         counterpart = None
 
     if opts.method == 'counterpart':
-        catalog = gwcosmo.prior.catalog.galaxyCatalog()
+        catalog = None
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
         if (opts.counterpart_ra is None or
             opts.counterpart_dec is None or
@@ -236,8 +237,15 @@ else:
         else:
             counterpart.get_galaxy(0).ra = counterpart_ra*np.pi/180.
             counterpart.get_galaxy(0).dec = counterpart_dec*np.pi/180.
-            counterpart.get_galaxy(0).z = counterpart_z
-            counterpart.get_galaxy(0).sigmaz = counterpart_z/speed_of_light
+            if (counterpart_z > 0) & (counterpart_z < 3):
+                counterpart.get_galaxy(0).z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z)
+            else:
+                counterpart.get_galaxy(0).z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z/speed_of_light)
+
+            if (counterpart_v > 0) & (counterpart_v < 1):
+                counterpart.get_galaxy(0).sigmaz = counterpart_v
+            else:
+                counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
             allsky = True
             radeclims = None
     

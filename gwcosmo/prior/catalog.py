@@ -61,8 +61,6 @@ class galaxyCatalog(object):
             self.skypatch = None
 
         self.ra, self.dec, self.z, self.m, self.sigmaz = self.extract_galaxies()
-        self.mth = self.mth()
-        self.ngal = self.nGal()
 
     def __load_catalog(self):
         cat = pickle.load(open(self.catalog_file, "rb"))
@@ -138,11 +136,10 @@ class galaxyCatalog(object):
         """
         z_uncert = []
         ralist, declist, zlist, mlist, sigmaz = self.extract_galaxies()
-        if peculiarVelocityCorr is True:
+        if peculiarVelocityCorr == True:
             nsmear = 10000
-        else:
+        if peculiarVelocityCorr == False:
             nsmear = nsmear
-            print(nsmear)
         zmaxmax = 1.0
         ra_uncert = np.repeat(ralist, nsmear)
         dec_uncert = np.repeat(declist, nsmear)

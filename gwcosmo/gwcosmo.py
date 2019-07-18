@@ -118,13 +118,15 @@ class gwcosmoLikelihood(object):
             self.EM_counterpart = None
             if EM_counterpart is not None:
                 self.EM_counterpart = EM_counterpart
-        else:
+
+        if self.uncertainty == True:
             if galaxy_catalog is not None:
                 self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
-            self.EM_counterpart = None
+                self.EM_counterpart = None
             if EM_counterpart is not None:
+                self.galaxy_catalog = None
                 self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
-        
+
         if GW_data is not None:
             distkernel = GW_data.lineofsight_distance()
             distmin = 0.5*np.amin(GW_data.distance)
@@ -140,8 +142,11 @@ class gwcosmoLikelihood(object):
             dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra, counterpart.dec)
 
         self.temp = splrep(dl_array,vals)
+
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
-        self.mth = galaxy_catalog.mth()
+        if self.galaxy_catalog is not None:
+            self.mth = galaxy_catalog.mth()
+
         if self.whole_cat == False:
             if all(radec_lim) == None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
@@ -542,7 +547,7 @@ class gwcosmoLikelihood(object):
             p(x|H0,D)
         """    
         
-        if self.EM_counterpart != None:
+        if self.EM_counterpart is not None:
             
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0)
