@@ -102,32 +102,6 @@ class galaxyCatalog(object):
         if all(m) == 0:  # for mdc1 and mdc2
             m = np.ones(nGal)
         return ra, dec, z, m, sigmaz
-    
-    def apparentMagnitudeCut(self, mag_cut):
-        ra, dec, z, m, sigmaz = self.extract_galaxies()
-        
-        sel = np.where(m < mag_cut)[0]
-        ra = ra[sel]
-        dec = dec[sel]
-        z = z[sel]
-        m = m[sel]
-        sigmaz = sigmaz[sel]
-        
-        galaxies = {}
-        index = np.arange(len(sel))
-        
-        bar = progressbar.ProgressBar()
-        for i in bar(index):
-            gal = gwcosmo.prior.catalog.galaxy()
-            gal.ra = ra[i]
-            gal.dec = dec[i]
-            gal.z = z[i]
-            gal.m = m[i]
-            gal.sigmaz = sigmaz[i]
-            galaxies[str(i)] = gal
-        catalog = gwcosmo.prior.catalog.galaxyCatalog()
-        catalog.dictionary = galaxies
-        return catalog
 
     def redshiftUncertainty(self, peculiarVelocityCorr=False, nsmear=10):
         """
@@ -169,28 +143,3 @@ class galaxyCatalog(object):
         catalog = gwcosmo.prior.catalog.galaxyCatalog()
         catalog.dictionary = galaxies
         return catalog
-
-    def pixelCatalogs(self, skymap3d):
-        moc_map = skymap3d.as_healpix()
-        pixelmap = rasterize(moc_map)
-        nside = hp.npix2nside(len(pixelmap))
-        # For each pixel in the sky map, build a list of galaxies and the
-        # effective magnitude threshold
-        self.pixel_cats = {}  # dict of list of galaxies, indexed by NUNIQ
-        ra, dec, _, _, _ = self.extract_galaxies()
-        gal_idx = np.array(range(len(ra)), dtype=np.uint64)
-        theta = np.pi/2.0 - dec
-        # Find the NEST index for each galaxy
-        pix_idx = np.array(hp.ang2pix(nside, theta, ra, nest=True),
-                           dtype=np.uint64)
-        # Find the order and nest_idx for each pixel in the UNIQ map
-        order, nest_idx = uniq2nest(moc_map['UNIQ'])
-        # For each order present in the UNIQ map
-        for o in np.unique(order):
-            # Find the UNIQ pixel for each galaxy at this order
-            uniq_idx = nest2uniq(o, pix_idx)
-            # For each such pixel, if it is in the moc_map then store galaxies
-            for uidx in moc_map['UNIQ'][order == o]:
-                self.pixel_cats[uidx] = [self.get_galaxy(j)
-                                         for j in gal_idx[uniq_idx == uidx]]
-        return self.pixel_cats

@@ -90,12 +90,6 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
-        Option("--magnitude_cut", default=None,
-              help="Set apparent magnitude cut for the catalog"),
-        Option("--mpi", default='False',
-            help="Enable multiprocessing over the H0 vector (nthreads=4 by default)"),
-        Option("--nthreads", default=4,
-            help="number of threads to use for mpi"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -181,9 +175,6 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
-    
-    mpi = str2bool(opts.mpi)
-    nthreads = int(opts.nthreads)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -219,11 +210,6 @@ else:
         else:
             allsky = True
             radeclims = None
-            
-        if opts.magnitude_cut is not None:
-            magnitude_cut = float(opts.magnitude_cut)
-            print("Applying apparent magnitude cut of " + str(magnitude_cut))
-            catalog = catalog.apparentMagnitudeCut(magnitude_cut)
 
         counterpart = None
 
@@ -266,15 +252,8 @@ else:
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda)
-    if mpi is True:
-        def multiprocessLikelihood(H0):
-            return me.likelihood(H0,complete=completion,counterpart_case='direct')
 
-        pool = mp.Pool(processes=nthreads)
-        likelihood = pool.map(multiprocessLikelihood, H0)
-    else:
-        likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
-
+    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
 
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
