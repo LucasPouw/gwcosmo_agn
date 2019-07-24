@@ -78,6 +78,8 @@ parser = OptionParser(
             help="Assume a linear cosmology."),
         Option("--basic_pdet", default='False',
             help="Allow for masses to be redshifted in Pdet using False."),
+        Option("--counterpart", default=None,
+            help="Provide EM counterpart pickle catalog for counterpart case, else provide individual arguments."),
         Option("--counterpart_ra", default=None,
             help="Right ascension of counterpart"),
         Option("--counterpart_dec", default=None,
@@ -154,14 +156,17 @@ else:
     if opts.method == 'counterpart':
         galaxy_weighting = False
         completion = True
-        if opts.counterpart_ra is not None:
-            counterpart_ra = float(opts.counterpart_ra)
-        if opts.counterpart_dec is not None:
-            counterpart_dec = float(opts.counterpart_dec)
-        if opts.counterpart_z is not None:
-            counterpart_z = float(opts.counterpart_z)
-        if opts.counterpart_v is not None:
-            counterpart_v = float(opts.counterpart_v)
+        if (opts.counterpart is not None and opts.counterpart[-2:] == '.p'):
+            counterpart = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=opts.counterpart)
+        else:
+            if opts.counterpart_ra is not None:
+                counterpart_ra = float(opts.counterpart_ra)
+            if opts.counterpart_dec is not None:
+                counterpart_dec = float(opts.counterpart_dec)
+            if opts.counterpart_z is not None:
+                counterpart_z = float(opts.counterpart_z)
+            if opts.counterpart_v is not None:
+                counterpart_v = float(opts.counterpart_v)
 
     # Set command line arguments
     min_H0 = float(opts.min_H0)
@@ -187,7 +192,6 @@ else:
         print("Loading posterior samples.")
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples(posterior_samples)
-        distanceAnsat = False
         
         if opts.skymap is not None:
             print("Loading 2D skymap.")
@@ -213,7 +217,7 @@ else:
 
         counterpart = None
 
-    if opts.method == 'counterpart':
+    if (opts.method == "counterpart" and opts.counterpart is None):
         catalog = None
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
         if (opts.counterpart_ra is None or
@@ -234,7 +238,11 @@ else:
                 counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
             allsky = True
             radeclims = None
-    
+    elif (opts.method == "counterpart" and opts.counterpart is not None):
+        catalog = None
+        allsky = True
+        radeclims = None
+
     if mass_distribution == 'BBH-powerlaw':
         pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
         if os.path.isfile(pdet_path) is True:
