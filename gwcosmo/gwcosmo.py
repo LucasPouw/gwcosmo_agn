@@ -200,7 +200,7 @@ class gwcosmoLikelihood(object):
         prob_sorted = np.sort(self.skymap.prob)[::-1]
         prob_sorted_cum = np.cumsum(prob_sorted)
         # find index of array which bounds the 99.9% confidence interval
-        idx = np.searchsorted(prob_sorted_cum, 0.9999)
+        idx = np.searchsorted(prob_sorted_cum, 0.999)
         minskypdf = prob_sorted[idx]*self.skymap.npix
 
         count = 0
@@ -240,7 +240,7 @@ class gwcosmoLikelihood(object):
                         continue
                 else:
                     continue
-            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count/10.)))
+            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count)))
 
             if self.whole_cat == True:
                 numnorm = num/nGal
