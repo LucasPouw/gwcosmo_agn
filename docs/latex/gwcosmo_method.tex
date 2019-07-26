@@ -213,7 +213,12 @@ Expanding the denominator, $p(D_{\text{GW}}|s,G,H_0,I)$, in the same way, then s
 \end{equation}
 
 
-
+\begin{equation} \label{Eq:p(x|G,D,H0)}
+\begin{aligned}
+p(& x_{\text{GW}}|G, D_{\text{GW}}, H_0) = \dfrac{\sum^{N_\text{gal}}_{j=1} \int p(x_{\text{GW}}|z_j,\Omega_j,H_0)p(s|M(z_j,m_j,H_0)) p(z_j) dz_j}
+{\sum^{N_\text{gal}}_{j=1} \int p(D_{\text{GW}}|z_j,\Omega_j,H_0)p(s|M(z_j,m_j,H_0)) p(z_j) dz_j}\,.
+\end{aligned}
+\end{equation}
 
 
 \subsection{Probability the host galaxy is in the galaxy catalogue: \boldmath$p(G|D_{\text{GW}},H_0,I)$}
@@ -334,10 +339,10 @@ While in reality the probability of detecting a GW event varies across the sky d
 
 
 \subsection{Redshifted-masses}
-Calculating $p(D|H_0,I)$ requires integrating over many realisations of GW events, and applying a lower integration limit which corresponds to the SNR threshold ($\rho_{th}$) which all events much reach in order to be deemed detected:
+Calculating $p(D|H_0,I)$ requires integrating over all possible GW data, and applying a lower integration limit which corresponds to the SNR threshold ($\rho_{th}$) which all events much reach in order to be deemed detected:
 \begin{equation}
 \begin{aligned}
-p(D|H_0,I) = \int_{\rho>\rho_{th}}^\infty p(D|x,H_0,I)p(x|H_0,I)dx.
+p(D|H_0,I) = \int_{\rho>\rho_{th}}^\infty p(x|H_0,I)dx.
 \end{aligned}
 \end{equation}
 In order to marginalise over many GW events a monte-carlo integration is used, where parameters which affect an event's detectability (mass, inclination, polarisation, and sky location) are sampled from chosen priors, and the event's SNR is calculated for a range of redshift and $H_0$ values.
