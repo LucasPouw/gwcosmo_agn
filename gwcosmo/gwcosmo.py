@@ -88,7 +88,7 @@ class gwcosmoLikelihood(object):
 
     def __init__(self, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
-                 basic=False, uncertainty=False, rate='constant', Lambda=3.0):
+                 basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999):
         self.pdet = pdet
         self.event_type = pdet.mass_distribution
         self.psd = pdet.psd
@@ -100,6 +100,7 @@ class gwcosmoLikelihood(object):
         self.basic = basic
         self.uncertainty = uncertainty
         self.skymap = skymap
+        self.area = area
 
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
@@ -199,8 +200,8 @@ class gwcosmoLikelihood(object):
 
         prob_sorted = np.sort(self.skymap.prob)[::-1]
         prob_sorted_cum = np.cumsum(prob_sorted)
-        # find index of array which bounds the 99.9% confidence interval
-        idx = np.searchsorted(prob_sorted_cum, 0.999)
+        # find index of array which bounds the self.area confidence interval
+        idx = np.searchsorted(prob_sorted_cum, self.area)
         minskypdf = prob_sorted[idx]*self.skymap.npix
 
         count = 0
@@ -240,7 +241,7 @@ class gwcosmoLikelihood(object):
                         continue
                 else:
                     continue
-            print("{} galaxies from this catalog lie in the event's 99.9% confidence interval".format(int(count)))
+            print("{} galaxies from this catalog lie in the event's 90% confidence interval".format(int(count)))
 
             if self.whole_cat == True:
                 numnorm = num/nGal
