@@ -109,6 +109,8 @@ class gwcosmoLikelihood(object):
         else:
             if galaxy_catalog is not None:
                 self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
+                self.mth = galaxy_catalog.mth()
+
             self.EM_counterpart = None
             if EM_counterpart is not None:
                 self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
@@ -129,7 +131,6 @@ class gwcosmoLikelihood(object):
 
         self.temp = splrep(dl_array,vals)
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
-        self.mth = galaxy_catalog.mth()
         if self.whole_cat == False:
             if all(radec_lim) == None:
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
