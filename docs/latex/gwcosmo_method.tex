@@ -168,7 +168,7 @@ p(x_{\text{GW}}|G,D_{\text{GW}},s,H_0,I) &= \dfrac{p(x_{\text{GW}}|G,s,H_0,I)}{p
 \end{aligned}
 \end{equation}
 
-Focussing on the numerator, and marginalising over redshift, sky location, absolute magnitude and apparent magnitude:
+Focusing on the numerator, and marginalising over redshift, sky location, absolute magnitude and apparent magnitude:
 \begin{equation}
 \begin{aligned}
 p(x_{\text{GW}}|G,s,H_0,I) &= \iiiint p(x_{\text{GW}}|z,\Omega,M,m,G,s,H_0,I) p(z,\Omega,M,m|G,s,H_0,I) dz d\Omega dM dm
@@ -205,18 +205,18 @@ p(x_{\text{GW}}|G,s,H_0,I) &= \dfrac{1}{p(s|G,H_0,I)} \dfrac{1}{N}\sum^N_{i=1} p
 \end{aligned}
 \end{equation}
 
-Expanding the denominator, $p(D_{\text{GW}}|s,G,H_0,I)$, in the same way, then substituting both back into Eq \ref{Eq:x_GDH0}, the factors out front cancel, and the final expression becomes:
+Expanding the denominator, $p(D_{\text{GW}}|s,G,H_0,I)$, in the same way, then substituting both back into Eq \ref{Eq:x_GDH0}, the factors out front cancel, and the expression becomes:
 \begin{equation}
 \begin{aligned}
 \dfrac{p(x_{\text{GW}}|G,s,H_0,I)}{p(D_{\text{GW}}|G,s,H_0,I)} &= \dfrac{ \sum^N_{i=1} p(x_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}{\sum^N_{i=1} p(D_{\text{GW}}|z_i,\Omega_i,s,H_0,I) p(s|z_i,I)p(s|M(z_i,m_i,H_0),I)}
-\end{aligned}
+\end{aligned}.
 \end{equation}
 
-
+If we consider the (realistic) case in which galaxies are point sources in $\Omega$, but have some associated $z$ error, we can take this uncertainty into account by integrating over the redshift distribution of each galaxy, $p(z_i)$:
 \begin{equation} \label{Eq:p(x|G,D,H0)}
 \begin{aligned}
-p(& x_{\text{GW}}|G, D_{\text{GW}}, H_0) = \dfrac{\sum^{N_\text{gal}}_{j=1} \int p(x_{\text{GW}}|z_j,\Omega_j,H_0)p(s|M(z_j,m_j,H_0)) p(z_j) dz_j}
-{\sum^{N_\text{gal}}_{j=1} \int p(D_{\text{GW}}|z_j,\Omega_j,H_0)p(s|M(z_j,m_j,H_0)) p(z_j) dz_j}\,.
+p(& x_{\text{GW}}|G, D_{\text{GW}}, H_0) = \dfrac{\sum^{N_\text{gal}}_{i=1} \int p(x_{\text{GW}}|z_i,\Omega_i,H_0)p(s|M(z_i,m_i,H_0)) p(z_i) dz_i}
+{\sum^{N_\text{gal}}_{i=1} \int p(D_{\text{GW}}|z_i,\Omega_i,H_0)p(s|M(z_i,m_i,H_0)) p(z_i) dz_i}\,.
 \end{aligned}
 \end{equation}
 
