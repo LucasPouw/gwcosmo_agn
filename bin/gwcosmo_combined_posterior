@@ -24,6 +24,7 @@ sns.set_palette('colorblind')
 
 import numpy as np
 import gwcosmo
+from gwcosmo.utilities.posterior_utilities import confidence_interval
 
 # Command line options
 parser = OptionParser(
@@ -33,9 +34,7 @@ parser = OptionParser(
         Option("-d", "--dir", metavar="DIR", default=None,
             help="DIR: Directory to .npz gwcosmo_single_posterior files to be combined. (required)"),
         Option("-b", "--outputfile", metavar="OUTPUTFILE", default='Posterior_mdc',
-            help="OUTPUTFILE: Name of output file"),
-        Option("-m", "--mdc", metavar="MDC", default='False',
-            help="MDC: Plotting MDC?")
+            help="OUTPUTFILE: Name of output file")
     ])
 opts, args = parser.parse_args()
 
@@ -66,7 +65,6 @@ for path, subdirs, files in os.walk(dir):
             
 
 outputfile = str(opts.outputfile)
-plotmdc = str2bool(opts.mdc)
 
 "Compute combined P(H0)"
 
@@ -99,84 +97,50 @@ posterior_log = prior_log*likelihood_comb
 posterior_log_norm = posterior_log/np.sum(posterior_log*dH0)
 prior_log_norm = prior_log/np.sum(prior_log*dH0)
 
-def percentile_from_fit(p,y,x):
-    from scipy.integrate import cumtrapz
-    from scipy.interpolate import UnivariateSpline
-    sp = UnivariateSpline(cumtrapz(y,x),x[1:],s=0.0)
-    return sp(p)
+print("Uniform Prior")
+confidence_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683,verbose=True)
+MAP_uniform = confidence_uniform.map
+a_uniform = confidence_uniform.lower_level
+b_uniform = confidence_uniform.upper_level
 
-if plotmdc == True:
-    ymin = 0
-    ymax = 1.1*max(posterior_log_norm)
-    c=sns.color_palette('colorblind')
-    plt.figure()
-    plt.axvline(70,ls='--', color='k',alpha=0.8, label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-    plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)',c=c[0])
-    plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
-    plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
-    plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
-    for n in range(Nevents):
-        plt.plot(H0,likelihoods[n], linewidth = 3.0, alpha = 0.3)
-    plt.xlim(min_H0,max_H0)
-    plt.ylim(ymin,ymax)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
-    plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
-    plt.legend(loc='upper right',fontsize=10)
-    plt.tight_layout()
-    plt.savefig('./'+outputfile+'.png',dpi=800)
+print("Log Prior")
+confidence_log = confidence_interval(posterior_log_norm,H0,level=0.683)
+MAP_log = confidence_log.map
+a_log = confidence_log.lower_level
+b_log = confidence_log.upper_level
 
-    np.savez('./'+outputfile+'.npz',[H0,likelihood_comb,posterior_uniform_norm,posterior_log_norm])
-else:
-    idx = np.where(H0>54)[0]
-    lowc_uniform = percentile_from_fit(0.05,posterior_uniform_norm[idx],H0[idx])
-    highc_uniform = percentile_from_fit(0.95,posterior_uniform_norm[idx],H0[idx])
-    lowc_log = percentile_from_fit(0.05,posterior_log_norm[idx],H0[idx])
-    highc_log = percentile_from_fit(0.95,posterior_log_norm[idx],H0[idx])
+ymin = 0
+ymax = 1.1*max(posterior_log_norm)
+planck_h = 0.6774*100
+sigma_planck_h = 0.0062*100
+riess_h = 0.7324*100
+sigma_riess_h = 0.0174*100
 
-    median_uniform = H0[np.where(posterior_uniform_norm > np.median(posterior_uniform_norm))[0][0]]
-    median_log = H0[np.where(posterior_log_norm > np.median(posterior_log_norm))[0][0]]
-    sigma90_low_uniform = median_uniform - lowc_uniform
-    sigma90_high_uniform = highc_uniform - median_uniform
-    sigma90_low_log = median_log - lowc_log
-    sigma90_high_log = highc_log - median_log
+c=sns.color_palette('colorblind')
+plt.figure()
+plt.axvline(planck_h,label='Planck',color=c[4])
+plt.fill_betweenx([ymin,ymax],planck_h-2*sigma_planck_h,planck_h+2*sigma_planck_h,color=c[4],alpha=0.2)
+plt.axvline(riess_h,label='SH0ES',color=c[2])
+plt.fill_betweenx([ymin,ymax],riess_h-2*sigma_riess_h,riess_h+2*sigma_riess_h,color=c[2],alpha=0.2)
+plt.axvline(70,ls='--', color='k',alpha=0.8, label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
+plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)',c=c[0])
+plt.axvline(a_uniform,ls='--',c=c[0])
+plt.axvline(b_uniform,ls='--',c=c[0])
+plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
+plt.axvline(a_log,ls='--',c=c[1])
+plt.axvline(b_log,ls='--',c=c[1])
+plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
+plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
+for n in range(Nevents):
+    plt.plot(H0,likelihoods[n], linewidth = 3.0, alpha = 0.3)
+plt.xlim(min_H0,max_H0)
+plt.ylim(ymin,ymax)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
+plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
+plt.legend(loc='upper right',fontsize=10)
+plt.tight_layout()
+plt.savefig('./'+outputfile+'.png',dpi=800)
 
-    ymin = 0
-    ymax = 1.1*max(posterior_log_norm)
-    planck_h = 0.6774*100
-    sigma_planck_h = 0.0062*100
-    riess_h = 0.7324*100
-    sigma_riess_h = 0.0174*100
-
-    c=sns.color_palette('colorblind')
-    plt.figure()
-    plt.axvline(planck_h,label='Planck',color=c[4])
-    plt.fill_betweenx([ymin,ymax],planck_h-2*sigma_planck_h,planck_h+2*sigma_planck_h,color=c[4],alpha=0.2)
-    plt.axvline(riess_h,label='SH0ES',color=c[2])
-    plt.fill_betweenx([ymin,ymax],riess_h-2*sigma_riess_h,riess_h+2*sigma_riess_h,color=c[2],alpha=0.2)
-    plt.axvline(70,ls='--', color='k',alpha=0.8, label = r'$H_0 = 70$ (km s$^{-1}$ Mpc$^{-1}$)')
-    plt.plot(H0,posterior_uniform_norm, linewidth = 3.0, label='Posterior (Uniform)',c=c[0])
-    plt.axvline(lowc_uniform,ls='--',c=c[0])
-    plt.axvline(highc_uniform,ls='--',c=c[0])
-    plt.plot(H0,posterior_log_norm,linewidth = 3.0, label='Posterior (Log)',c=c[1])
-    plt.axvline(lowc_log,ls='--',c=c[1])
-    plt.axvline(highc_log,ls='--',c=c[1])
-    plt.plot(H0,prior_uniform_norm,ls=':', linewidth = 3.0, label='Prior (Uniform)',c=c[0],alpha=0.6)
-    plt.plot(H0,prior_log_norm,ls=':', linewidth = 3.0, label='Prior (Log)',c=c[1],alpha=0.6)
-    for n in range(Nevents):
-        plt.plot(H0,likelihoods[n], linewidth = 3.0, alpha = 0.3)
-    plt.xlim(min_H0,max_H0)
-    plt.ylim(ymin,ymax)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xlabel(r'$H_0$ (km s$^{-1}$ Mpc$^{-1}$)',fontsize=16)
-    plt.ylabel(r'$p(H_0)$ (km$^{-1}$ s Mpc)', fontsize=16)
-    plt.legend(loc='upper right',fontsize=10)
-    plt.tight_layout()
-    plt.savefig('./'+outputfile+'.png',dpi=800)
-
-    np.savez('./'+outputfile+'.npz',[H0,likelihood_comb,posterior_uniform_norm,posterior_log_norm])
-
-    print('median and 90 percent credidble interval for flat H0 prior: %f + %f - %f' %(median_uniform, sigma90_high_uniform, sigma90_low_uniform) )
-    print('median and 90 percent credidble interval for log H0 prior: %f + %f - %f' %(median_log, sigma90_high_log, sigma90_low_log) )  
+np.savez('./'+outputfile+'.npz',[H0,likelihood_comb,posterior_uniform_norm,posterior_log_norm])

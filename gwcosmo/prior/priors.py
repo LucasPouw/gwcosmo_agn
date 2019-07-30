@@ -9,13 +9,14 @@ import sys
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-from scipy.interpolate import splev,splrep
+from scipy.interpolate import splev, splrep
 from astropy import constants as const
 from astropy import units as u
 
 import gwcosmo
 
-def pH0(H0,prior='log'):
+
+def pH0(H0, prior='log'):
     """
     Returns p(H0)
     The prior probability of H0
@@ -38,11 +39,13 @@ def pH0(H0,prior='log'):
         return np.ones(len(H0))
     if prior == 'log':
         return 1./H0
-    
-def BBH_powerlaw_distribution(N,mmin=5.,mmax=40.,alpha=-1):
+
+
+def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
     """
     Returns p(m1,m2)
-    The prior on the mass distribution that follows a power law for BBHs (See Rates paper)
+    The prior on the mass distribution that follows a power
+    law for BBHs.
 
     Parameters
     ----------
@@ -53,20 +56,25 @@ def BBH_powerlaw_distribution(N,mmin=5.,mmax=40.,alpha=-1):
     mmax : float
         maximum mass
     alpha : float
-        slope of the power law
+        slope of the power law p(m) = m^-\alpha where alpha > 0
 
     Returns
     -------
     float or array_like
         m1, m2
     """
+    alpha_ = -1*alpha
     u = np.random.rand(N)
-    if alpha != -1:
-        m1 = (u*(mmax**(alpha+1)-mmin**(alpha+1))+mmin**(alpha+1))**(1.0/(alpha+1))
+    if alpha_ != -1:
+        m1 = (u*(mmax**(alpha_+1)-mmin**(alpha_+1)) +
+              mmin**(alpha_+1))**(1.0/(alpha_+1))
+        print('Powerlaw mass distribution with alpha = ' + str(alpha))
     else:
         m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
-    m2 = np.random.uniform(low=5.0,high=m1)
+        print('Flat in log mass distribution')
+    m2 = np.random.uniform(low=5.0, high=m1)
     return m1, m2
+
 
 def BNS_gaussian_distribution(N, mean=1.35, sigma=0.15):
     """
@@ -89,9 +97,9 @@ def BNS_gaussian_distribution(N, mean=1.35, sigma=0.15):
     """
     mass1 = []
     mass2 = []
-    while len(mass1)<N:
-        m1 = np.random.normal(mean,sigma)
-        m2 = np.random.normal(mean,sigma)
+    while len(mass1) < N:
+        m1 = np.random.normal(mean, sigma)
+        m2 = np.random.normal(mean, sigma)
         if m2 > m1:
             m3 = m2
             m2 = m1
@@ -101,6 +109,7 @@ def BNS_gaussian_distribution(N, mean=1.35, sigma=0.15):
     mass1 = np.array(mass1)
     mass2 = np.array(mass2)
     return mass1, mass2
+
 
 def BNS_uniform_distribution(N, mmin=1., mmax=3.):
     """
@@ -123,9 +132,9 @@ def BNS_uniform_distribution(N, mmin=1., mmax=3.):
     """
     mass1 = []
     mass2 = []
-    while len(mass1)<N:
-        m1 = np.random.uniform(mmin,mmax)
-        m2 = np.random.uniform(mmin,mmax)
+    while len(mass1) < N:
+        m1 = np.random.uniform(mmin, mmax)
+        m2 = np.random.uniform(mmin, mmax)
         if m2 > m1:
             m3 = m2
             m2 = m1

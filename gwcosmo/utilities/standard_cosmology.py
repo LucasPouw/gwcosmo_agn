@@ -1,5 +1,6 @@
 """
-Module for basic late-time cosmology calculations. Currently implements only flat universe.
+Module for basic late-time cosmology calculations.
+Currently implements only a flat universe.
 
 Constants
 ---------
@@ -15,9 +16,10 @@ from scipy import integrate
 from scipy.interpolate import splrep, splev
 import lal
 
-c = lal.C_SI/1000. #2.99792458e+05 # in km/s
-Omega_m = 0.3 # 0.3175 # PLANCK best fit
-H0 = 70 # 67.11 # in km/s/Mpc
+c = lal.C_SI/1000.  # 2.99792458e+05 # in km/s
+Omega_m = 0.3  # 0.3175 # PLANCK best fit
+H0 = 70  # 67.11 # in km/s/Mpc
+
 
 def h(z, Omega_m=Omega_m):
     """
@@ -33,11 +35,13 @@ def h(z, Omega_m=Omega_m):
     dimensionless h(z) = 1/sqrt(Omega_m*(1+z)^3 + Omega_Lambda)
     """
     Omega_Lambda = (1-Omega_m)
-    return np.sqrt(Omega_m*(1+z)**3 + Omega_Lambda) 
+    return np.sqrt(Omega_m*(1+z)**3 + Omega_Lambda)
+
 
 def dcH0overc(z, Omega_m=Omega_m):
     """
-    Returns dimensionless combination dc*H0/c given redshift and matter fraction.
+    Returns dimensionless combination dc*H0/c
+    given redshift and matter fraction.
 
     Parameters
     ----------
@@ -50,11 +54,13 @@ def dcH0overc(z, Omega_m=Omega_m):
     """
     Omega_Lambda = (1-Omega_m)
     integrand = lambda zz: 1./np.sqrt(Omega_m*(1+zz)**3 + Omega_Lambda)
-    return integrate.quad(integrand, 0, z)[0] # in km/s
+    return integrate.quad(integrand, 0, z)[0]  # in km/s
+
 
 def dLH0overc(z, Omega_m=Omega_m):
     """
-    Returns dimensionless combination dL*H0/c given redshift and matter fraction.
+    Returns dimensionless combination dL*H0/c
+    given redshift and matter fraction.
 
     Parameters
     ----------
@@ -66,6 +72,7 @@ def dLH0overc(z, Omega_m=Omega_m):
     dimensionless combination dL*H0/c = (1+z) * \int_0^z dz'/h(z')
     """
     return (1+z)*dcH0overc(z, Omega_m)
+
 
 def volume_z(z, Omega_m=Omega_m):
     """
@@ -82,24 +89,27 @@ def volume_z(z, Omega_m=Omega_m):
     """
     return dcH0overc(z, Omega_m)**2/h(z, Omega_m)
 
+
 def volume_time_z(z, Omega_m=Omega_m):
     """
     Returns the cosmological volume time element at a given redshift.
-    
+
     Parameters
     ----------
     z : redshift
     Omega_m : matter fraction
-    
+
     Returns
     -------
     volume time element (\int_0^z dz'/h(z'))^2 / (1+z)h(z)
     """
-    return volume_z(z,Omega_m=Omega_m)/(1.0+z)
+    return volume_z(z, Omega_m=Omega_m)/(1.0+z)
+
 
 def prefactor_volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     """
-    Returns the prefactor modifying dL^2*ddL for the cosmological volume element.
+    Returns the prefactor modifying dL^2*ddL
+    for the cosmological volume element.
 
     Parameters
     ----------
@@ -115,6 +125,7 @@ def prefactor_volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     if z is None:
         z = redshift(dHoc, Omega_m, tolerance_z)
     return (1+z)**(-3.) * (1 - 1. / (1 + (1+z)**2/(dHoc*h(z, Omega_m))))
+
 
 def volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     """
@@ -133,9 +144,11 @@ def volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     """
     return dHoc**2*prefactor_volume_dHoc(dHoc, Omega_m, tolerance_z, z=z)
 
+
 def redshift(dHoc, Omega_m=Omega_m, tolerance_z=1e-06):
     """
-    Returns redshift given dimensionless combination dL*H0/c and matter fraction.
+    Returns redshift given dimensionless combination dL*H0/c
+    and matter fraction.
 
     Parameters
     ----------
@@ -150,16 +163,17 @@ def redshift(dHoc, Omega_m=Omega_m, tolerance_z=1e-06):
     min_z = 0.
     max_z = 1.
     error_z = max_z-min_z
-    while error_z>tolerance_z:
-        if dLH0overc(max_z,Omega_m)<dHoc:
+    while error_z > tolerance_z:
+        if dLH0overc(max_z, Omega_m) < dHoc:
             min_z = max_z
             max_z *= 2
-        elif dLH0overc((max_z+min_z)/2.,Omega_m)<dHoc:
+        elif dLH0overc((max_z+min_z)/2., Omega_m) < dHoc:
             min_z = (max_z+min_z)/2.
         else:
             max_z = (max_z+min_z)/2.
         error_z = max_z-min_z
     return (max_z+min_z)/2.
+
 
 # Distance modulus given luminosity distance
 def mu(dL):
@@ -174,32 +188,38 @@ def mu(dL):
     -------
     distance modulus, mu = 5*np.log10(dL)+25
     """
-    return 5*np.log10(dL)+25 # dL has to be in Mpc
+    return 5*np.log10(dL)+25  # dL has to be in Mpc
 
-def dl_mM(m,M):
+
+def dl_mM(m, M):
     """
-    returns luminosity distance in Mpc given apparent magnitude and absolute magnitude
+    returns luminosity distance in Mpc given
+    apparent magnitude and absolute magnitude
     """
     return 10**(0.2*(m-M-25))
 
+
 def L_M(M):
     """
-    Returns luminosity when given an absolute magnitude 
+    Returns luminosity when given an absolute magnitude
     """
-    # TODO: double check use of L0=3.0128e28 
+    # TODO: double check use of L0=3.0128e28
     return 3.0128e28*10**(-0.4*M)
-    
-def M_mdl(m,dl):
+
+
+def M_mdl(m, dl):
     """
-    Returns a source's absolute magnitude given apparent magnitude and luminosity distance
+    Returns a source's absolute magnitude given
+    apparent magnitude and luminosity distance
     """
     return m - mu(dl)
-    
-def L_mdl(m,dl):
+
+
+def L_mdl(m, dl):
     """
     Returns luminosity when given apparent magnitude and luminosity distance
     """
-    return L_M(M_mdl(m,dl))
+    return L_M(M_mdl(m, dl))
 
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
@@ -211,23 +231,25 @@ def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):
     ----------
     z : redshift
     H0 : Hubble parameter in km/s/Mpc (default=70.)
-    Omega_m : matter fraction (default=0.3) 
-    linear : assumes local cosmology and suppresses non-linear effects (default=False)
-    
+    Omega_m : matter fraction (default=0.3)
+    linear : assumes local cosmology and suppresses
+    non-linear effects (default=False)
+
     Returns
     -------
     luminosity distance, dl (in Mpc)
     """
     if linear:
         # Local cosmology
-        if z==0:
+        if z == 0:
             return 10**(-30)
         else:
             return z*c/H0
     else:
         # Standard cosmology
         return dLH0overc(z, Omega_m=Omega_m)*c/H0
-    
+
+
 def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
     """
     Returns redshift given luminosity distance and cosmological parameters
@@ -237,8 +259,9 @@ def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
     dl : luminosity distance in Mpc
     H0 : Hubble parameter in km/s/Mpc (default=70.)
     Omega_m : matter fraction (default=0.3)
-    linear : assumes local cosmology and suppresses non-linear effects (default=False)
-    
+    linear : assumes local cosmology and suppresses
+    non-linear effects (default=False)
+
     Returns
     -------
     redshift, z
@@ -249,58 +272,62 @@ def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
     else:
         # Standard cosmology
         return redshift(dl*H0/c, Omega_m=Omega_m)
-        
+
 
 class redshift_prior(object):
     """
     p(z|Omega_m)
     """
-    def __init__(self,Omega_m=0.3,zmax=10.0,linear=False):
+    def __init__(self, Omega_m=0.3, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
-        z_array = np.linspace(0.0,self.zmax,5000)
-        lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m) for z in z_array])
-        self.interp = splrep(z_array,lookup)
+        z_array = np.linspace(0.0, self.zmax, 5000)
+        lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m)
+                          for z in z_array])
+        self.interp = splrep(z_array, lookup)
 
-    def p_z(self,z):
-        return splev(z,self.interp,ext=3)
-    
-    def __call__(self,z):
+    def p_z(self, z):
+        return splev(z, self.interp, ext=3)
+
+    def __call__(self, z):
         if self.linear:
             return z*z
         else:
             return self.p_z(z)
-        
-    
+
+
 class fast_cosmology(object):
     """
-    Precompute things which rely on choice of Omega_m in order to speed things up
-    
+    Precompute things which rely on choice of Omega_m
+    in order to speed things up
+
     Parameters
     ----------
     Omega_m : matter fraction (default=0.3)
     zmax : upper limit for redshift (default=4.0)
-    linear : assumes local cosmology and suppresses non-linear effects (default=False)
+    linear : assumes local cosmology and suppresses
+    non-linear effects (default=False)
 
     """
-    def __init__(self,Omega_m=0.3,zmax=10.0,linear=False):
+    def __init__(self, Omega_m=0.3, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
-        z_array = np.linspace(0.0,self.zmax,5000)
-        lookup = np.array([dLH0overc(z, Omega_m=self.Omega_m) for z in z_array])
-        self.interp = splrep(z_array,lookup)
-        
+        z_array = np.linspace(0.0, self.zmax, 5000)
+        lookup = np.array([dLH0overc(z, Omega_m=self.Omega_m)
+                          for z in z_array])
+        self.interp = splrep(z_array, lookup)
+
     def dl_zH0(self, z, H0):
         """
         Returns luminosity distance given distance and cosmological parameters
-    
+
         Parameters
         ----------
         z : redshift
         H0 : Hubble parameter in km/s/Mpc
-        
+
         Returns
         -------
         luminosity distance, dl (in Mpc)
@@ -310,4 +337,4 @@ class fast_cosmology(object):
             return z*c/H0
         else:
             # Standard cosmology
-            return splev(z,self.interp,ext=3)*c/H0 
+            return splev(z, self.interp, ext=3)*c/H0
