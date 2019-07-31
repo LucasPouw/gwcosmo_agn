@@ -89,7 +89,7 @@ class gwcosmoLikelihood(object):
     def __init__(self, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
                  basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999,
-                 Mstar_obs=-20.457,alpha=-1.07,Mmin_obs=-22.96,Mmax_obs=-12.96, mth=None):
+                 Mstar_obs=-20.457, alpha=-1.07, Mmin_obs=-22.96, Mmax_obs=-12.96, mth=None):
         self.pdet = pdet
         self.event_type = pdet.mass_distribution
         self.psd = pdet.psd
@@ -110,12 +110,19 @@ class gwcosmoLikelihood(object):
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
             self.EM_counterpart = None
+            if mth is not None:
+                self.mth = mth
+            else:
+                self.mth = galaxy_catalog.mth()
             if EM_counterpart is not None:
                 self.EM_counterpart = EM_counterpart
         else:
             if galaxy_catalog is not None:
                 self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
-                self.mth = galaxy_catalog.mth()
+                if mth is not None:
+                    self.mth = mth
+                else:
+                    self.mth = galaxy_catalog.mth()
 
             self.EM_counterpart = None
             if EM_counterpart is not None:
@@ -394,7 +401,7 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
 
             def Inum(z,M):
-                temp = px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
                     return temp*L_M(M)
