@@ -104,6 +104,7 @@ class gwcosmoLikelihood(object):
 
         if self.uncertainty == False:
             self.galaxy_catalog = galaxy_catalog
+            self.mth = galaxy_catalog.mth()
             self.EM_counterpart = None
             if EM_counterpart is not None:
                 self.EM_counterpart = EM_counterpart
