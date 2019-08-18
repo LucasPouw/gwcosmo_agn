@@ -78,6 +78,8 @@ parser = OptionParser(
             help="Assume a linear cosmology."),
         Option("--basic_pdet", default='False',
             help="Allow for masses to be redshifted in Pdet using False."),
+        Option("--counterpart", default=None,
+            help="Provide EM counterpart pickle catalog for counterpart case, else provide individual arguments."),
         Option("--counterpart_ra", default=None,
             help="Right ascension of counterpart"),
         Option("--counterpart_dec", default=None,
@@ -90,12 +92,6 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
-        Option("--magnitude_cut", default=None,
-              help="Set apparent magnitude cut for the catalog"),
-        Option("--mpi", default='False',
-            help="Enable multiprocessing over the H0 vector (nthreads=4 by default)"),
-        Option("--nthreads", default=4,
-            help="number of threads to use for mpi"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -160,14 +156,17 @@ else:
     if opts.method == 'counterpart':
         galaxy_weighting = False
         completion = True
-        if opts.counterpart_ra is not None:
-            counterpart_ra = float(opts.counterpart_ra)
-        if opts.counterpart_dec is not None:
-            counterpart_dec = float(opts.counterpart_dec)
-        if opts.counterpart_z is not None:
-            counterpart_z = float(opts.counterpart_z)
-        if opts.counterpart_v is not None:
-            counterpart_v = float(opts.counterpart_v)
+        if (opts.counterpart is not None and opts.counterpart[-2:] == '.p'):
+            counterpart = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=opts.counterpart)
+        else:
+            if opts.counterpart_ra is not None:
+                counterpart_ra = float(opts.counterpart_ra)
+            if opts.counterpart_dec is not None:
+                counterpart_dec = float(opts.counterpart_dec)
+            if opts.counterpart_z is not None:
+                counterpart_z = float(opts.counterpart_z)
+            if opts.counterpart_v is not None:
+                counterpart_v = float(opts.counterpart_v)
 
     # Set command line arguments
     min_H0 = float(opts.min_H0)
@@ -181,9 +180,6 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
-    
-    mpi = str2bool(opts.mpi)
-    nthreads = int(opts.nthreads)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -196,7 +192,6 @@ else:
         print("Loading posterior samples.")
         samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
         samples.load_posterior_samples(posterior_samples)
-        distanceAnsat = False
         
         if opts.skymap is not None:
             print("Loading 2D skymap.")
@@ -219,15 +214,10 @@ else:
         else:
             allsky = True
             radeclims = None
-            
-        if opts.magnitude_cut is not None:
-            magnitude_cut = float(opts.magnitude_cut)
-            print("Applying apparent magnitude cut of " + str(magnitude_cut))
-            catalog = catalog.apparentMagnitudeCut(magnitude_cut)
 
         counterpart = None
 
-    if opts.method == 'counterpart':
+    if (opts.method == "counterpart" and opts.counterpart is None):
         catalog = None
         counterpart = gwcosmo.prior.catalog.galaxyCatalog()
         if (opts.counterpart_ra is None or
@@ -248,7 +238,11 @@ else:
                 counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
             allsky = True
             radeclims = None
-    
+    elif (opts.method == "counterpart" and opts.counterpart is not None):
+        catalog = None
+        allsky = True
+        radeclims = None
+
     if mass_distribution == 'BBH-powerlaw':
         pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
         if os.path.isfile(pdet_path) is True:
@@ -266,15 +260,8 @@ else:
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda)
-    if mpi is True:
-        def multiprocessLikelihood(H0):
-            return me.likelihood(H0,complete=completion,counterpart_case='direct')
 
-        pool = mp.Pool(processes=nthreads)
-        likelihood = pool.map(multiprocessLikelihood, H0)
-    else:
-        likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
-
+    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
 
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
