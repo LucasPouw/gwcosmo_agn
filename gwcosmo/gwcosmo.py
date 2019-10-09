@@ -626,14 +626,74 @@ class gwcosmoLikelihood(object):
         """
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        N=0
         
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
-            if self.skymap.skyprob(gal.ra, gal.dec) != 0:
+            tempsky = self.skymap.skyprob(gal.ra, gal.dec)*self.skymap.npix
+            if tempsky != 0:
                 N += 1
+                if self.weighted:
+                    weight = L_mdl(gal.m, self.cosmo.dl_zH0(gal.z, H0))
+                else:
+                    weight = 1.0
+                if gal.z == 0:
+                    tempdist = 0.0
+                else:
+                    tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z, H0))/self.cosmo.dl_zH0(gal.z, H0)**2 # remove dl^2 prior from samples
+                num += tempdist*tempsky*weight*self.ps_z(gal.z)
+                
+                if self.basic:
+                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
+                else:
+                    prob = self.pdet.pD_zH0_eval(gal.z,H0)
+                den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
+                
+        print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,nGal))
+        return num,den
         
-        return nGal, N
+    def px_DnGH0(self,H0):
+        """
+        Returns the "beyond catalog" part of the new skypatch method 
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,Gbar,H0)
+        """
+        distnum = np.zeros(len(H0))
+        distden = np.zeros(len(H0))
+
+        for i in range(len(H0)):
         
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
+            
+            def Inum(z,M):
+                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+            distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            
+            def Iden(z,M):
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+            distden[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]           
+            
+        skynum = 1.0
+        num = distnum*skynum
+        a = len(np.asarray(np.where(skymap.prob!=0)).flatten()) # find number of pixels with any GW event support
+        skyden = a/skymap.npix
+        den = distden*skyden
         
+        return num,den
+
         
         
