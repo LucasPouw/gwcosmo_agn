@@ -616,3 +616,24 @@ class gwcosmoLikelihood(object):
 
             
         return likelihood
+
+
+    def px_DGH0(self,H0):
+        """
+        Returns the "in catalog" part of the new skypatch method 
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,G,H0)
+        """
+        nGal = self.galaxy_catalog.nGal()
+        num = np.zeros(len(H0))
+        
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            if self.skymap.skyprob(gal.ra, gal.dec) != 0:
+                N += 1
+        
+        return nGal, N
+        
+        
+        
+        
