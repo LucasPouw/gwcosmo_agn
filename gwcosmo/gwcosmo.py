@@ -620,19 +620,42 @@ class gwcosmoLikelihood(object):
 
     def px_DGH0(self,H0):
         """
-        Returns the "in catalog" part of the new skypatch method 
+        The "in catalog" part of the new skypatch method 
         using a catalog which follows the GW event's sky patch contour
         p(x|D,G,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        arrays
+            numerator and denominator
         """
         nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
         N=0
+        max_mth=0
+        zmax=0
+        zmin=1
+        print('whole catalog apparent magnitude threshold: {}'.format(self.mth))
+        m=[]
         
         for i in range(nGal):
             gal = self.galaxy_catalog.get_galaxy(i)
             tempsky = self.skymap.skyprob(gal.ra, gal.dec)*self.skymap.npix
             if tempsky != 0:
+                m.append(gal.m)
+                if gal.m >= max_mth:
+                    max_mth = gal.m
+                if gal.z >= zmax:
+                    zmax = gal.z
+                if gal.z <= zmin:
+                    zmin = gal.z
+                                
                 N += 1
                 if self.weighted:
                     weight = L_mdl(gal.m, self.cosmo.dl_zH0(gal.z, H0))
@@ -649,15 +672,32 @@ class gwcosmoLikelihood(object):
                 else:
                     prob = self.pdet.pD_zH0_eval(gal.z,H0)
                 den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
-                
+        
+        if N >= 500:
+            m = np.array(m)
+            self.mth = np.median(m)
+        else:
+            self.mth = max_mth #update mth to reflect the area within the event's sky localisation (max m within patch)
+        
+        print('event patch apparent magnitude threshold: {}'.format(self.mth))
         print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,nGal))
         return num,den
         
     def px_DnGH0(self,H0):
         """
-        Returns the "beyond catalog" part of the new skypatch method 
+        The "beyond catalog" part of the new skypatch method 
         using a catalog which follows the GW event's sky patch contour
         p(x|D,Gbar,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        arrays
+            numerator and denominator
         """
         distnum = np.zeros(len(H0))
         distden = np.zeros(len(H0))
@@ -689,11 +729,42 @@ class gwcosmoLikelihood(object):
             
         skynum = 1.0
         num = distnum*skynum
-        a = len(np.asarray(np.where(skymap.prob!=0)).flatten()) # find number of pixels with any GW event support
-        skyden = a/skymap.npix
+        a = len(np.asarray(np.where(self.skymap.prob!=0)).flatten()) # find number of pixels with any GW event support
+        skyden = a/self.skymap.npix
         den = distden*skyden
         
         return num,den
 
         
+    def likelihood_skypatch(self,H0,complete=False):
+        """
+        The event likelihood using the new skypatch method 
+        p(x|D,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        array
+            the unnormalised likelihood
+        """        
+        pxDG_num,pxDG_den = self.px_DGH0(H0)
+        pxDG = pxDG_num/pxDG_den
+
+        if complete==True:
+            return pxDG
+
+        else:
+            pGD = self.pG_H0D(H0)
+            pnGD = self.pnG_H0D(H0)
+                
+            pxDnG_num,pxDnG_den = self.px_DnGH0(H0)
+            pxDnG = pxDnG_num/pxDnG_den
+
+            likelihood = pGD*pxDG + pnGD*pxDnG 
+
+            return likelihood
         
