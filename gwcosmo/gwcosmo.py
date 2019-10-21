@@ -541,7 +541,7 @@ class gwcosmoLikelihood(object):
         self.pDnG = den   
         return self.pDnG
 
-    def likelihood(self,H0,complete=False,counterpart_case='direct'):
+    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
@@ -587,6 +587,9 @@ class gwcosmoLikelihood(object):
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3 along a single line of sight       
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
+
+        elif new_skypatch==True:
+            likelihood = self.likelihood_skypatch(H0,complete=complete)
 
         else:
             pxG = self.px_H0G(H0)
