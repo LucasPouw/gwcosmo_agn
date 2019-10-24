@@ -621,7 +621,7 @@ class gwcosmoLikelihood(object):
         return likelihood
 
 
-    def px_DGH0(self,H0):
+    def px_DGH0_skypatch(self,H0):
         """
         The "in catalog" part of the new skypatch method 
         using a catalog which follows the GW event's sky patch contour
@@ -686,7 +686,7 @@ class gwcosmoLikelihood(object):
         print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,nGal))
         return num,den
         
-    def px_DnGH0(self,H0):
+    def px_DnGH0_skypatch(self,H0):
         """
         The "beyond catalog" part of the new skypatch method 
         using a catalog which follows the GW event's sky patch contour
@@ -754,7 +754,7 @@ class gwcosmoLikelihood(object):
         array
             the unnormalised likelihood
         """        
-        pxDG_num,pxDG_den = self.px_DGH0(H0)
+        pxDG_num,pxDG_den = self.px_DGH0_skypatch(H0)
         pxDG = pxDG_num/pxDG_den
 
         if complete==True:
@@ -764,7 +764,7 @@ class gwcosmoLikelihood(object):
             pGD = self.pG_H0D(H0)
             pnGD = self.pnG_H0D(H0)
                 
-            pxDnG_num,pxDnG_den = self.px_DnGH0(H0)
+            pxDnG_num,pxDnG_den = self.px_DnGH0_skypatch(H0)
             pxDnG = pxDnG_num/pxDnG_den
 
             likelihood = pGD*pxDG + pnGD*pxDnG 
