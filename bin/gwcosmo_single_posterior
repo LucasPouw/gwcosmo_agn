@@ -92,7 +92,7 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
-        Option("--new_skypatch", default='False',
+        Option("--new_skypatch", default='True',
             help="Use the new skypatch method which only utilises the catalog within the event's sky area"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
