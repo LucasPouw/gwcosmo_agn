@@ -194,7 +194,7 @@ else:
     rate_evolution = str(opts.rate_evolution)
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
-    alpha = float(opts.powerlaw_slope)
+    powerlaw_slope = float(opts.powerlaw_slope)
     
     if opts.mth is not None:
         mth = float(opts.mth)
@@ -265,10 +265,10 @@ else:
         radeclims = None
 
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, powerlaw_slope)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity'.format(mass_distribution, alpha, psd))
+            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity'.format(mass_distribution, powerlaw_slope, psd))
         else: 
             pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic)
     if (mass_distribution == 'BNS-gaussian' or mass_distribution == 'BNS-uniform'):
