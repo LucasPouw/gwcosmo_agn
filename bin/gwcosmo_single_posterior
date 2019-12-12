@@ -102,6 +102,8 @@ parser = OptionParser(
             help="MMAXOBS: Set value for Mmax_obs."),
         Option("--mth", metavar="MTH", default=None,
             help="MTH: Set value for MTH."),
+        Option("--area",  default='0.999',
+            help="area: Set fraction of skymap to evaluate."),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -195,6 +197,7 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     powerlaw_slope = float(opts.powerlaw_slope)
+    area = float(opts.area)
     
     if opts.mth is not None:
         mth = float(opts.mth)
@@ -281,7 +284,7 @@ else:
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,Mstar_obs=Mstar_obs,
-                                           alpha=alpha,Mmin_obs=Mmin_obs,Mmax_obs=Mmax_obs,mth=mth)
+                                           alpha=alpha,Mmin_obs=Mmin_obs,Mmax_obs=Mmax_obs,mth=mth, area=area)
 
     likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
