@@ -252,17 +252,18 @@ class gwcosmoLikelihood(object):
                     err = sigzs*random
                     zsmear = zs+err
                     # get rid of draws which make redshifts unphysical
-                    ind = np.argwhere(zsmear > 0.)
+                    ind = np.argwhere((zsmear > 0.) & (zsmear < 1.))
                     zsmear = zsmear[ind].flatten()
                     msmear = ms[ind].flatten()
-                    norm = len(zsmear)
+                    tempsky2 = tempsky[ind].flatten()
+                    norm = len(zsmear) # do we need to account for this or does it become obsolete in the limit of enough draws?
                     if self.weighted:
                         weight = L_mdl(msmear, self.cosmo.dl_zH0(zsmear, H0[i]))
                     else:
                         weight = 1.0
                     tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear, H0[i]))/self.cosmo.dl_zH0(zsmear, H0[i])**2 # remove dl^2 prior from samples
-                    numinner[n] = np.sum(tempdist*tempsky*weight*self.ps_z(zsmear))/norm
-                num[i] = np.sum(numinner)
+                    numinner[n] = np.sum(tempdist*tempsky2*weight*self.ps_z(zsmear))
+                num[i] = np.sum(numinner)/self.nsmear
 
             print("{} galaxies from this catalog lie in the event's {}% confidence interval".format(len(zs),self.area*100))
 
@@ -305,7 +306,7 @@ class gwcosmoLikelihood(object):
                 err = self.allsigmaz*random
                 zsmear = self.allz+err
                 # get rid of draws which make redshifts unphysical
-                ind = np.argwhere(zsmear > 0.)
+                ind = np.argwhere((zsmear > 0.) & (zsmear < 1.))
                 zsmear = zsmear[ind].flatten()
                 msmear = self.allm[ind].flatten()
                 norm = len(zsmear)
@@ -317,8 +318,8 @@ class gwcosmoLikelihood(object):
                     prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear,H0[i]))
                 else:
                     prob = self.pdet.pD_zH0_eval(zsmear,H0[i])
-                deninner[n] = np.sum(prob*weight*self.ps_z(zsmear))/norm
-            den[i] = np.sum(deninner)
+                deninner[n] = np.sum(prob*weight*self.ps_z(zsmear))
+            den[i] = np.sum(deninner)/self.nsmear
 
         if self.whole_cat == True:
             self.pDG = den/nGal
