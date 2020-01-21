@@ -156,8 +156,12 @@ class gwcosmoLikelihood(object):
         self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
         self.nGal = len(self.allz)
         
-        self.nsmear_fine = 1000
-        self.nsmear_coarse = 10
+        if self.uncertainty == False:
+            self.nsmear_fine = 1
+            self.nsmear_coarse = 1        
+        else:
+            self.nsmear_fine = 1000
+            self.nsmear_coarse = 10
                   
         self.pDG = None
         self.pGD = None
