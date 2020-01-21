@@ -239,13 +239,14 @@ class gwcosmoLikelihood(object):
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
                         
-            np.random.seed(1)
+            #np.random.seed(1)
             bar = progressbar.ProgressBar()
             print("Calculating p(x|H0,G)")
             # loop over galaxies
             for i in bar(range(len(zs))):
                 if ms[i] <= 12.0: #do more loops over brightest galaxies
-                    nsmear = 100
+                    nsmear = 1000
+                    print('Extra smearing a bright galaxy with m={}'.format(self.allm[i]))
                 else:
                     nsmear = 10
                 numinner=np.zeros(len(H0))
@@ -286,13 +287,14 @@ class gwcosmoLikelihood(object):
         """     
         den = np.zeros(len(H0))
            
-        np.random.seed(2)
+        #np.random.seed(2)
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,G)")
         # loop over galaxies
         for i in bar(range(len(self.allz))):
             if self.allm[i] <= 12.0: #do more loops over brightest galaxies
-                nsmear = 100
+                nsmear = 1000
+                print('Extra smearing a bright galaxy with m={}'.format(self.allm[i]))
             else:
                 nsmear = 10
             deninner=np.zeros(len(H0))
