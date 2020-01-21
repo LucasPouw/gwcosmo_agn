@@ -25,7 +25,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from scipy.integrate import quad, dblquad
-from scipy.stats import ncx2, norm
+from scipy.stats import ncx2, norm, truncnorm
 from scipy.interpolate import splev, splrep
 from astropy import constants as const
 from astropy import units as u
@@ -156,7 +156,7 @@ class gwcosmoLikelihood(object):
         self.alldec = galaxy_catalog.dec[ind].flatten()
         self.allm = galaxy_catalog.m[ind].flatten()
         self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
-        self.nGal_patch = len(self.allz)
+        self.nGal = len(self.allz)
                   
         self.pDG = None
         self.pGD = None
@@ -208,7 +208,6 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(x|H0,G)
         """
-        nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
 
         prob_sorted = np.sort(self.skymap.prob)[::-1]
@@ -240,37 +239,32 @@ class gwcosmoLikelihood(object):
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
                         
-            # loop over H0
+            np.random.seed(1)
             bar = progressbar.ProgressBar()
             print("Calculating p(x|H0,G)")
-            for i in bar(range(len(H0))):
-                numinner=np.zeros(self.nsmear)
+            # loop over galaxies
+            for i in bar(range(len(zs))):
+                if ms[i] <= 12.0: #do more loops over brightest galaxies
+                    nsmear = 100
+                else:
+                    nsmear = 10
+                numinner=np.zeros(len(H0))
+                a = (0.0 - zs[i]) / sigzs[i]
+                zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
                 # loop over random draws from galaxies
-                for n in range(self.nsmear):
-                    np.random.seed(n)
-                    random = np.random.randn(len(zs))
-                    err = sigzs*random
-                    zsmear = zs+err
-                    # get rid of draws which make redshifts unphysical
-                    ind = np.argwhere((zsmear > 0.) & (zsmear < 1.))
-                    zsmear = zsmear[ind].flatten()
-                    msmear = ms[ind].flatten()
-                    tempsky2 = tempsky[ind].flatten()
-                    norm = len(zsmear) # do we need to account for this or does it become obsolete in the limit of enough draws?
+                for n in range(nsmear):
                     if self.weighted:
-                        weight = L_mdl(msmear, self.cosmo.dl_zH0(zsmear, H0[i]))
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
                     else:
                         weight = 1.0
-                    tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear, H0[i]))/self.cosmo.dl_zH0(zsmear, H0[i])**2 # remove dl^2 prior from samples
-                    numinner[n] = np.sum(tempdist*tempsky2*weight*self.ps_z(zsmear))
-                num[i] = np.sum(numinner)/self.nsmear
+                    tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
+                    numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
+                normnuminner = numinner/nsmear
+                num += normnuminner
 
             print("{} galaxies from this catalog lie in the event's {}% confidence interval".format(len(zs),self.area*100))
-
-            if self.whole_cat == True:
-                numnorm = num/nGal
-            else:
-                numnorm = num/self.nGal_patch
+            numnorm = num/self.nGal
+            
         return numnorm
 
 
@@ -289,42 +283,37 @@ class gwcosmoLikelihood(object):
         -------
         float or array_like
             p(D|H0,G)        
-        """  
-        nGal = self.galaxy_catalog.nGal()   
-
+        """     
         den = np.zeros(len(H0))
-
-        # loop over H0
+           
+        np.random.seed(2)
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,G)")
-        for i in bar(range(len(H0))):
-            deninner=np.zeros(self.nsmear)
+        # loop over galaxies
+        for i in bar(range(len(self.allz))):
+            if self.allm[i] <= 12.0: #do more loops over brightest galaxies
+                nsmear = 100
+            else:
+                nsmear = 10
+            deninner=np.zeros(len(H0))
+            a = (0.0 - self.allz[i]) / self.allsigmaz[i]
+            zsmear = truncnorm.rvs(a, 5, loc=self.allz[i], scale=self.allsigmaz[i], size=nsmear)
             # loop over random draws from galaxies
-            for n in range(self.nsmear):
-                np.random.seed(n)
-                random = np.random.randn(len(self.allz))
-                err = self.allsigmaz*random
-                zsmear = self.allz+err
-                # get rid of draws which make redshifts unphysical
-                ind = np.argwhere((zsmear > 0.) & (zsmear < 1.))
-                zsmear = zsmear[ind].flatten()
-                msmear = self.allm[ind].flatten()
-                norm = len(zsmear)
+            for n in range(nsmear):
                 if self.weighted:
-                    weight = L_mdl(msmear, self.cosmo.dl_zH0(zsmear, H0[i])).flatten()
+                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0))
                 else:
                     weight = 1.0
                 if self.basic:
-                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear,H0[i]))
+                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
                 else:
-                    prob = self.pdet.pD_zH0_eval(zsmear,H0[i])
-                deninner[n] = np.sum(prob*weight*self.ps_z(zsmear))
-            den[i] = np.sum(deninner)/self.nsmear
+                    prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
+                deninner += prob*weight*self.ps_z(zsmear[n])
+            normdeninner = deninner/nsmear
+            den += normdeninner
 
-        if self.whole_cat == True:
-            self.pDG = den/nGal
-        else:
-            self.pDG = den/self.nGal_patch
+        self.pDG = den/self.nGal
+
         return self.pDG
 
 
