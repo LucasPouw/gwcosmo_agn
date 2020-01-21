@@ -110,9 +110,7 @@ class gwcosmoLikelihood(object):
                 self.EM_counterpart = EM_counterpart
         else:
             if galaxy_catalog is not None:
-                #self.galaxy_catalog = galaxy_catalog.redshiftUncertainty()
                 self.galaxy_catalog = galaxy_catalog
-                self.nsmear=10
                 self.mth = galaxy_catalog.mth()
 
             self.EM_counterpart = None
@@ -157,6 +155,9 @@ class gwcosmoLikelihood(object):
         self.allm = galaxy_catalog.m[ind].flatten()
         self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
         self.nGal = len(self.allz)
+        
+        self.nsmear_fine = 1000
+        self.nsmear_coarse = 10
                   
         self.pDG = None
         self.pGD = None
@@ -245,10 +246,9 @@ class gwcosmoLikelihood(object):
             # loop over galaxies
             for i in bar(range(len(zs))):
                 if ms[i] <= 12.0: #do more loops over brightest galaxies
-                    nsmear = 1000
-                    print('Extra smearing a bright galaxy with m={}'.format(self.allm[i]))
+                    nsmear = self.nsmear_fine
                 else:
-                    nsmear = 10
+                    nsmear = self.nsmear_coarse
                 numinner=np.zeros(len(H0))
                 a = (0.0 - zs[i]) / sigzs[i]
                 zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
@@ -293,10 +293,9 @@ class gwcosmoLikelihood(object):
         # loop over galaxies
         for i in bar(range(len(self.allz))):
             if self.allm[i] <= 12.0: #do more loops over brightest galaxies
-                nsmear = 1000
-                print('Extra smearing a bright galaxy with m={}'.format(self.allm[i]))
+                nsmear = self.nsmear_fine
             else:
-                nsmear = 10
+                nsmear = self.nsmear_coarse
             deninner=np.zeros(len(H0))
             a = (0.0 - self.allz[i]) / self.allsigmaz[i]
             zsmear = truncnorm.rvs(a, 5, loc=self.allz[i], scale=self.allsigmaz[i], size=nsmear)
@@ -659,53 +658,64 @@ class gwcosmoLikelihood(object):
         arrays
             numerator and denominator
         """
-        nGal = self.galaxy_catalog.nGal()
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        N=0
-        max_mth=0
-        zmax=0
-        zmin=1
         print('whole catalog apparent magnitude threshold: {}'.format(self.mth))
-        m=[]
+
+        tempsky = self.skymap.skyprob(self.allra, self.alldec)*self.skymap.npix
+        ind = np.argwhere(tempsky > 0.)
+        tempsky = tempsky[ind].flatten()
+        zs = self.allz[ind].flatten()
+        ras = self.allra[ind].flatten()
+        decs = self.alldec[ind].flatten()
+        ms = self.allm[ind].flatten()
+        sigzs = self.allsigmaz[ind].flatten()
         
-        for i in range(nGal):
-            gal = self.galaxy_catalog.get_galaxy(i)
-            tempsky = self.skymap.skyprob(gal.ra, gal.dec)*self.skymap.npix
-            if tempsky != 0:
-                m.append(gal.m)
-                if gal.m >= max_mth:
-                    max_mth = gal.m
-                if gal.z >= zmax:
-                    zmax = gal.z
-                if gal.z <= zmin:
-                    zmin = gal.z
-                                
-                N += 1
+        max_mth = np.amax(ms)
+        N = len(zs)
+        
+        bar = progressbar.ProgressBar()
+        print("Calculating p(x|D,H0,G) for this event's skyarea")
+        # loop over galaxies
+        for i in bar(range(N)):
+            numinner=np.zeros(len(H0))
+            deninner=np.zeros(len(H0))
+            
+            if ms[i] <= 12.0: #do more loops over brightest galaxies
+                nsmear = self.nsmear_fine
+            else:
+                nsmear = self.nsmear_coarse
+            
+            a = (0.0 - zs[i]) / sigzs[i]
+            zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
+            # loop over random draws from galaxies
+            for n in range(nsmear):
                 if self.weighted:
-                    weight = L_mdl(gal.m, self.cosmo.dl_zH0(gal.z, H0))
+                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
                 else:
                     weight = 1.0
-                if gal.z == 0:
-                    tempdist = 0.0
-                else:
-                    tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z, H0))/self.cosmo.dl_zH0(gal.z, H0)**2 # remove dl^2 prior from samples
-                num += tempdist*tempsky*weight*self.ps_z(gal.z)
-                
+                tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
+                numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
+
                 if self.basic:
-                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
+                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
                 else:
-                    prob = self.pdet.pD_zH0_eval(gal.z,H0)
-                den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
+                    prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
+                deninner += prob*weight*self.ps_z(zsmear[n])
+            normnuminner = numinner/nsmear
+            num += normnuminner
+            normdeninner = deninner/nsmear
+            den += normdeninner
+        print("{} galaxies from this catalog lie in the event's {}% confidence interval".format(len(zs),self.area*100))
+        numnorm = num/self.nGal
         
         if N >= 500:
-            m = np.array(m)
-            self.mth = np.median(m)
+            self.mth = np.median(ms)
         else:
             self.mth = max_mth #update mth to reflect the area within the event's sky localisation (max m within patch)
         
         print('event patch apparent magnitude threshold: {}'.format(self.mth))
-        print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,nGal))
+        print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,self.nGal))
         return num,den
         
     def px_DnGH0_skypatch(self,H0):
