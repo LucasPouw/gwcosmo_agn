@@ -158,7 +158,8 @@ class gwcosmoLikelihood(object):
         
         if self.uncertainty == False:
             self.nsmear_fine = 1
-            self.nsmear_coarse = 1        
+            self.nsmear_coarse = 1
+            self.allsigmaz = np.zeros(len(self.allz))
         else:
             self.nsmear_fine = 1000
             self.nsmear_coarse = 10
