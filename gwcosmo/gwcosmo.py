@@ -244,13 +244,17 @@ class gwcosmoLikelihood(object):
             decs = self.alldec[ind].flatten()
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
-                        
-            #np.random.seed(1)
+            
+            if weighted:
+                mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
+            else:
+                mlim = 1.0
+            
             bar = progressbar.ProgressBar()
             print("Calculating p(x|H0,G)")
             # loop over galaxies
             for i in bar(range(len(zs))):
-                if ms[i] <= 12.0: #do more loops over brightest galaxies
+                if ms[i] <= mlim: #do more loops over brightest galaxies
                     nsmear = self.nsmear_fine
                 else:
                     nsmear = self.nsmear_coarse
@@ -291,13 +295,17 @@ class gwcosmoLikelihood(object):
             p(D|H0,G)        
         """     
         den = np.zeros(len(H0))
-           
-        #np.random.seed(2)
+
+        if weighted:
+            mlim = np.percentile(np.sort(self.allm),0.01) # more draws for galaxies in brightest 0.01 percent
+        else:
+            mlim = 1.0
+            
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,G)")
         # loop over galaxies
         for i in bar(range(len(self.allz))):
-            if self.allm[i] <= 12.0: #do more loops over brightest galaxies
+            if self.allm[i] <= mlim: #do more loops over brightest galaxies
                 nsmear = self.nsmear_fine
             else:
                 nsmear = self.nsmear_coarse
@@ -679,6 +687,11 @@ class gwcosmoLikelihood(object):
         max_mth = np.amax(ms)
         N = len(zs)
         
+        if weighted:
+            mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
+        else:
+            mlim = 1.0   
+                 
         bar = progressbar.ProgressBar()
         print("Calculating p(x|D,H0,G) for this event's skyarea")
         # loop over galaxies
@@ -686,7 +699,7 @@ class gwcosmoLikelihood(object):
             numinner=np.zeros(len(H0))
             deninner=np.zeros(len(H0))
             
-            if ms[i] <= 12.0: #do more loops over brightest galaxies
+            if ms[i] <= mlim: #do more loops over brightest galaxies
                 nsmear = self.nsmear_fine
             else:
                 nsmear = self.nsmear_coarse
