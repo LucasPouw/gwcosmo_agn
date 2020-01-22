@@ -245,7 +245,7 @@ class gwcosmoLikelihood(object):
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
             
-            if weighted:
+            if self.weighted:
                 mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
             else:
                 mlim = 1.0
@@ -296,7 +296,7 @@ class gwcosmoLikelihood(object):
         """     
         den = np.zeros(len(H0))
 
-        if weighted:
+        if self.weighted:
             mlim = np.percentile(np.sort(self.allm),0.01) # more draws for galaxies in brightest 0.01 percent
         else:
             mlim = 1.0
@@ -687,7 +687,7 @@ class gwcosmoLikelihood(object):
         max_mth = np.amax(ms)
         N = len(zs)
         
-        if weighted:
+        if self.weighted:
             mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
         else:
             mlim = 1.0   
