@@ -754,8 +754,10 @@ class gwcosmoLikelihood(object):
         """
         distnum = np.zeros(len(H0))
         distden = np.zeros(len(H0))
-
-        for i in range(len(H0)):
+        
+        bar = progressbar.ProgressBar()
+        print("Calculating p(x|D,H0,bar{G}) for this event's skyarea")
+        for i in bar(range(len(H0))):
         
             Mmin = M_Mobs(H0[i],-22.96)
             Mmax = M_Mobs(H0[i],-12.96)
