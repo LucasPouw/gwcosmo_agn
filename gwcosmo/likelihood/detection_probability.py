@@ -575,4 +575,4 @@ class DetectionProbability(object):
             Probability of detection at the given luminosity distance and H0,
             marginalised over masses, inc, pol, and sky location
         """
-        return splev(dl, self.spl, ext=1)
+        return splev(dl, self.spl, ext=3)

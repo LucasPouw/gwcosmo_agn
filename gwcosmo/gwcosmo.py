@@ -541,7 +541,7 @@ class gwcosmoLikelihood(object):
         self.pDnG = den   
         return self.pDnG
 
-    def likelihood(self,H0,complete=False,counterpart_case='direct'):
+    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
@@ -588,6 +588,9 @@ class gwcosmoLikelihood(object):
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
+        elif new_skypatch==True:
+            likelihood = self.likelihood_skypatch(H0,complete=complete)
+
         else:
             pxG = self.px_H0G(H0)
             if all(self.pDG)==None:
@@ -616,3 +619,155 @@ class gwcosmoLikelihood(object):
 
             
         return likelihood
+
+
+    def px_DGH0_skypatch(self,H0):
+        """
+        The "in catalog" part of the new skypatch method 
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,G,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        arrays
+            numerator and denominator
+        """
+        nGal = self.galaxy_catalog.nGal()
+        num = np.zeros(len(H0))
+        den = np.zeros(len(H0))
+        N=0
+        max_mth=0
+        zmax=0
+        zmin=1
+        print('whole catalog apparent magnitude threshold: {}'.format(self.mth))
+        m=[]
+        
+        for i in range(nGal):
+            gal = self.galaxy_catalog.get_galaxy(i)
+            tempsky = self.skymap.skyprob(gal.ra, gal.dec)*self.skymap.npix
+            if tempsky != 0:
+                m.append(gal.m)
+                if gal.m >= max_mth:
+                    max_mth = gal.m
+                if gal.z >= zmax:
+                    zmax = gal.z
+                if gal.z <= zmin:
+                    zmin = gal.z
+                                
+                N += 1
+                if self.weighted:
+                    weight = L_mdl(gal.m, self.cosmo.dl_zH0(gal.z, H0))
+                else:
+                    weight = 1.0
+                if gal.z == 0:
+                    tempdist = 0.0
+                else:
+                    tempdist = self.px_dl(self.cosmo.dl_zH0(gal.z, H0))/self.cosmo.dl_zH0(gal.z, H0)**2 # remove dl^2 prior from samples
+                num += tempdist*tempsky*weight*self.ps_z(gal.z)
+                
+                if self.basic:
+                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(gal.z,H0))
+                else:
+                    prob = self.pdet.pD_zH0_eval(gal.z,H0)
+                den += np.reshape(prob,len(H0))*weight*self.ps_z(gal.z)
+        
+        if N >= 500:
+            m = np.array(m)
+            self.mth = np.median(m)
+        else:
+            self.mth = max_mth #update mth to reflect the area within the event's sky localisation (max m within patch)
+        
+        print('event patch apparent magnitude threshold: {}'.format(self.mth))
+        print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,nGal))
+        return num,den
+        
+    def px_DnGH0_skypatch(self,H0):
+        """
+        The "beyond catalog" part of the new skypatch method 
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,Gbar,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        arrays
+            numerator and denominator
+        """
+        distnum = np.zeros(len(H0))
+        distden = np.zeros(len(H0))
+
+        for i in range(len(H0)):
+        
+            Mmin = M_Mobs(H0[i],-22.96)
+            Mmax = M_Mobs(H0[i],-12.96)
+            
+            def Inum(z,M):
+                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i])(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+            distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            
+            def Iden(z,M):
+                if self.basic:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
+                else:
+                    temp = SchechterMagFunction(H0=H0[i])(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                if self.weighted:
+                    return temp*L_M(M)
+                else:
+                    return temp
+            distden[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]           
+            
+        skynum = 1.0
+        num = distnum*skynum
+        a = len(np.asarray(np.where(self.skymap.prob!=0)).flatten()) # find number of pixels with any GW event support
+        skyden = a/self.skymap.npix
+        den = distden*skyden
+        
+        return num,den
+
+        
+    def likelihood_skypatch(self,H0,complete=False):
+        """
+        The event likelihood using the new skypatch method 
+        p(x|D,H0)
+        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+            
+        Returns
+        -------
+        array
+            the unnormalised likelihood
+        """        
+        pxDG_num,pxDG_den = self.px_DGH0_skypatch(H0)
+        pxDG = pxDG_num/pxDG_den
+
+        if complete==True:
+            return pxDG
+
+        else:
+            pGD = self.pG_H0D(H0)
+            pnGD = self.pnG_H0D(H0)
+                
+            pxDnG_num,pxDnG_den = self.px_DnGH0_skypatch(H0)
+            pxDnG = pxDnG_num/pxDnG_den
+
+            likelihood = pGD*pxDG + pnGD*pxDnG 
+
+            return likelihood
+        

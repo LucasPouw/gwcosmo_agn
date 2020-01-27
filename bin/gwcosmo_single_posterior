@@ -92,6 +92,8 @@ parser = OptionParser(
             help="Set rate evolution: constant or evolving"),
         Option("--Lambda", default='3.0', type=float,
             help="Set rate evolution parameter Lambda"),
+        Option("--new_skypatch", default='True',
+            help="Use the new skypatch method which only utilises the catalog within the event's sky area"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -180,6 +182,7 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
+    new_skypatch=str2bool(opts.new_skypatch)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -261,7 +264,7 @@ else:
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda)
 
-    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct')
+    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch)
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
 
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
