@@ -80,6 +80,11 @@ class DetectionProbability(object):
                 for det in self.detectors:
                     PSD_data[det] = np.genfromtxt(self.data_path + det +
                                                   '_O2_strain.txt')
+            elif self.psd == 'O3':
+                for det in self.detectors:
+                    PSD_data[det] = np.genfromtxt(self.data_path + det +
+                                                  '_O3_strain.txt')
+
             else:
                 raise Exception("Please choose between 'O1', 'O2', \
                                  and 'MDC' for PSD")
@@ -119,7 +124,14 @@ class DetectionProbability(object):
             self.dl_array = np.linspace(1.0e-100, 400.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
             m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=self.alpha)
-            self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
+            if (self.psd == 'O1' or self.psd == 'O2'):
+                self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
+            if self.psd == 'O3':
+                self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
+        if self.mass_distribution == 'NSBH':
+            m1, _ = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=self.alpha)
+            _, m2 = BNS_gaussian_distribution(N, mean=1.35, sigma=0.15)
+            self.dl_array = np.linspace(1.0e-100, 2000.0, 500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
@@ -575,4 +587,4 @@ class DetectionProbability(object):
             Probability of detection at the given luminosity distance and H0,
             marginalised over masses, inc, pol, and sky location
         """
-        return splev(dl, self.spl, ext=3)
+        return splev(dl, self.spl, ext=1)
