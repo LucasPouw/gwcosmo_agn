@@ -195,6 +195,9 @@ class gwcosmoLikelihood(object):
             self.zmax = 0.5
         elif self.event_type == 'BBH-powerlaw':
             self.zmax = 4.0
+        elif self.event_type == 'NSBH':
+            self.zmax = 4.0
+
         
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
