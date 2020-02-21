@@ -70,6 +70,8 @@ parser = OptionParser(
             help="Select between 'O1' and 'O2' PSDs, by default we use aLIGO at design sensitivity (default=None)."), 
         Option("--galaxy_weighting", default='False',
             help="Set galaxy catalog weighting"),
+        Option("--catalog_band", default='B', type=str,
+            help = "choose between a 'B' band or a 'K' band catalog"),
         Option("--completion", default='False',
             help="Assumes a complete catalog."),
         Option("--uncertainty", default='True',
@@ -183,6 +185,7 @@ else:
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
     new_skypatch=str2bool(opts.new_skypatch)
+    band = str(opts.catalog_band)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -262,7 +265,7 @@ else:
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
-                                           rate=rate_evolution,Lambda=Lambda)
+                                           rate=rate_evolution,Lambda=Lambda,band=band)
 
     likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch)
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
