@@ -163,23 +163,24 @@ class gwcosmoLikelihood(object):
             self.ra_max = np.pi*2.0
             self.dec_min = -np.pi/2.0
             self.dec_max = np.pi/2.0
+
+        if EM_counterpart == None:
+            #find galaxies within the bounds of the galaxy catalog
+            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max))
+            self.allz = galaxy_catalog.z[ind].flatten()
+            self.allra = galaxy_catalog.ra[ind].flatten()
+            self.alldec = galaxy_catalog.dec[ind].flatten()
+            self.allm = galaxy_catalog.m[ind].flatten()
+            self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
+            self.nGal = len(self.allz)
         
-        #find galaxies within the bounds of the galaxy catalog
-        ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max))
-        self.allz = galaxy_catalog.z[ind].flatten()
-        self.allra = galaxy_catalog.ra[ind].flatten()
-        self.alldec = galaxy_catalog.dec[ind].flatten()
-        self.allm = galaxy_catalog.m[ind].flatten()
-        self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
-        self.nGal = len(self.allz)
-        
-        if self.uncertainty == False:
-            self.nsmear_fine = 1
-            self.nsmear_coarse = 1
-            self.allsigmaz = np.zeros(len(self.allz))
-        else:
-            self.nsmear_fine = 10000
-            self.nsmear_coarse = 20
+            if self.uncertainty == False:
+                self.nsmear_fine = 1
+                self.nsmear_coarse = 1
+                self.allsigmaz = np.zeros(len(self.allz))
+            else:
+                self.nsmear_fine = 10000
+                self.nsmear_coarse = 20
                   
         self.pDG = None
         self.pGD = None
