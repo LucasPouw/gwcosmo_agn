@@ -132,6 +132,10 @@ class DetectionProbability(object):
             m1, _ = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=self.alpha)
             _, m2 = BNS_gaussian_distribution(N, mean=1.35, sigma=0.15)
             self.dl_array = np.linspace(1.0e-100, 2000.0, 500)
+        if self.mass_distribution == 'NSBH-uniform':
+            m1, _ = BBH_mass_distribution(N, mmin=5., mmax=50., alpha=self.alpha)
+            _, m2 = BNS_uniform_distribution(N, mmin=1., mmax=3.)
+            self.dl_array = np.linspace(1.0e-100, 2000.0, 500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 

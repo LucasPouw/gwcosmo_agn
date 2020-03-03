@@ -264,6 +264,11 @@ else:
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity'.format(mass_distribution, psd))
+    elif mass_distribution == 'NSBH-uniform':
+        pdet_path = data_path + '{}PSD_{}_alpha_1.6_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution)
+        if os.path.isfile(pdet_path) is True:
+            pdet = pickle.load(open(pdet_path, 'rb'))
+            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity'.format(mass_distribution, psd))
     else: 
         pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic)
 
