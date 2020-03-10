@@ -56,8 +56,8 @@ class gwcosmoLikelihood(object):
         Gravitational wave event skymap
     galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
         The relevant galaxy catalog
-    psd : str, optional
-        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at
+    asd : str, optional
+        Select between 'O1' and 'O2' ASDs, by default we use aLIGO at
         design sensitivity (default=None).
     EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
         EM_counterpart data (default=None)
@@ -93,7 +93,7 @@ class gwcosmoLikelihood(object):
                  basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999, band='B'):
         self.pdet = pdet
         self.event_type = pdet.mass_distribution
-        self.psd = pdet.psd
+        self.asd = pdet.asd
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
