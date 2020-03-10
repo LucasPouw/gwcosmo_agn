@@ -133,7 +133,7 @@ class DetectionProbability(object):
             self.prob = self.__pD_zH0(70)
             logit_prob=logit(self.prob)
             logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)   
-            self.interp_average = interp1d(self.z_array, logit_prob, kind='linear')
+            self.interp_average = interp1d(self.z_array, logit_prob, kind='cubic')
             
         else:
             self.prob = self.__pD_zH0_array(self.H0vec)
@@ -148,7 +148,7 @@ class DetectionProbability(object):
             logit_prob=logit(self.prob)
             for i in range (len(logit_prob)):
                 logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])   
-            self.interp_average = interp2d(self.z_array, self.H0vec, logit_prob, kind='linear')
+            self.interp_average = interp2d(self.z_array, self.H0vec, logit_prob, kind='cubic')
 
     def mchirp(self, m1, m2):
         """
