@@ -104,16 +104,16 @@ class DetectionProbability(object):
         self.phis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS-gaussian':
             m1, m2 = BNS_gaussian_distribution(N, mean=1.35, sigma=0.15)
-            self.dl_array = np.linspace(1.0e-100, 400.0, 500)
+            self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BNS-uniform':
             m1, m2 = BNS_uniform_distribution(N, mmin=1.2, mmax=1.6)
-            self.dl_array = np.linspace(1.0e-100, 400.0, 500)
+            self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
             m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=self.M2, alpha=self.alpha)
-            self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
+            self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
         if self.mass_distribution == 'BBH-constant':
             m1, m2 = BBH_constant_mass(N, M1=self.M1, M2=self.M2)
-            self.dl_array = np.linspace(1.0e-100, 2500.0, 500)
+            self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
