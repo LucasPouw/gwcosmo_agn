@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+"""
+This script calculates pdets.
+Ignacio Magana
+"""
+# System imports
+import pkg_resources
+import os
+import sys
+from optparse import Option, OptionParser
+import pickle
+
+import numpy as np
+import gwcosmo
+
+data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+# Command line options
+parser = OptionParser(
+    description = __doc__,
+    usage = "%prog [options]",
+    option_list = [
+        Option("--mass_distribution", default=None,
+            help="Choose between BNS-gaussian, BNS-uniform or BBH-powerlaw mass distributions for default Pdet calculations."),
+        Option("--psd", default=None,
+            help="Select between 'O1' and 'O2' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."), 
+        Option("--powerlaw_slope", default='1.6', type=float,
+            help="Set powerlaw slope for BBH powelaw mass distribution for Pdet calculation."),
+        Option("--linear_cosmology", default='False',
+            help="Assume a linear cosmology."),
+        Option("--basic_pdet", default='False',
+            help="Allow for masses to be redshifted in Pdet using False."),
+        Option("--outputfile", default=None,
+            help="Name of output pdet file.")
+    ])
+opts, args = parser.parse_args()
+print(opts)
+
+# Check for missing required arguments
+missing = []
+for option in parser.option_list:
+    if 'required' in option.help and eval('opts.' + option.dest) == None:
+        missing.extend(option._long_opts)
+if len(missing) > 0:
+    parser.error('Missing required options: {0}'.format(str(missing)))
+
+mass_distribution = str(opts.mass_distribution)
+psd = str(opts.psd)
+alpha = float(opts.powerlaw_slope)
+linear = str(opts.linear_cosmology)
+basic = str(opts.basic_pdet)
+
+if mass_distribution == 'BBH-powerlaw':
+    print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) + " at " + psd + "sensitivity.")
+else:
+    print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + "sensitivity.")
+
+pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha)
+
+if opts.outputfile is None:
+    if mass_distribution == 'BBH-powerlaw':
+        pdet_path = '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
+    else:
+        pdet_path = '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution)
+else:
+    pdet_path = str(opts.outputfile)
+
+pickle.dump( pdet, open( pdet_path, "wb" ) )
