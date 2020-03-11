@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 This script calculates pdets.
-Ignacio Magana
+Ignacio Magana, Rachel Gray
 """
 # System imports
 import pkg_resources
@@ -34,10 +34,14 @@ parser = OptionParser(
             help="Select between 'O1' and 'O2' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."), 
         Option("--powerlaw_slope", default='1.6', type=float,
             help="Set powerlaw slope for BBH powelaw mass distribution for Pdet calculation."),
-        Option("--linear_cosmology", default='False',
+        Option("--linear_cosmology", default=False,
             help="Assume a linear cosmology."),
-        Option("--basic_pdet", default='False',
+        Option("--basic_pdet", default=False,
             help="Allow for masses to be redshifted in Pdet using False."),
+        Option("--full_waveform", default=True,
+            help="Use the full waveform to calculate detection probability, otherwise only use the inspiral part (default is True)."),
+        Option("--Nsamps", default=5000,
+            help="The number of samples to use to calculate detection probability (default is 5000)."),
         Option("--outputfile", default=None,
             help="Name of output pdet file.")
     ])
@@ -55,21 +59,28 @@ if len(missing) > 0:
 mass_distribution = str(opts.mass_distribution)
 psd = str(opts.psd)
 alpha = float(opts.powerlaw_slope)
-linear = str(opts.linear_cosmology)
-basic = str(opts.basic_pdet)
+linear = bool(opts.linear_cosmology)
+basic = bool(opts.basic_pdet)
+full_waveform = bool(opts.full_waveform)
+Nsamps = int(opts.Nsamps)
+print(full_waveform)
+if full_waveform is True:
+    kind = 'full_waveform'
+else:
+    kind = 'inspiral'
 
 if mass_distribution == 'BBH-powerlaw':
-    print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) + " at " + psd + "sensitivity.")
+    print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) + " at " + psd + " sensitivity using the " + kind)
 else:
-    print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + "sensitivity.")
+    print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
 
-pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha)
+pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha, inspiral=full_waveform, Nsamps=Nsamps)
 
 if opts.outputfile is None:
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
+        pdet_path = '{}PSD_{}_alpha_{}_{}Nsamps_{}.p'.format(psd, mass_distribution, alpha, Nsamps, kind)
     else:
-        pdet_path = '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution)
+        pdet_path = '{}PSD_{}_{}Nsamps_{}.p'.format(psd, mass_distribution, Nsamps, kind)
 else:
     pdet_path = str(opts.outputfile)
 
