@@ -78,9 +78,9 @@ pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass
 
 if opts.outputfile is None:
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = '{}PSD_{}_alpha_{}_{}Nsamps_{}.p'.format(psd, mass_distribution, alpha, Nsamps, kind)
+        pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, Nsamps, kind)
     else:
-        pdet_path = '{}PSD_{}_{}Nsamps_{}.p'.format(psd, mass_distribution, Nsamps, kind)
+        pdet_path = '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
 else:
     pdet_path = str(opts.outputfile)
 
