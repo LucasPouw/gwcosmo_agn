@@ -96,6 +96,9 @@ parser = OptionParser(
             help="Set rate evolution parameter Lambda"),
         Option("--new_skypatch", default='True',
             help="Use the new skypatch method which only utilises the catalog within the event's sky area"),
+        Option("--full_waveform", default='True',
+            help="Use detection probability calculated using full waveforms (default=True) otherwise just use the inspiral part \
+                (only use full_waveform = False for O2-H0 backwards compatibility"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -186,6 +189,7 @@ else:
     alpha = float(opts.powerlaw_slope)
     new_skypatch=str2bool(opts.new_skypatch)
     band = str(opts.catalog_band)
+    full_waveform=str2bool(opts.full_waveform)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -249,18 +253,23 @@ else:
         allsky = True
         radeclims = None
 
+    if full_waveform is True:
+        kind = 'full_waveform'
+    else:
+        kind = 'inspiral'
+
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = data_path + '{}PSD_{}_alpha_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution, alpha)
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_Nsamps5000_{}.p'.format(psd, mass_distribution, alpha, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity'.format(mass_distribution, alpha, psd))
+            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
         else: 
-            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic)
+            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic, full_waveform=full_waveform)
     if (mass_distribution == 'BNS-gaussian' or mass_distribution == 'BNS-uniform'):
-        pdet_path = data_path + '{}PSD_{}_5000Nsamps_z_H0_pD_array.p'.format(psd, mass_distribution)
+        pdet_path = data_path + '{}PSD_{}_Nsamps5000_{}.p'.format(psd, mass_distribution, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity'.format(mass_distribution, psd))
+            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity using the {}'.format(mass_distribution, psd, kind))
     
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
