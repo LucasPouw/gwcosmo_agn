@@ -52,14 +52,14 @@ class DetectionProbability(object):
         specify source masses in solar masses if using BBH-constant mass distribution (default=50,50)
     constant_H : bool, optional
         if True, set Hubble constant to 70 kms-1Mpc-1 for all calculations (default=False)
-    inspiral: bool, optional
-        if True, use LALsimulation simulated inspiral waveform (default=True)
+    full_waveform: bool, optional
+        if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
     """
     def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
                  Nsamps=5000, network_snr_threshold=12, Omega_m=0.308,
                  linear=False, basic=False, alpha=1.6, M1=50., M2=50.,
-                 constant_H=False, inspiral=True):
+                 constant_H=False, full_waveform=True):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -71,7 +71,7 @@ class DetectionProbability(object):
         self.alpha = alpha
         self.M1=M1
         self.M2=M2
-        self.inspiral = inspiral
+        self.full_waveform = full_waveform
         self.constant_H = constant_H
 
         ASD_data = {}
@@ -89,7 +89,7 @@ class DetectionProbability(object):
             
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         
-        if self.inspiral is True:
+        if self.full_waveform is True:
             self.z_array = np.logspace(-4.0, 1., 500)
         else:
             # TODO: For higher values of z (z=10) this goes
@@ -270,7 +270,7 @@ class DetectionProbability(object):
         return lal.ComputeDetAMResponse(detector.response, RA,
                                         Dec, psi, gmst)[1]
     
-    def simulate_inspiral_signal(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector,
+    def simulate_waveform_signal(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector,
                           S1x=0., S1y=0., S1z=0., S2x=0., S2y=0., S2z=0., lAN=0., e=0., Ano=0.):       
         """
         Simulates frequency domain inspiral waveform and applies antenna response
@@ -337,7 +337,7 @@ class DetectionProbability(object):
                           
         return hf[start:end + 1], f_array[start: end + 1]  
     
-    def snr_squared_inspiral(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector):
+    def snr_squared_waveform(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector):
         """
         Calculates SNR squared of the simulated inspiral waveform for single detector 
 
@@ -367,7 +367,7 @@ class DetectionProbability(object):
         
         """
         
-        hf, f_array = self.simulate_inspiral_signal(m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector)
+        hf, f_array = self.simulate_waveform_signal(m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector)
         df = f_array[1]-f_array[0]
         SNR_squared=4*np.sum((np.abs(hf)**2/self.asds[detector](f_array)**2)*df)
         return SNR_squared
@@ -515,8 +515,8 @@ class DetectionProbability(object):
             dl = self.cosmo.dl_zH0(z, H0)
             factor=1+z
             for n in range(self.Nsamps):
-                if self.inspiral is True: 
-                    rhosqs = [self.snr_squared_inspiral(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], 
+                if self.full_waveform is True: 
+                    rhosqs = [self.snr_squared_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], 
                               self.RAs[n],self.Decs[n],self.psis[n], self.phis[n], 0., det)
                               for det in self.detectors]
                 else:

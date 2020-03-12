@@ -74,7 +74,7 @@ if mass_distribution == 'BBH-powerlaw':
 else:
     print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
 
-pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha, inspiral=full_waveform, Nsamps=Nsamps)
+pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha, full_waveform=full_waveform, Nsamps=Nsamps)
 
 if opts.outputfile is None:
     if mass_distribution == 'BBH-powerlaw':
