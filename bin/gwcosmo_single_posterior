@@ -264,7 +264,7 @@ else:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
         else: 
-            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, psd=psd, basic=basic, full_waveform=full_waveform)
+            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, full_waveform=full_waveform)
     if (mass_distribution == 'BNS-gaussian' or mass_distribution == 'BNS-uniform'):
         pdet_path = data_path + '{}PSD_{}_Nsamps5000_{}.p'.format(psd, mass_distribution, kind)
         if os.path.isfile(pdet_path) is True:
