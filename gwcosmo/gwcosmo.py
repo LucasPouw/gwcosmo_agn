@@ -190,12 +190,7 @@ class gwcosmoLikelihood(object):
         # Note that zmax is an artificial limit that
         # should be well above any redshift value that could
         # impact the results for the considered H0 values.
-        if self.event_type == 'BNS-gaussian':
-            self.zmax = 0.5
-        elif self.event_type == 'BNS-uniform':
-            self.zmax = 0.5
-        elif self.event_type == 'BBH-powerlaw':
-            self.zmax = 4.0
+        self.zmax = 10.
         
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
