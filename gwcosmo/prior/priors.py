@@ -40,7 +40,7 @@ def pH0(H0, prior='log'):
     if prior == 'log':
         return 1./H0
 
-
+    
 def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
     """
     Returns p(m1,m2)
@@ -73,6 +73,33 @@ def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
         m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
         print('Flat in log mass distribution')
     m2 = np.random.uniform(low=5.0, high=m1)
+    return m1, m2
+
+
+def BBH_constant_mass(N, M1=50., M2=50.):
+    """
+    Returns p(M1,M2) for given masses.
+
+    Parameters
+    ----------
+    N : integer
+        Number of masses sampled
+    M1 : float
+        source mass
+    M2 : float
+        source mass
+    -------
+    float or array_like
+        m1, m2
+    """
+    m1=[]
+    m2=[]
+    while len(m1) < N:
+        m1.append(M1)
+        m2.append(M2)
+    m1 = np.array(m1)
+    m2 = np.array(m2)
+    print('BBH source masses M1 = ' + str(M1) + ' M2 = '+ str(M2))
     return m1, m2
 
 

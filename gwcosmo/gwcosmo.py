@@ -56,8 +56,8 @@ class gwcosmoLikelihood(object):
         Gravitational wave event skymap
     galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
         The relevant galaxy catalog
-    psd : str, optional
-        Select between 'O1' and 'O2' PSDs, by default we use aLIGO at
+    asd : str, optional
+        Select between 'O1' and 'O2' ASDs, by default we use aLIGO at
         design sensitivity (default=None).
     EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
         EM_counterpart data (default=None)
@@ -93,7 +93,7 @@ class gwcosmoLikelihood(object):
                  basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999, band='B'):
         self.pdet = pdet
         self.event_type = pdet.mass_distribution
-        self.psd = pdet.psd
+        self.asd = pdet.asd
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
@@ -190,16 +190,7 @@ class gwcosmoLikelihood(object):
         # Note that zmax is an artificial limit that
         # should be well above any redshift value that could
         # impact the results for the considered H0 values.
-        if self.event_type == 'BNS-gaussian':
-            self.zmax = 0.5
-        elif self.event_type == 'BNS-uniform':
-            self.zmax = 0.5
-        elif self.event_type == 'BBH-powerlaw':
-            self.zmax = 4.0
-        elif self.event_type == 'NSBH':
-            self.zmax = 4.0
-        elif self.event_type == 'NSBH-uniform':
-            self.zmax = 4.0
+        self.zmax = 10.
         
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
