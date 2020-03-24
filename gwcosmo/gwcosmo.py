@@ -118,22 +118,27 @@ class gwcosmoLikelihood(object):
         else:
             raise Exception("Expected 'B' or 'K' band argument")    
             
-
-        if self.uncertainty == False:
-            self.galaxy_catalog = galaxy_catalog
-            self.mth = galaxy_catalog.mth()
+        if galaxy_catalog == None:
+            self.galaxy_catalog = None
+            self.mth = None
             self.EM_counterpart = None
-            if EM_counterpart is not None:
-                self.EM_counterpart = EM_counterpart
+            self.whole_cat = True
         else:
-            if galaxy_catalog is not None:
+            if self.uncertainty == False:
                 self.galaxy_catalog = galaxy_catalog
                 self.mth = galaxy_catalog.mth()
+                self.EM_counterpart = None
+                if EM_counterpart is not None:
+                    self.EM_counterpart = EM_counterpart
+            else:
+                if galaxy_catalog is not None:
+                    self.galaxy_catalog = galaxy_catalog
+                    self.mth = galaxy_catalog.mth()
 
-            self.EM_counterpart = None
-            if EM_counterpart is not None:
-                self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
-        
+                self.EM_counterpart = None
+                if EM_counterpart is not None:
+                    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
+            
         if GW_data is not None:
             distkernel = GW_data.lineofsight_distance()
             distmin = 0.5*np.amin(GW_data.distance)
@@ -164,7 +169,7 @@ class gwcosmoLikelihood(object):
             self.dec_min = -np.pi/2.0
             self.dec_max = np.pi/2.0
 
-        if EM_counterpart == None:
+        if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             #find galaxies within the bounds of the galaxy catalog
             ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max))
             self.allz = galaxy_catalog.z[ind].flatten()
@@ -588,7 +593,55 @@ class gwcosmoLikelihood(object):
         self.pDnG = den   
         return self.pDnG
 
-    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False):
+
+    def px_H0_empty(self,H0):
+        """
+        Returns the numerator of the empty catalog case        
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        float or array_like
+            p(x|H0,bar{G})
+        """
+        distnum = np.zeros(len(H0))
+        for i in range(len(H0)):
+            def Inum(z):
+                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                return temp
+            distnum[i] = quad(Inum,0.0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        skynum = 1.
+        num = distnum*skynum
+        return num
+
+
+    def pD_H0_empty(self,H0):
+        """
+        Returns the denominator of the empty catalog case
+
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        float or array_like
+            p(D|H0,bar{G})     
+        """  
+        den = np.zeros(len(H0))
+        for i in range(len(H0)):
+            def I(z):
+                temp = self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                return temp
+            den[i] = quad(I,0.0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+        return den
+
+
+    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False,population=False):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
@@ -637,6 +690,11 @@ class gwcosmoLikelihood(object):
 
         elif new_skypatch==True:
             likelihood = self.likelihood_skypatch(H0,complete=complete)
+
+        elif population==True:
+            px_empty = self.px_H0_empty(H0)
+            pD_empty = self.pD_H0_empty(H0)
+            likelihood = px_empty/pD_empty
 
         else:
             pxG = self.px_H0G(H0)
