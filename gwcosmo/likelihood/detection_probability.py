@@ -50,8 +50,10 @@ class DetectionProbability(object):
         slope of the power law p(m) = m^-\alpha where alpha > 0 (default=1.6)
     M1, M2 : float, optional
         specify source masses in solar masses if using BBH-constant mass distribution (default=50,50)
-    constant_H : bool, optional
+    constant_H0 : bool, optional
         if True, set Hubble constant to 70 kms-1Mpc-1 for all calculations (default=False)
+    H0 : float, optional
+        Value of H0 at which to compute Pdet if constant_H0 is True (default=70)
     full_waveform: bool, optional
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
@@ -59,7 +61,7 @@ class DetectionProbability(object):
     def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
                  Nsamps=5000, network_snr_threshold=12, Omega_m=0.308,
                  linear=False, basic=False, alpha=1.6, M1=50., M2=50.,
-                 constant_H=False, H0=70, full_waveform=True):
+                 constant_H0=False, H0=70, full_waveform=True):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -72,7 +74,7 @@ class DetectionProbability(object):
         self.M1=M1
         self.M2=M2
         self.full_waveform = full_waveform
-        self.constant_H = constant_H
+        self.constant_H0 = constant_H0
 
         ASD_data = {}
         self.asds = {}    #this is now a dictionary of functions
@@ -95,7 +97,6 @@ class DetectionProbability(object):
             # TODO: For higher values of z (z=10) this goes
             # outside the range of the psds and gives an error
             self.z_array = np.logspace(-4.0, 0.5, 500)
-        
 
         # set up the samples for monte carlo integral
         N = self.Nsamps
@@ -133,7 +134,7 @@ class DetectionProbability(object):
         if basic is True:
             self.interp_average_basic = self.__pD_dl_basic()
         
-        elif constant_H is True:  
+        elif constant_H0 is True:  
             self.prob = self.__pD_zH0(H0)
             logit_prob=logit(self.prob)
             logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)   
@@ -446,7 +447,9 @@ class DetectionProbability(object):
 
         arr_fmax = np.linspace(f_min, f_max, self.Nsamps)
         num_fmax = np.zeros(self.Nsamps)
-        for i in range(self.Nsamps):
+        bar = progressbar.ProgressBar()
+        print("Calculating lookup table for snr as a function of max frequency.")
+        for i in bar(range(self.Nsamps)):
             num_fmax[i] = quad(I, f_min, arr_fmax[i], epsabs=0, epsrel=1.49e-4)[0]
 
         return interp1d(arr_fmax, num_fmax)
@@ -511,7 +514,8 @@ class DetectionProbability(object):
         rho = np.zeros((self.Nsamps, 1))
         prob = np.zeros(len(self.z_array))
         i=0
-        for z in self.z_array:
+        bar = progressbar.ProgressBar()
+        for z in bar(self.z_array):
             dl = self.cosmo.dl_zH0(z, H0)
             factor=1+z
             for n in range(self.Nsamps):
@@ -574,7 +578,7 @@ class DetectionProbability(object):
     def pD_z_eval(self, z): 
         """
         Returns the probability of detection at a given value of
-        redshift. To be used with Constant_H option set to True only. 
+        redshift. To be used with Constant_H0 option set to True only. 
 
         Parameters
         ----------
