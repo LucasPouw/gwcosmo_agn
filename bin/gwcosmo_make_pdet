@@ -42,6 +42,10 @@ parser = OptionParser(
             help="Use the full waveform to calculate detection probability, otherwise only use the inspiral part (default is True)."),
         Option("--Nsamps", default=5000,
             help="The number of samples to use to calculate detection probability (default is 5000)."),
+        Option("--constant_H", default='False',
+            help="Compute at a fixed H0 value (default is False)."),
+        Option("--H0", default=70,
+            help="Set H0 value when using constant_H = True (default is 70)."),
         Option("--outputfile", default=None,
             help="Name of output pdet file.")
     ])
@@ -63,6 +67,8 @@ linear = str2bool(opts.linear_cosmology)
 basic = str2bool(opts.basic_pdet)
 full_waveform = str2bool(opts.full_waveform)
 Nsamps = int(opts.Nsamps)
+constant_H = str2bool(opt.sconstant_H)
+H0 = float(opts.H0)
 
 if full_waveform is True:
     kind = 'full_waveform'
@@ -74,7 +80,7 @@ if mass_distribution == 'BBH-powerlaw':
 else:
     print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
 
-pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha, full_waveform=full_waveform, Nsamps=Nsamps)
+pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, linear=linear, alpha=alpha, full_waveform=full_waveform, Nsamps=Nsamps ,constant_H=constant_H, H0=H0)
 
 if opts.outputfile is None:
     if mass_distribution == 'BBH-powerlaw':

@@ -59,7 +59,7 @@ class DetectionProbability(object):
     def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
                  Nsamps=5000, network_snr_threshold=12, Omega_m=0.308,
                  linear=False, basic=False, alpha=1.6, M1=50., M2=50.,
-                 constant_H=False, full_waveform=True):
+                 constant_H=False, H0=70, full_waveform=True):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -134,7 +134,7 @@ class DetectionProbability(object):
             self.interp_average_basic = self.__pD_dl_basic()
         
         elif constant_H is True:  
-            self.prob = self.__pD_zH0(70)
+            self.prob = self.__pD_zH0(H0)
             logit_prob=logit(self.prob)
             logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)   
             self.interp_average = interp1d(self.z_array, logit_prob, kind='cubic')
