@@ -124,6 +124,11 @@ class DetectionProbability(object):
 
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
+        if full_waveform:
+            self.df = 1          #set sampling frequency interval to 1 Hz
+            self.f_min = 10      #10 Hz minimum frequency
+            self.f_max = 4999    #5000 Hz maximum frequency
+        
         self.__interpolnum = {}    #this is now a dictionary of functions, one per detector
         for det in self.detectors:
             self.__interpolnum[det] = self.__numfmax_fmax(self.M_min, det)
@@ -271,10 +276,10 @@ class DetectionProbability(object):
         return lal.ComputeDetAMResponse(detector.response, RA,
                                         Dec, psi, gmst)[1]
     
-    def simulate_waveform_signal(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector,
+    def simulate_waveform(self, m1, m2, dl, inc, phi,
                           S1x=0., S1y=0., S1z=0., S2x=0., S2y=0., S2z=0., lAN=0., e=0., Ano=0.):       
         """
-        Simulates frequency domain inspiral waveform and applies antenna response
+        Simulates frequency domain inspiral waveform
 
         Parameters
         ----------
@@ -284,16 +289,8 @@ class DetectionProbability(object):
             luminosity distance in Mpc
         inc: float
             source inclination in radians
-        RA, Dec : float
-            sky location of the event in radians
-        psi : float
-            source polarisation in radians
         phi : float
             source reference phase in radians
-        gmst : float
-            Greenwich Mean Sidereal Time in seconds
-        detector : str
-            name of detector in network (eg 'H1', 'L1')
         S1x, S1y, S1z : float, optional
             x,y,z-components of dimensionless spins of body 1 (default=0.)
         S2x, S2y, S2z : float, optional
@@ -307,49 +304,30 @@ class DetectionProbability(object):
         
         Returns
         -------
-        complex array
-            complex frequency series - detected h(f)
-        
-        real array
-            array of frequencies corresponding to h(f)
+        lists
+            hp and hc
         """  
-        
-        df = 1          #set sampling frequency interval to 1 Hz
-        f_min = 10      #10 Hz minimum frequency
-        f_max = 4999    #5000 Hz maximum frequency
-                       
+                      
         hp, hc = lalsim.SimInspiralChooseFDWaveform(
                     m1, m2,
                     S1x, S1y, S1z, S2x, S2y, S2z,                  
                     dl*1e6*lal.PC_SI, inc, phi, lAN, e, Ano,
-                    df, f_min, f_max, 0,
+                    self.df, self.f_min, self.f_max, 20,
                     lal.CreateDict(),
                     lalsim.IMRPhenomD)
         hp = hp.data.data     
         hc = hc.data.data
-        
-        #apply antenna response 
-        hf = hp*self.__Fplus(detector, RA, Dec, psi, gmst) + hc*self.__Fcross(detector, RA, Dec, psi, gmst)
-        
-        #recreate frequency array
-        f_array=df*np.arange(len(hf))
-        start=np.where(f_array == f_min)[0][0]
-        end=np.where(f_array == f_max)[0][0]
                           
-        return hf[start:end + 1], f_array[start: end + 1]  
-    
-    def snr_squared_waveform(self, m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector):
+        return hp,hc
+
+    def simulate_waveform_response(self, hp, hc, RA, Dec, psi, gmst, detector):       
         """
-        Calculates SNR squared of the simulated inspiral waveform for single detector 
+        Applies antenna response to frequency domain inspiral waveform
 
         Parameters
         ----------
-        m1, m2 : float
-            observed source masses in kg 
-        dl : float
-            luminosity distance to the source in Mpc
-        inc: float
-            source inclination in radians
+        hp, hc : lists
+            plus and cross components of the frequency domain inspiral waveform
         RA, Dec : float
             sky location of the event in radians
         psi : float
@@ -363,15 +341,53 @@ class DetectionProbability(object):
         
         Returns
         -------
+        complex array
+            complex frequency series - detected h(f)
+        
+        real array
+            array of frequencies corresponding to h(f)
+        """  
+        
+        #apply antenna response 
+        hf = hp*self.__Fplus(detector, RA, Dec, psi, gmst) + hc*self.__Fcross(detector, RA, Dec, psi, gmst)
+        
+        #recreate frequency array
+        f_array=self.df*np.arange(len(hf))
+        start=np.where(f_array == self.f_min)[0][0]
+        end=np.where(f_array == self.f_max)[0][0]
+
+        return hf[start: end + 1], f_array[start: end + 1]  
+ 
+    
+    def snr_squared_waveform(self, hp, hc, RA, Dec, psi, gmst, detector):
+        """
+        Calculates SNR squared of the simulated inspiral waveform for single detector 
+
+        Parameters
+        ----------
+        hp, hc : lists
+            plus and cross components of the frequency domain inspiral waveform
+        RA, Dec : float
+            sky location of the event in radians
+        psi : float
+            source polarisation in radians
+        gmst : float
+            Greenwich Mean Sidereal Time in seconds
+        detector : str
+            name of detector in network (eg 'H1', 'L1')
+        
+        Returns
+        -------
         float
             SNR squared
         
         """
         
-        hf, f_array = self.simulate_waveform_signal(m1, m2, dl, inc, RA, Dec, psi, phi, gmst, detector)
+        hf, f_array = self.simulate_waveform_response(hp, hc, RA, Dec, psi, gmst, detector)
         df = f_array[1]-f_array[0]
         SNR_squared=4*np.sum((np.abs(hf)**2/self.asds[detector](f_array)**2)*df)
         return SNR_squared
+
         
     def __reduced_amplitude(self, RA, Dec, inc, psi, detector, gmst):
         """
@@ -511,7 +527,7 @@ class DetectionProbability(object):
         lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
                                 for name in self.detectors]
         
-        rho = np.zeros((self.Nsamps, 1))
+        network_rhosq = np.zeros((self.Nsamps, 1))
         prob = np.zeros(len(self.z_array))
         i=0
         bar = progressbar.ProgressBar()
@@ -520,17 +536,18 @@ class DetectionProbability(object):
             factor=1+z
             for n in range(self.Nsamps):
                 if self.full_waveform is True: 
-                    rhosqs = [self.snr_squared_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], 
-                              self.RAs[n],self.Decs[n],self.psis[n], self.phis[n], 0., det)
+                    hp,hc = self.simulate_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], self.phis[n])
+                    rhosqs = [self.snr_squared_waveform(hp,hc,self.RAs[n],self.Decs[n],self.psis[n], 0., det)
                               for det in self.detectors]
+
                 else:
                     rhosqs = [self.__snr_squared(self.RAs[n], self.Decs[n],
                               self.m1[n], self.m2[n], self.incs[n], self.psis[n],
                               det, 0.0, self.z_array[i], H0)
                               for det in self.detectors]
-                rho[n] = np.sum(rhosqs)
+                network_rhosq[n] = np.sum(rhosqs)
 
-            survival = ncx2.sf(self.snr_threshold**2, 2*len(self.detectors), rho)  
+            survival = ncx2.sf(self.snr_threshold**2, 2*len(self.detectors), network_rhosq)  
             prob[i] = np.sum(survival, 0)/self.Nsamps
             i+=1
             
