@@ -62,7 +62,7 @@ for option in parser.option_list:
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
     
-if opts.combine is not None:
+if opts.combine is None:
     mass_distribution = str(opts.mass_distribution)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
@@ -102,16 +102,20 @@ else:
     mass_distribution = str(opts.mass_distribution)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
+    alpha_s = str(opts.powerlaw_slope)
     pdet_path = str(opts.combine)
 
     probs=[]
     for k in np.arange(20,201):
-        pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+alpha+'_'+str(k)+'.p', 'rb'))
+        pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+alpha_s+'_'+str(k)+'.p', 'rb'))
         probs.append(pdets.prob)
 
     pdet = gwcosmo.likelihood.detection_probability.DetectionProbability(
                     mass_distribution=mass_distribution, alpha=alpha,
-                    asd=psd, detectors=['H1', 'L1'], Nsamps=2)
+                    asd=psd, detectors=['H1', 'L1'], Nsamps=2,
+                    network_snr_threshold=12, Omega_m=0.308,
+                    linear=False, basic=False, M1=50., M2=50.,
+                    constant_H0=False, H0=70, full_waveform=True)
 
     H0vec = np.arange(20,201)
     pdet.H0vec = H0vec
@@ -125,6 +129,6 @@ else:
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
     pdet.interp_average = interp_average
     
-    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, 10000, 'full_waveform')
+    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha_s, 10000, 'full_waveform')
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
