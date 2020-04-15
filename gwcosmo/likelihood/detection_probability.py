@@ -357,8 +357,8 @@ class DetectionProbability(object):
         end=np.where(f_array == self.f_max)[0][0]
 
         return hf[start: end + 1], f_array[start: end + 1]  
- 
-    
+
+
     def snr_squared_waveform(self, hp, hc, RA, Dec, psi, gmst, detector):
         """
         Calculates SNR squared of the simulated inspiral waveform for single detector 

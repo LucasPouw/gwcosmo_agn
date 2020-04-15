@@ -7,7 +7,6 @@ import numpy as np
 import healpy as hp
 import pandas as pd
 
-from ligo.skymap.bayestar import rasterize
 from ligo.skymap.moc import nest2uniq, uniq2nest
 
 import pickle
