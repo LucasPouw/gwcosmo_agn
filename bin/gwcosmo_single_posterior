@@ -226,6 +226,7 @@ else:
             radeclims = None
 
         counterpart = None
+        population = False
         
     if opts.method == 'population':
         population = True
@@ -258,11 +259,13 @@ else:
                 counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
             allsky = True
             radeclims = None
+            population = False
 
     elif (opts.method == "counterpart" and opts.counterpart is not None):
         catalog = None
         allsky = True
         radeclims = None
+        population = False
 
     if full_waveform is True:
         kind = 'full_waveform'

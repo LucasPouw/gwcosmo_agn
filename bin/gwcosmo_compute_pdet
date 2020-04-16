@@ -149,6 +149,6 @@ else:
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
     pdet.interp_average = interp_average
     
-    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), 10000, 'full_waveform')
+    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), 6000, 'full_waveform')
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
