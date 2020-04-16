@@ -30,7 +30,7 @@ class DetectionProbability(object):
     ----------
     mass_distribution : str
         choice of mass distribution ('BNS-gaussian', 'BNS-uniform',
-                                     'BBH-powerlaw', 'BBH-constant' or 'BBH-flatlog')
+                                     'BBH-powerlaw', 'BBH-constant')
     psd : str
         Select between 'O1', 'O2', 'O3', 'O4low', 'O4high', 'O5' or the 'MDC' PSDs.
     detectors : list of str, optional
@@ -38,6 +38,8 @@ class DetectionProbability(object):
         Select from 'L1', 'H1', 'V1', 'K1'.
     Nsamps : int, optional
         Number of samples for monte carlo integration (default=5000)
+    H0 : float or array, optional
+        Value(s) of H0 at which to compute Pdet. If constant_H0 is True (default=70)
     network_snr_theshold : float, optional
         snr threshold for an individual detector (default=12)
     Omega_m : float, optional
@@ -48,29 +50,34 @@ class DetectionProbability(object):
         if True, don't redshift masses (for use with the MDC) (default=False)
     alpha : float, optional
         slope of the power law p(m) = m^-\alpha where alpha > 0 (default=1.6)
+    Mmin : float, optional
+        specify minimum source frame mass for BBH-powerlaw distribution (default=5)
+    Mmax : float, optional
+        specify maximum source frame mass for BBH-powerlaw distribution  (default=50)
     M1, M2 : float, optional
         specify source masses in solar masses if using BBH-constant mass distribution (default=50,50)
     constant_H0 : bool, optional
         if True, set Hubble constant to 70 kms-1Mpc-1 for all calculations (default=False)
-    H0 : float, optional
-        Value of H0 at which to compute Pdet if constant_H0 is True (default=70)
     full_waveform: bool, optional
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
     """
     def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
-                 Nsamps=5000, network_snr_threshold=12, Omega_m=0.308,
-                 linear=False, basic=False, alpha=1.6, M1=50., M2=50.,
-                 constant_H0=False, H0=70, full_waveform=True):
+                 Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308,
+                 linear=False, basic=False, alpha=1.6, Mmin=5., Mmax=50., M1=50., M2=50.,
+                 constant_H0=False, full_waveform=True):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
         self.detectors = detectors
         self.Nsamps = Nsamps
+        self.H0vec = H0
         self.snr_threshold = network_snr_threshold
         self.Omega_m = Omega_m
         self.linear = linear
         self.alpha = alpha
+        self.Mmin = Mmin
+        self.Mmax = Mmax
         self.M1=M1
         self.M2=M2
         self.full_waveform = full_waveform
@@ -84,11 +91,8 @@ class DetectionProbability(object):
                 self.asds[det] = interp1d(ASD[:, 0], ASD[:, 1])
             else:
                 ASD_data[det] = np.genfromtxt(self.data_path + det + '_'+ self.asd + '_strain.txt')
-                self.asds[det] = interp1d(ASD_data[det][:, 0], ASD_data[det][:, 1], fill_value='extrapolate')
-                
-        
-        self.H0vec = np.linspace(10, 200, 50)
-            
+                self.asds[det] = interp1d(ASD_data[det][:, 0], ASD_data[det][:, 1])
+
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         
         if self.full_waveform is True:
@@ -114,7 +118,7 @@ class DetectionProbability(object):
             m1, m2 = BNS_uniform_distribution(N, mmin=1.2, mmax=1.6)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
-            m1, m2 = BBH_mass_distribution(N, mmin=5., mmax=self.M2, alpha=self.alpha)
+            m1, m2 = BBH_mass_distribution(N, mmin=self.Mmin, mmax=self.Mmax, alpha=self.alpha)
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
         if self.mass_distribution == 'BBH-constant':
             m1, m2 = BBH_constant_mass(N, M1=self.M1, M2=self.M2)
@@ -458,7 +462,7 @@ class DetectionProbability(object):
         ASD = self.asds[detector]
         fmax = lambda m: self.__fmax(m)
         I = lambda f: np.power(f, -7.0/3.0)/(ASD(f)**2)
-        f_min = 10  # Hz, changed this from 20 to 10 to resolve NaN error
+        f_min = self.f_min  # Hz, changed this from 20 to 10 to resolve NaN error
         f_max = fmax(M_min)
 
         arr_fmax = np.linspace(f_min, f_max, self.Nsamps)
