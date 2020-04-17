@@ -65,7 +65,7 @@ class DetectionProbability(object):
     def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
                  Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308,
                  linear=False, basic=False, alpha=1.6, Mmin=5., Mmax=50., M1=50., M2=50.,
-                 constant_H0=False, full_waveform=True):
+                 constant_H0=False, full_waveform=True, seed=1000):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -82,7 +82,10 @@ class DetectionProbability(object):
         self.M2=M2
         self.full_waveform = full_waveform
         self.constant_H0 = constant_H0
-
+        self.seed = seed
+        
+        np.random.seed(seed)
+        
         ASD_data = {}
         self.asds = {}    #this is now a dictionary of functions
         for det in self.detectors:

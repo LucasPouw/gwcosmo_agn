@@ -125,6 +125,7 @@ else:
     alpha = float(opts.powerlaw_slope)
     pdet_path = str(opts.combine)
     H0vec = np.arange(20,201)
+    Nsamps = 6000
 
     probs=[]
     for k in H0vec:
@@ -139,7 +140,7 @@ else:
                     constant_H0=False, H0=H0vec, full_waveform=True)
 
     pdet.H0vec = H0vec
-
+    pdet.Nsamps = Nsamps
     prob = np.array(probs)
     pdet.prob = prob
 
@@ -149,6 +150,6 @@ else:
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
     pdet.interp_average = interp_average
     
-    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), 6000, 'full_waveform')
+    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), str(Nsamps), 'full_waveform')
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
