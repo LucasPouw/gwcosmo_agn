@@ -131,10 +131,9 @@ class DetectionProbability(object):
 
         self.M_min = np.min(self.m1)+np.min(self.m2)
         
-        if full_waveform:
-            self.df = 1          #set sampling frequency interval to 1 Hz
-            self.f_min = 10      #10 Hz minimum frequency
-            self.f_max = 4999    #5000 Hz maximum frequency
+        self.df = 1          #set sampling frequency interval to 1 Hz
+        self.f_min = 10      #10 Hz minimum frequency
+        self.f_max = 4999    #5000 Hz maximum frequency
         
         self.__interpolnum = {}    #this is now a dictionary of functions, one per detector
         for det in self.detectors:
