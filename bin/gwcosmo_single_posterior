@@ -276,11 +276,9 @@ else:
         pdet_path = data_path + '{}PSD_{}_alpha_{}_Nsamps6000_{}.p'.format(psd, mass_distribution, alpha, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) ' 
-                  'at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
+            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
         else:
-            print('Calculating detection probability from scratch. This will take a while... '
-                  'Consider using a precomputed one for speed.')
+            print('Calculating detection probability from scratch. This will take a while... Consider using a precomputed one for speed.')
             pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd,
                                                                       basic=basic, full_waveform=full_waveform)
 
@@ -288,15 +286,13 @@ else:
         pdet_path = data_path + '{}PSD_{}_Nsamps5000.p'.format(psd, mass_distribution)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution at {} '
-                  'sensitivity using the {}'.format(mass_distribution, psd))
+            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
 
     if (mass_distribution == 'NSBH' or mass_distribution == 'NSBH-uniform'):
-        pdet_path = data_path + '{}PSD_{}alpha_1.6_Nsamps5000.p'.format(psd, mass_distribution)
+        pdet_path = data_path + '{}PSD_{}_alpha_1.6_Nsamps5000.p'.format(psd, mass_distribution)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution at {} '
-                  'sensitivity using the {}'.format(mass_distribution, psd))
+            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity'.format(mass_distribution, psd))
     
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
