@@ -276,22 +276,36 @@ else:
         pdet_path = data_path + '{}PSD_{}_alpha_{}_Nsamps6000_{}.p'.format(psd, mass_distribution, alpha, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
+            print('Loading precomputed pdet with a {} mass distribution (alpha = {}) ' 
+                  'at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
         else:
-            print('Calculating detection probability from scratch. This will take a while... Consider using a precomputed one for speed.')
-            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic, full_waveform=full_waveform)
+            print('Calculating detection probability from scratch. This will take a while... '
+                  'Consider using a precomputed one for speed.')
+            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd,
+                                                                      basic=basic, full_waveform=full_waveform)
+
     if (mass_distribution == 'BNS-gaussian' or mass_distribution == 'BNS-uniform'):
-        pdet_path = data_path + '{}PSD_{}_Nsamps5000_{}.p'.format(psd, mass_distribution, kind)
+        pdet_path = data_path + '{}PSD_{}_Nsamps5000.p'.format(psd, mass_distribution)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
-            print('Loading precomputed pdet with a {} mass distribution at {} sensitivity using the {}'.format(mass_distribution, psd, kind))
+            print('Loading precomputed pdet with a {} mass distribution at {} '
+                  'sensitivity using the {}'.format(mass_distribution, psd))
+
+    if (mass_distribution == 'NSBH' or mass_distribution == 'NSBH-uniform'):
+        pdet_path = data_path + '{}PSD_{}alpha_1.6_Nsamps5000.p'.format(psd, mass_distribution)
+        if os.path.isfile(pdet_path) is True:
+            pdet = pickle.load(open(pdet_path, 'rb'))
+            print('Loading precomputed pdet with a {} mass distribution at {} '
+                  'sensitivity using the {}'.format(mass_distribution, psd))
     
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)
 
-    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
+    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct',
+                               new_skypatch=new_skypatch,population=population)
+
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
 
     prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
