@@ -13,6 +13,9 @@ import pickle
 import numpy as np
 import gwcosmo
 
+from scipy.interpolate import interp2d
+from scipy.special import logit
+
 data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
 
 def str2bool(v):
@@ -31,7 +34,7 @@ parser = OptionParser(
         Option("--mass_distribution", default=None,
             help="Choose between BNS-gaussian, BNS-uniform or BBH-powerlaw mass distributions for default Pdet calculations."),
         Option("--psd", default=None,
-            help="Select between 'O1' and 'O2' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."), 
+            help="Select between 'O1' and 'O2' and 'O3' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."), 
         Option("--powerlaw_slope", default='1.6', type=float,
             help="Set powerlaw slope for BBH powerlaw mass distribution."),
         Option("--minimum_mass", default='5.0', type=float,
@@ -44,8 +47,8 @@ parser = OptionParser(
             help="Allow for masses to be redshifted in Pdet using False."),
         Option("--full_waveform", default='True',
             help="Use the full waveform to calculate detection probability, otherwise only use the inspiral part (default is True)."),
-        Option("--Nsamps", default=5000,
-            help="The number of samples to use to calculate detection probability (default is 5000)."),
+        Option("--Nsamps", default=10000,
+            help="The number of samples to use to calculate detection probability (default is 10000)."),
         Option("--constant_H0", default='False',
             help="Compute at a fixed H0 value (default is False)."),
         Option("--min_H0", default='20.0', type=float,
@@ -72,32 +75,39 @@ for option in parser.option_list:
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
     
+mass_distribution = str(opts.mass_distribution)
+psd = str(opts.psd)
+ 
+alpha = float(opts.powerlaw_slope)
+Mmin = float(opts.minimum_mass)
+Mmax = float(opts.maximum_mass)
+
+min_H0 = float(opts.min_H0)
+max_H0 = float(opts.max_H0)
+bins_H0 = float(opts.bins_H0)
+
+linear = str2bool(opts.linear_cosmology)
+basic = str2bool(opts.basic_pdet)
+full_waveform = str2bool(opts.full_waveform)
+Nsamps = int(opts.Nsamps)
+
+constant_H0 = str2bool(opts.constant_H0)
+pdet_path = str(opts.combine)
+
+if constant_H0 is True:
+    H0 = float(opts.H0)
+else:
+    H0 = np.linspace(min_H0, max_H0, bins_H0)
+
+if full_waveform is True:
+    kind = 'full_waveform'
+else:
+    kind = 'inspiral'
+    
 if opts.combine is None:
-    mass_distribution = str(opts.mass_distribution)
-    psd = str(opts.psd)
-    
-    alpha = float(opts.powerlaw_slope)
-    Mmin = float(opts.minimum_mass)
-    Mmax = float(opts.maximum_mass)
-    
-    linear = str2bool(opts.linear_cosmology)
-    basic = str2bool(opts.basic_pdet)
-    full_waveform = str2bool(opts.full_waveform)
-    Nsamps = int(opts.Nsamps)
-    
-    constant_H0 = str2bool(opts.constant_H0)
-    if constant_H0 is True:
-        H0 = float(opts.H0)
-    else:
-        H0 = np.linspace(float(opts.min_H0), float(opts.max_H0), float(opts.bins_H0))
-
-    if full_waveform is True:
-        kind = 'full_waveform'
-    else:
-        kind = 'inspiral'
-
     if mass_distribution == 'BBH-powerlaw':
-        print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) + " at "+ psd + " sensitivity using the " + kind)
+        print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) 
+              + " at "+ psd + " sensitivity using the " + kind)
     else:
         print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
 
@@ -117,31 +127,27 @@ if opts.combine is None:
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
 else:
-    from scipy.interpolate import interp2d
-    from scipy.special import logit
+    probs = {}
+    for h0 in H0:
+        try:
+            pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+str(alpha)+'_'+str(int(h0))+'.p', 'rb'))
+            probs[h0] = pdets.prob
+        except:
+            print("Could not load "+'pdet_'+psd+'_'+str(alpha)+'_'+str(int(h0))+'.p')
 
-    mass_distribution = str(opts.mass_distribution)
-    psd = str(opts.psd)
-    alpha = float(opts.powerlaw_slope)
-    pdet_path = str(opts.combine)
-    H0vec = np.arange(20,201)
-    Nsamps = 6000
-
-    probs=[]
-    for k in H0vec:
-        pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+str(alpha)+'_'+str(k)+'.p', 'rb'))
-        probs.append(pdets.prob)
-
+    H0vec = np.array(list(probs.keys()))
+    prob = np.array(list(probs.values()))
+    print(H0vec)
+    print(prob)
     pdet = gwcosmo.likelihood.detection_probability.DetectionProbability(
                     mass_distribution=mass_distribution, alpha=alpha,
                     asd=psd, detectors=['H1', 'L1'], Nsamps=2,
                     network_snr_threshold=12, Omega_m=0.308,
                     linear=False, basic=False, M1=50., M2=50.,
                     constant_H0=False, H0=H0vec, full_waveform=True)
-
+    
     pdet.H0vec = H0vec
     pdet.Nsamps = Nsamps
-    prob = np.array(probs)
     pdet.prob = prob
 
     logit_prob=logit(prob)
@@ -150,6 +156,6 @@ else:
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
     pdet.interp_average = interp_average
     
-    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), str(Nsamps), 'full_waveform')
+    pdet_path = '{}PSD_{}_alpha_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(alpha), str(Nsamps), kind)
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
