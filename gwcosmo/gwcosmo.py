@@ -135,7 +135,7 @@ class gwcosmoLikelihood(object):
                     self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
             
         if GW_data is not None:
-            distkernel = GW_data.lineofsight_distance()
+            distkernel = GW_data.marginalized_distance()
             distmin = 0.5*np.amin(GW_data.distance)
             distmax = 2.0*np.amax(GW_data.distance)
             dl_array = np.linspace(distmin, distmax, 500)

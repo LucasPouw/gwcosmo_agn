@@ -200,8 +200,7 @@ else:
     
     if opts.posterior_samples is not None:
         print("Loading posterior samples.")
-        samples = gwcosmo.likelihood.posterior_samples.posterior_samples()
-        samples.load_posterior_samples(posterior_samples)
+        samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples)
         
         if opts.skymap is not None:
             print("Loading 2D skymap.")
