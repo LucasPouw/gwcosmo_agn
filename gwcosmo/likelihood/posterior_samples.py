@@ -67,7 +67,8 @@ class posterior_samples(object):
         if self.posterior_samples[-2:] == 'h5':
             file = h5py.File(self.posterior_samples, 'r')
             approximants = ['C01:PhenomPNRT-HS', 'C01:NRSur7dq4',
-                            'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2']
+                            'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
+                            'C01:IMRPhenomD']
             for approximant in approximants:
                 try:
                     data = file[approximant]

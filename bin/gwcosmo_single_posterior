@@ -272,7 +272,7 @@ else:
         kind = 'inspiral'
 
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = data_path + '{}PSD_{}_alpha_{}_Nsamps6000_{}.p'.format(psd, mass_distribution, alpha, kind)
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_Nsamps20000_{}.p'.format(psd, mass_distribution, alpha, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
