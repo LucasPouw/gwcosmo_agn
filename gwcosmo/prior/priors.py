@@ -72,7 +72,7 @@ def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
     else:
         m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
         print('Flat in log mass distribution')
-    m2 = np.random.uniform(low=5.0, high=m1)
+    m2 = np.random.uniform(low=mmin, high=m1)
     return m1, m2
 
 
