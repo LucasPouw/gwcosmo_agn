@@ -29,8 +29,7 @@ class DetectionProbability(object):
     Parameters
     ----------
     mass_distribution : str
-        choice of mass distribution ('BNS-gaussian', 'BNS-uniform',
-                                     'BBH-powerlaw', 'BBH-constant')
+        choice of mass distribution ('BNS', 'NSBH', 'BBH-powerlaw', 'BBH-constant')
     psd : str
         Select between 'O1', 'O2', 'O3', 'O4low', 'O4high', 'O5' or the 'MDC' PSDs.
     detectors : list of str, optional
@@ -114,11 +113,12 @@ class DetectionProbability(object):
         self.incs = np.arccos(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         self.phis = np.random.rand(N)*2.0*np.pi
-        if self.mass_distribution == 'BNS-gaussian':
-            m1, m2 = BNS_gaussian_distribution(N, mean=1.35, sigma=0.15)
+        if self.mass_distribution == 'BNS':
+            m1, m2 = BNS_uniform_distribution(N, mmin=1.0, mmax=3.0)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
-        if self.mass_distribution == 'BNS-uniform':
-            m1, m2 = BNS_uniform_distribution(N, mmin=1.2, mmax=1.6)
+        if self.mass_distribution == 'NSBH':
+            m1, _ = BBH_mass_distribution(N, mmin=self.Mmin, mmax=self.Mmax, alpha=self.alpha)
+            _, m2 = BNS_uniform_distribution(N, mmin=1.0, mmax=3.0)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
             m1, m2 = BBH_mass_distribution(N, mmin=self.Mmin, mmax=self.Mmax, alpha=self.alpha)
