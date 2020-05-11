@@ -522,12 +522,14 @@ class gwcosmoLikelihood(object):
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-                self.pDnG = den*norm
             else:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-                self.pDnG = den*(1.-norm)
+        if allsky == True:
+            pDnG = den*norm
+        else:
+            pDnG = den*(1.-norm)
                 
-        return self.pDnG
+        return pDnG
 
     def px_H0_counterpart(self,H0):
         """
