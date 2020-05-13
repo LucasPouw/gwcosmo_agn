@@ -131,8 +131,8 @@ class gwcosmoLikelihood(object):
                     self.mth = galaxy_catalog.mth()
 
                 self.EM_counterpart = None
-                if EM_counterpart is not None:
-                    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
+        if EM_counterpart is not None:
+            self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
             
         if GW_data is not None:
             distkernel = GW_data.marginalized_distance()
