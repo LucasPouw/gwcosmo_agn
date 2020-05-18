@@ -720,12 +720,14 @@ class gwcosmoLikelihood(object):
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
+                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD, pxnG,self.pDnG,self.pnGD])
+
             if self.whole_cat == False:
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,allsky=False)
 
                 likelihood = likelihood*self.catalog_fraction + (pxnG_rest_of_sky/pDnG_rest_of_sky)*self.rest_fraction # Eq 4
-
+                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD*self.catalog_fraction, pxnG,self.pDnG,self.pnGD*self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
             
         return likelihood
 
