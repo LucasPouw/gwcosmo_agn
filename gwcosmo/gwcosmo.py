@@ -131,8 +131,8 @@ class gwcosmoLikelihood(object):
                     self.mth = galaxy_catalog.mth()
 
                 self.EM_counterpart = None
-                if EM_counterpart is not None:
-                    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
+        if EM_counterpart is not None:
+            self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
             
         if GW_data is not None:
             distkernel = GW_data.marginalized_distance()
@@ -158,6 +158,13 @@ class gwcosmoLikelihood(object):
                 self.ra_max = radec_lim[1]
                 self.dec_min = radec_lim[2]
                 self.dec_max = radec_lim[3]
+            
+            def skynorm(dec,ra):
+                return np.cos(dec)
+            self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
+            self.rest_fraction = 1-self.catalog_fraction
+            print('This catalog covers {}% of the full sky'.format(self.catalog_fraction*100))
+
         else:
             self.ra_min = 0.0
             self.ra_max = np.pi*2.0
@@ -515,12 +522,14 @@ class gwcosmoLikelihood(object):
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-                self.pDnG = den*norm
             else:
                 den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-                self.pDnG = den*(1.-norm)
+        if allsky == True:
+            pDnG = den*norm
+        else:
+            pDnG = den*(1.-norm)
                 
-        return self.pDnG
+        return pDnG
 
     def px_H0_counterpart(self,H0):
         """
@@ -715,7 +724,7 @@ class gwcosmoLikelihood(object):
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,allsky=False)
 
-                likelihood = likelihood + (pxnG_rest_of_sky/pDnG_rest_of_sky) # Eq 4
+                likelihood = likelihood*self.catalog_fraction + (pxnG_rest_of_sky/pDnG_rest_of_sky)*self.rest_fraction # Eq 4
 
             
         return likelihood
