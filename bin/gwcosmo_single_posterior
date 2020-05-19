@@ -300,7 +300,7 @@ else:
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)
 
-    likelihood = me.likelihood(H0,complete=completion,counterpart_case='direct',
+    likelihood = me.likelihood(H0,outputfile,complete=completion,counterpart_case='direct',
                                new_skypatch=new_skypatch,population=population)
 
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)

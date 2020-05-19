@@ -99,7 +99,7 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.band = band
-        
+
         if self.band == 'B':
             self.alpha = -1.07
             self.Mstar_obs = -20.457
@@ -645,7 +645,7 @@ class gwcosmoLikelihood(object):
         return den
 
 
-    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False,population=False):
+    def likelihood(self,H0,outputfile,complete=False,counterpart_case='direct',new_skypatch=False,population=False):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
@@ -707,7 +707,8 @@ class gwcosmoLikelihood(object):
         
             if complete==True:
                 likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
-        
+                
+
             else:
                 if all(self.pGD)==None:
                     self.pGD = self.pG_H0D(H0)
@@ -720,14 +721,26 @@ class gwcosmoLikelihood(object):
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
-                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD, pxnG,self.pDnG,self.pnGD])
 
             if self.whole_cat == False:
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,allsky=False)
 
                 likelihood = likelihood*self.catalog_fraction + (pxnG_rest_of_sky/pDnG_rest_of_sky)*self.rest_fraction # Eq 4
-                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD*self.catalog_fraction, pxnG,self.pDnG,self.pnGD*self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
+                
+
+            if complete==False:
+               if self.whole_cat == False:
+                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.pGD*self.catalog_fraction, pxnG,self.pDnG,self.pnGD*self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
+               else:
+                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.pGD, pxnG,self.pDnG,self.pnGD])
+            else: 
+               if self.whole_cat == False:
+                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.catalog_fraction, self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
+               else:
+                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG])
+
+
             
         return likelihood
 
