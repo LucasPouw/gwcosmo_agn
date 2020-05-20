@@ -300,8 +300,7 @@ else:
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)
 
-    likelihood = me.likelihood(H0,outputfile,complete=completion,counterpart_case='direct',
-                               new_skypatch=new_skypatch,population=population)
+    likelihood,pxG,pDG,pGD,catalog_fraction, pxnG,pDnG,pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
 
     likelihood = np.array(likelihood)/np.sum(np.array(likelihood)*dH0)
 
@@ -316,6 +315,7 @@ else:
     posterior_log_norm = posterior_log/np.sum(posterior_log*dH0)
     
     np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
+    np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,pDG,pGD,catalog_fraction, pxnG,pDnG,pnGD,pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction])
 
 print("Uniform Prior")
 confidence_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683)

@@ -645,7 +645,7 @@ class gwcosmoLikelihood(object):
         return den
 
 
-    def likelihood(self,H0,outputfile,complete=False,counterpart_case='direct',new_skypatch=False,population=False):
+    def likelihood(self,H0,complete=False,counterpart_case='direct',new_skypatch=False,population=False):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
@@ -693,12 +693,12 @@ class gwcosmoLikelihood(object):
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
         elif new_skypatch==True:
-            likelihood = self.likelihood_skypatch(H0,complete=complete)
+            likelihood,pxG,self.pDG,self.pGD,self.pnGD,pxnG,self.pDnG = self.likelihood_skypatch(H0,complete=complete)
 
         elif population==True:
-            px_empty = self.px_H0_empty(H0)
-            pD_empty = self.pD_H0_empty(H0)
-            likelihood = px_empty/pD_empty
+            pxG = self.px_H0_empty(H0)
+            self.pDG = self.pD_H0_empty(H0)
+            likelihood = pxG/self.pDG
 
         else:
             pxG = self.px_H0G(H0)
@@ -727,22 +727,22 @@ class gwcosmoLikelihood(object):
                 pxnG_rest_of_sky = self.px_H0nG(H0,allsky=False)
 
                 likelihood = likelihood*self.catalog_fraction + (pxnG_rest_of_sky/pDnG_rest_of_sky)*self.rest_fraction # Eq 4
-                
-
-            if complete==False:
-               if self.whole_cat == False:
-                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.pGD*self.catalog_fraction, pxnG,self.pDnG,self.pnGD*self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
-               else:
-                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.pGD, pxnG,self.pDnG,self.pnGD])
-            else: 
-               if self.whole_cat == False:
-                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG,self.catalog_fraction, self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
-               else:
-                   np.savez(outputfile+'_likelihood_breakdown.npz',[H0,likelihood, pxG,self.pDG])
 
 
-            
-        return likelihood
+        if (complete==True) or (self.EM_counterpart != None) or (population==True):
+            self.pGD = np.ones(len(H0))
+            self.pnGD = np.zeros(len(H0))
+            pxnG = np.zeros(len(H0))
+            self.pDnG = np.ones(len(H0))
+      
+        if (self.whole_cat==True) or (self.EM_counterpart != None) or (population==True):
+            pDnG_rest_of_sky = np.ones(len(H0))
+            pxnG_rest_of_sky = np.zeros(len(H0))
+            self.rest_fraction = 0
+            self.catalog_fraction = 1
+        
+
+        return likelihood,pxG,self.pDG,self.pGD,self.catalog_fraction, pxnG,self.pDnG,self.pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction
 
 
     def px_DGH0_skypatch(self,H0):
@@ -897,10 +897,14 @@ class gwcosmoLikelihood(object):
             the unnormalised likelihood
         """        
         pxDG_num,pxDG_den = self.px_DGH0_skypatch(H0)
-        pxDG = pxDG_num/pxDG_den
+        
 
         if complete==True:
-            return pxDG
+            likelihood = pxDG_num/pxDG_den
+            pGD = np.ones(len(H0))
+            pnGD = np.zeros(len(H0))
+            pxDnG_num = np.zeros(len(H0))
+            pxDnG_den = np.ones(len(H0))            
 
         else:
             pGD = self.pG_H0D(H0)
@@ -909,7 +913,7 @@ class gwcosmoLikelihood(object):
             pxDnG_num,pxDnG_den = self.px_DnGH0_skypatch(H0)
             pxDnG = pxDnG_num/pxDnG_den
 
-            likelihood = pGD*pxDG + pnGD*pxDnG 
+            likelihood = pGD*(pxDG_num/pxDG_den) + pnGD*pxDnG 
 
-            return likelihood
+        return likelihood,pxDG_num,pxDG_den,pGD,pnGD,pxDnG_num,pxDnG_den
         
