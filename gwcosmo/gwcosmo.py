@@ -670,8 +670,8 @@ class gwcosmoLikelihood(object):
             
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0)
-                pD_H0 = self.pD_H0(H0)
-                likelihood = pxG/pD_H0 # Eq 6
+                self.pDG = self.pD_H0(H0)
+                likelihood = pxG/self.pDG # Eq 6
                 
             # The pencilbeam case is currently coded up along the line of sight of the counterpart
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
