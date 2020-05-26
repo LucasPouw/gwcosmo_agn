@@ -99,7 +99,7 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.band = band
-        
+
         if self.band == 'B':
             self.alpha = -1.07
             self.Mstar_obs = -20.457
@@ -670,8 +670,8 @@ class gwcosmoLikelihood(object):
             
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0)
-                pD_H0 = self.pD_H0(H0)
-                likelihood = pxG/pD_H0 # Eq 6
+                self.pDG = self.pD_H0(H0)
+                likelihood = pxG/self.pDG # Eq 6
                 
             # The pencilbeam case is currently coded up along the line of sight of the counterpart
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
@@ -693,12 +693,12 @@ class gwcosmoLikelihood(object):
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
         elif new_skypatch==True:
-            likelihood = self.likelihood_skypatch(H0,complete=complete)
+            likelihood,pxG,self.pDG,self.pGD,self.pnGD,pxnG,self.pDnG = self.likelihood_skypatch(H0,complete=complete)
 
         elif population==True:
-            px_empty = self.px_H0_empty(H0)
-            pD_empty = self.pD_H0_empty(H0)
-            likelihood = px_empty/pD_empty
+            pxG = self.px_H0_empty(H0)
+            self.pDG = self.pD_H0_empty(H0)
+            likelihood = pxG/self.pDG
 
         else:
             pxG = self.px_H0G(H0)
@@ -707,7 +707,8 @@ class gwcosmoLikelihood(object):
         
             if complete==True:
                 likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
-        
+                
+
             else:
                 if all(self.pGD)==None:
                     self.pGD = self.pG_H0D(H0)
@@ -720,16 +721,28 @@ class gwcosmoLikelihood(object):
     
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
-                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD, pxnG,self.pDnG,self.pnGD])
 
             if self.whole_cat == False:
                 pDnG_rest_of_sky = self.pD_H0nG(H0,allsky=False)
                 pxnG_rest_of_sky = self.px_H0nG(H0,allsky=False)
 
                 likelihood = likelihood*self.catalog_fraction + (pxnG_rest_of_sky/pDnG_rest_of_sky)*self.rest_fraction # Eq 4
-                np.savez('likelihood_breakdown_'+str(self.Lambda)+'.npz',[H0,likelihood, pxG,self.pDG,self.pGD*self.catalog_fraction, pxnG,self.pDnG,self.pnGD*self.catalog_fraction, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction])
-            
-        return likelihood
+
+
+        if (complete==True) or (self.EM_counterpart != None) or (population==True):
+            self.pGD = np.ones(len(H0))
+            self.pnGD = np.zeros(len(H0))
+            pxnG = np.zeros(len(H0))
+            self.pDnG = np.ones(len(H0))
+      
+        if (self.whole_cat==True) or (self.EM_counterpart != None) or (population==True):
+            pDnG_rest_of_sky = np.ones(len(H0))
+            pxnG_rest_of_sky = np.zeros(len(H0))
+            self.rest_fraction = 0
+            self.catalog_fraction = 1
+        
+
+        return likelihood,pxG,self.pDG,self.pGD,self.catalog_fraction, pxnG,self.pDnG,self.pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction
 
 
     def px_DGH0_skypatch(self,H0):
@@ -884,10 +897,14 @@ class gwcosmoLikelihood(object):
             the unnormalised likelihood
         """        
         pxDG_num,pxDG_den = self.px_DGH0_skypatch(H0)
-        pxDG = pxDG_num/pxDG_den
+        
 
         if complete==True:
-            return pxDG
+            likelihood = pxDG_num/pxDG_den
+            pGD = np.ones(len(H0))
+            pnGD = np.zeros(len(H0))
+            pxDnG_num = np.zeros(len(H0))
+            pxDnG_den = np.ones(len(H0))            
 
         else:
             pGD = self.pG_H0D(H0)
@@ -896,7 +913,7 @@ class gwcosmoLikelihood(object):
             pxDnG_num,pxDnG_den = self.px_DnGH0_skypatch(H0)
             pxDnG = pxDnG_num/pxDnG_den
 
-            likelihood = pGD*pxDG + pnGD*pxDnG 
+            likelihood = pGD*(pxDG_num/pxDG_den) + pnGD*pxDnG 
 
-            return likelihood
+        return likelihood,pxDG_num,pxDG_den,pGD,pnGD,pxDnG_num,pxDnG_den
         
