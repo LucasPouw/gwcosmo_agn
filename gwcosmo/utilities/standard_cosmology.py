@@ -176,7 +176,7 @@ def redshift(dHoc, Omega_m=Omega_m, tolerance_z=1e-06):
 
 
 # Distance modulus given luminosity distance
-def mu(dL):
+def DistanceModulus(dL):
     """
     Returns distance modulus given luminosity distance
 
@@ -186,40 +186,89 @@ def mu(dL):
 
     Returns
     -------
-    distance modulus, mu = 5*np.log10(dL)+25
+    distance modulus = 5*np.log10(dL)+25
     """
     return 5*np.log10(dL)+25  # dL has to be in Mpc
 
 
-def dl_mM(m, M):
+def dl_mM(m, M, Kcorr=0.):
     """
     returns luminosity distance in Mpc given
     apparent magnitude and absolute magnitude
+    
+    Parameters
+    ----------
+    m : apparent magnitude
+    M : absolute magnitude in the source frame
+    Kcorr : (optional) K correction, to convert absolute magnitude from the 
+        observed band to the source frame band (default=0).  If fluxes are 
+        bolometric, this should be left as 0. If not, a K correction of 0 is
+        only valid at low redshifts.
+        
+    Returns
+    -------
+    Luminosity distance in Mpc
     """
-    return 10**(0.2*(m-M-25))
+    return 10**(0.2*(m-M-Kcorr-25))
 
 
 def L_M(M):
     """
     Returns luminosity when given an absolute magnitude
+    
+    Parameters
+    ----------
+    M : absolute magnitude in the source frame
+    
+    Returns
+    -------
+    Luminosity in Watts
     """
     # TODO: double check use of L0=3.0128e28
     return 3.0128e28*10**(-0.4*M)
 
 
-def M_mdl(m, dl):
+def M_mdl(m, dl, Kcorr=0.):
     """
     Returns a source's absolute magnitude given
     apparent magnitude and luminosity distance
+    If a K correction is supplied it will be applied
+    
+    Parameters
+    ----------
+    m : apparent magnitude
+    dl : luminosity distance in Mpc
+    Kcorr : (optional) K correction, to convert absolute magnitude from the 
+        observed band to the source frame band (default=0).  If fluxes are 
+        bolometric, this should be left as 0. If not, a K correction of 0 is
+        only valid at low redshifts.
+    
+    Returns
+    -------
+    Absolute magnitude in the source frame
     """
-    return m - mu(dl)
+    return m - DistanceModulus(dl) - Kcorr
 
 
-def L_mdl(m, dl):
+def L_mdl(m, dl, Kcorr=0.):
     """
     Returns luminosity when given apparent magnitude and luminosity distance
+    If a K correction is supplied it will be applied
+    
+    Parameters
+    ----------
+    m : apparent magnitude
+    dl : luminosity distance in Mpc
+    Kcorr : (optional) K correction, to convert absolute magnitude from the 
+        observed band to the source frame band (default=0).  If fluxes are 
+        bolometric, this should be left as 0. If not, a K correction of 0 is
+        only valid at low redshifts.
+    
+    Returns
+    -------
+    Luminosity in the source frame
     """
-    return L_M(M_mdl(m, dl))
+    return L_M(M_mdl(m, dl, Kcorr=Kcorr))
 
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.

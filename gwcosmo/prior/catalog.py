@@ -32,12 +32,13 @@ class galaxy(object):
     m : Apparent blue magnitude
     sigmaz : redshift uncertainty
     """
-    def __init__(self, index=0, ra=0, dec=0, z=0, m=0, sigmaz=0):
+    def __init__(self, index=0, ra=0, dec=0, z=0, m=0, Kcorr= 0, sigmaz=0):
         self.index = index
         self.ra = ra
         self.dec = dec
         self.z = z
         self.m = m
+        self.Kcorr = Kcorr
         self.sigmaz = sigmaz
 
 
@@ -59,7 +60,7 @@ class galaxyCatalog(object):
             self.dictionary = {'0': galaxy()}
             self.skypatch = None
 
-        self.ra, self.dec, self.z, self.m, self.sigmaz = self.extract_galaxies()
+        self.ra, self.dec, self.z, self.m, self.Kcorr, self.sigmaz = self.extract_galaxies()
 
     def __load_catalog(self):
         cat = pickle.load(open(self.catalog_file, "rb"))
@@ -90,17 +91,24 @@ class galaxyCatalog(object):
         dec = np.zeros(nGal)
         z = np.zeros(nGal)
         m = np.zeros(nGal)
+        Kcorr = np.zeros(nGal)
         sigmaz = np.zeros(nGal)
+        Kcorr = np.zeros(nGal)
         for i in range(nGal):
             gal = self.get_galaxy(i)
             ra[i] = gal.ra
             dec[i] = gal.dec
             z[i] = gal.z
             m[i] = gal.m
+            Kcorr[i] = gal.Kcorr
             sigmaz[i] = gal.sigmaz
+            try:
+                Kcorr[i] = gal.Kcorr
+            except:
+                Kcorr[i] = 0
         if all(m) == 0:  # for mdc1 and mdc2
             m = np.ones(nGal)
-        return ra, dec, z, m, sigmaz
+        return ra, dec, z, m, Kcorr, sigmaz
 
     def redshiftUncertainty(self, peculiarVelocityCorr=False, nsmear=10):
         """

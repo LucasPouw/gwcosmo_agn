@@ -36,6 +36,7 @@ import gwcosmo
 
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
+from .utilities.schechter_params import *
 
 import time
 import progressbar
@@ -100,18 +101,11 @@ class gwcosmoLikelihood(object):
         self.area = area
         self.band = band
 
-        if self.band == 'B':
-            self.alpha = -1.07
-            self.Mstar_obs = -20.457
-            self.Mobs_min = -22.96
-            self.Mobs_max = -12.96
-        elif self.band == 'K':
-            self.alpha = -1.02
-            self.Mstar_obs = -23.55
-            self.Mobs_min = -27.
-            self.Mobs_max = -12.96
-        else:
-            raise Exception("Expected 'B' or 'K' band argument")    
+        sp = SchechterParams(self.band)
+        self.alpha = sp.alpha
+        self.Mstar_obs = sp.Mstar
+        self.Mobs_min = sp.Mmin
+        self.Mobs_max = sp.Mmax
             
         if galaxy_catalog == None:
             self.galaxy_catalog = None
@@ -158,6 +152,7 @@ class gwcosmoLikelihood(object):
                 self.ra_max = radec_lim[1]
                 self.dec_min = radec_lim[2]
                 self.dec_max = radec_lim[3]
+                self.zcut = 0.5 # TODO: replace with something read in from the catalogue itself
             
             def skynorm(dec,ra):
                 return np.cos(dec)
@@ -170,16 +165,18 @@ class gwcosmoLikelihood(object):
             self.ra_max = np.pi*2.0
             self.dec_min = -np.pi/2.0
             self.dec_max = np.pi/2.0
+            self.zcut = 10.
 
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             #find galaxies within the bounds of the galaxy catalog
-            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max))
+            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max) & (galaxy_catalog.m <= self.mth) & (galaxy_catalog.z <= self.zcut))
             self.allz = galaxy_catalog.z[ind].flatten()
             self.allra = galaxy_catalog.ra[ind].flatten()
             self.alldec = galaxy_catalog.dec[ind].flatten()
             self.allm = galaxy_catalog.m[ind].flatten()
             self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
             self.nGal = len(self.allz)
+            self.Kcorr = galaxy_catalog.Kcorr[ind].flatten()
         
             if self.uncertainty == False:
                 self.nsmear_fine = 1
@@ -284,7 +281,7 @@ class gwcosmoLikelihood(object):
                 # loop over random draws from galaxies
                 for n in range(nsmear):
                     if self.weighted:
-                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
                     else:
                         weight = 1.0
                     tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
@@ -335,7 +332,7 @@ class gwcosmoLikelihood(object):
             # loop over random draws from galaxies
             for n in range(nsmear):
                 if self.weighted:
-                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
                 else:
                     weight = 1.0
                 if self.basic:
@@ -375,7 +372,7 @@ class gwcosmoLikelihood(object):
         bar = progressbar.ProgressBar()
         print("Calculating p(G|H0,D)")
         for i in bar(range(len(H0))):
-            def I(z,M):
+            def I(M,z):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
@@ -391,8 +388,8 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,0,self.zcut,lambda x: Mmin,lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
         return self.pGD    
@@ -442,7 +439,7 @@ class gwcosmoLikelihood(object):
         print("Calculating p(x|H0,bar{G})")
         for i in bar(range(len(H0))):
 
-            def Inum(z,M):
+            def Inum(M,z):
                 temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
                 if self.weighted:
@@ -453,9 +450,10 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                distnum[i] = dblquad(Inum,0.0,self.zcut, lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                            + dblquad(Inum,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                distnum[i] = dblquad(Inum,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if self.EM_counterpart != None:
@@ -508,7 +506,7 @@ class gwcosmoLikelihood(object):
         print("Calculating p(D|H0,bar{G})")
         for i in bar(range(len(H0))):
 
-            def I(z,M):
+            def I(M,z):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
@@ -521,9 +519,10 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den[i] = dblquad(I,0.0,self.zcut, lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                        + dblquad(I,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den[i] = dblquad(I,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
         if allsky == True:
             pDnG = den*norm
         else:
@@ -799,7 +798,7 @@ class gwcosmoLikelihood(object):
             # loop over random draws from galaxies
             for n in range(nsmear):
                 if self.weighted:
-                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
                 else:
                     weight = 1.0
                 tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
