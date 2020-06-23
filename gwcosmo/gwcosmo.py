@@ -261,6 +261,7 @@ class gwcosmoLikelihood(object):
             decs = self.alldec[ind].flatten()
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
+            Kcorrs = self.Kcorr[ind].flatten()
             
             if self.weighted:
                 mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
@@ -281,7 +282,7 @@ class gwcosmoLikelihood(object):
                 # loop over random draws from galaxies
                 for n in range(nsmear):
                     if self.weighted:
-                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                     else:
                         weight = 1.0
                     tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
@@ -772,6 +773,7 @@ class gwcosmoLikelihood(object):
         decs = self.alldec[ind].flatten()
         ms = self.allm[ind].flatten()
         sigzs = self.allsigmaz[ind].flatten()
+        Kcorrs = self.Kcorr[ind].flatten()
         
         max_mth = np.amax(ms)
         N = len(zs)
@@ -798,7 +800,7 @@ class gwcosmoLikelihood(object):
             # loop over random draws from galaxies
             for n in range(nsmear):
                 if self.weighted:
-                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
+                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                 else:
                     weight = 1.0
                 tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
