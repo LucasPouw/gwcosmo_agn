@@ -93,14 +93,12 @@ class galaxyCatalog(object):
         m = np.zeros(nGal)
         Kcorr = np.zeros(nGal)
         sigmaz = np.zeros(nGal)
-        Kcorr = np.zeros(nGal)
         for i in range(nGal):
             gal = self.get_galaxy(i)
             ra[i] = gal.ra
             dec[i] = gal.dec
             z[i] = gal.z
             m[i] = gal.m
-            Kcorr[i] = gal.Kcorr
             sigmaz[i] = gal.sigmaz
             try:
                 Kcorr[i] = gal.Kcorr
