@@ -389,7 +389,7 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             
-            num[i] = dblquad(I,0,self.zcut,lambda x: Mmin,lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,0,self.zcut,lambda x: Mmin,lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
@@ -451,7 +451,7 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                distnum[i] = dblquad(Inum,0.0,self.zcut, lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                distnum[i] = dblquad(Inum,0.0,self.zcut, lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
                             + dblquad(Inum,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
                 distnum[i] = dblquad(Inum,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
@@ -520,7 +520,7 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                den[i] = dblquad(I,0.0,self.zcut, lambda x: M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                den[i] = dblquad(I,0.0,self.zcut, lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
                         + dblquad(I,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
                 den[i] = dblquad(I,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
