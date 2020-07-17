@@ -169,7 +169,9 @@ class gwcosmoLikelihood(object):
 
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             #find galaxies within the bounds of the galaxy catalog
-            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max) & (galaxy_catalog.m <= self.mth) & (galaxy_catalog.z <= self.zcut))
+            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) \
+            & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max) \
+            & ((galaxy_catalog.z-3*(galaxy_catalog.sigmaz)) <= self.zcut)) # remove galaxies whose 3-sigma p(z) is above zcut
             self.allz = galaxy_catalog.z[ind].flatten()
             self.allra = galaxy_catalog.ra[ind].flatten()
             self.alldec = galaxy_catalog.dec[ind].flatten()
@@ -279,8 +281,9 @@ class gwcosmoLikelihood(object):
                 numinner=np.zeros(len(H0))
                 a = (0.0 - zs[i]) / sigzs[i]
                 zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
+                zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
                 # loop over random draws from galaxies
-                for n in range(nsmear):
+                for n in range(len(zsmear)):
                     if self.weighted:
                         weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                     else:
@@ -330,8 +333,9 @@ class gwcosmoLikelihood(object):
             deninner=np.zeros(len(H0))
             a = (0.0 - self.allz[i]) / self.allsigmaz[i]
             zsmear = truncnorm.rvs(a, 5, loc=self.allz[i], scale=self.allsigmaz[i], size=nsmear)
+            zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
             # loop over random draws from galaxies
-            for n in range(nsmear):
+            for n in range(len(zsmear)):
                 if self.weighted:
                     weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
                 else:
@@ -797,8 +801,9 @@ class gwcosmoLikelihood(object):
             
             a = (0.0 - zs[i]) / sigzs[i]
             zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
+            zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
             # loop over random draws from galaxies
-            for n in range(nsmear):
+            for n in range(len(zsmear)):
                 if self.weighted:
                     weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                 else:
