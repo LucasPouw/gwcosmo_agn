@@ -10,6 +10,24 @@ from astropy import units as u
 from astropy import constants as const
 from astropy.table import Table
 import h5py
+from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
+from bilby import gw
+from ..utilities.standard_cosmology import z_dlH0
+
+from astropy.cosmology import FlatLambdaCDM, z_at_value
+import astropy.units as u
+import astropy.constants as constants
+from scipy.interpolate import interp1d
+
+Om0 = 0.308
+zmin = 0.0001
+zmax = 10
+zs = np.linspace(zmin, zmax, 10000)
+
+def constrain_m1m2(parameters):
+    converted_parameters = parameters.copy()
+    converted_parameters['m1m2'] = parameters['mass_1'] - parameters['mass_2']
+    return converted_parameters
 
 
 class posterior_samples(object):
@@ -95,14 +113,49 @@ class posterior_samples(object):
             self.nsamples = len(self.distance)
             file.close()
 
-    def marginalized_distance(self):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        return gaussian_kde(self.distance)
-
     def marginalized_sky(self):
         """
         Computes the marginalized sky localization posterior KDE.
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
+
+    def compute_source_frame_samples(self, H0):
+        cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
+        dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value    
+        z_at_dL = interp1d(dLs,zs)
+        redshift = z_at_dL(self.distance)
+        mass_1_source = self.mass_1/(1+redshift)
+        mass_2_source = self.mass_2/(1+redshift)
+        return redshift, mass_1_source, mass_2_source
+        
+    def reweight_samples(self, H0, alpha, mmin, mmax):
+        # Prior distribution used in the LVC analysis
+        prior = PriorDict()
+        prior['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=10000)
+
+        # Prior distribution used in this work
+        new_prior = PriorDict(conversion_function=constrain_m1m2)
+        new_prior['mass_1'] = PowerLaw(alpha=-alpha, minimum=mmin, maximum=mmax)
+        new_prior['mass_2'] = Uniform(minimum=mmin, maximum=mmax)
+        new_prior['m1m2'] = Constraint(minimum=mmin, maximum=mmax)
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+        
+        # Re-weight
+        weights = new_prior['mass_1'].prob(mass_1_source) * new_prior['mass_2'].prob(mass_2_source) / prior["luminosity_distance"].prob(self.distance)
+
+        draws = np.random.uniform(0, max(weights), weights.shape)
+        keep = weights > draws
+        m1det = self.mass_1[keep]
+        m2det = self.mass_2[keep]
+        dl = self.distance[keep]
+        return dl, weights
+
+    def marginalized_distance(self, H0, alpha, mmin, mmax):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        dl, weights = self.reweight_samples(H0, alpha, mmin, mmax)
+        newevidence = np.sum(weights)/len(weights)
+        norm = newevidence
+        return gaussian_kde(dl), norm

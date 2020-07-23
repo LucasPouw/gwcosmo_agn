@@ -4,7 +4,7 @@ Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
 
 In general:
 p(x|z,H0,\Omega) is written as p(x|dl(z,H0))*p(x|\Omega)
-p(x|dL(z,H0)): self.px_dl(dl(z,H0))
+p(x|dL(z,H0)): self.norms[H0]*self.px_dl(dl(z,H0))
 p(x|\Omega): self.skymap.skyprob(ra,dec) or self.skymap.prob[idx]
 p(D|z,H0): pdet.pD_zH0_eval(z,H0)
 p(s|M(H0)): L_M(M) or L_mdl(m,dl(z,H0))
@@ -85,9 +85,10 @@ class gwcosmoLikelihood(object):
         specify B or K band catalog (and hence Schechter function parameters) (default='B')
     """
 
-    def __init__(self, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
+    def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
                  basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999, band='B'):
+        self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
         self.linear = linear
@@ -135,20 +136,29 @@ class gwcosmoLikelihood(object):
             self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
             
         if GW_data is not None:
-            distkernel = GW_data.marginalized_distance()
-            distmin = 0.5*np.amin(GW_data.distance)
-            distmax = 2.0*np.amax(GW_data.distance)
-            dl_array = np.linspace(distmin, distmax, 500)
-            vals = distkernel(dl_array)
-            
+            temps = []
+            norms = []
+            print("Reweighting samples")
+            for H0 in self.H0:
+                distkernel, norm = GW_data.marginalized_distance(H0, 1.6, 5, 100)
+                distmin = 0.5*np.amin(GW_data.distance)
+                distmax = 2.0*np.amax(GW_data.distance)
+                dl_array = np.linspace(distmin, distmax, 500)
+                vals = distkernel(dl_array)
+                temps.append(splrep(dl_array, vals))
+                norms.append(norm)
+            self.temps = np.array(temps)
+            self.norms = np.array(norms)
+
         if (GW_data is None and self.EM_counterpart is None):
             dl_array, vals = self.skymap.marginalized_distance()
-            
+            self.temp = splrep(dl_array,vals)
+
         if (GW_data is None and self.EM_counterpart is not None):
             counterpart = self.EM_counterpart.get_galaxy(0)
             dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra, counterpart.dec)
+            self.temp = splrep(dl_array,vals)
 
-        self.temp = splrep(dl_array,vals)
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
             if all(radec_lim) == None:
@@ -210,12 +220,12 @@ class gwcosmoLikelihood(object):
         if self.rate == 'evolving':
             return (1.0+z)**self.Lambda
 
-    def px_dl(self, dl):
+    def px_dl(self, dl, temp):
         """
         Returns a probability for a given distance dl
         from the interpolated function.
         """
-        return splev(dl, self.temp, ext=3)
+        return splev(dl, temp, ext=3)
 
     def px_H0G(self, H0):
         """
@@ -251,7 +261,9 @@ class gwcosmoLikelihood(object):
             for i in range(nGalEM):
                 counterpart = self.EM_counterpart.get_galaxy(i)
                 tempsky = self.skymap.skyprob(counterpart.ra, counterpart.dec)*self.skymap.npix
-                tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0))/self.cosmo.dl_zH0(counterpart.z, H0)**2 # remove dl^2 prior from samples
+                tempdist = np.zeros(len(H0))
+                for k in range(len(H0)):
+                    tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0[k]),self.temps[k])
                 numnorm += tempdist*tempsky
 
         else:
@@ -287,7 +299,9 @@ class gwcosmoLikelihood(object):
                         weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
                     else:
                         weight = 1.0
-                    tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
+                    tempdist = np.zeros(len(H0))
+                    for k in range(len(H0)):
+                        tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0[k]),self.temps[k])
                     numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
                 normnuminner = numinner/nsmear
                 num += normnuminner
@@ -443,8 +457,8 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
 
             def Inum(z,M):
-                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -552,7 +566,9 @@ class gwcosmoLikelihood(object):
         for i in range(nGalEM):
             counterpart = self.EM_counterpart.get_galaxy(i)
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
-            tempdist = self.px_dl(self.cosmo.dl_zH0(counterpart.z,H0))/self.cosmo.dl_zH0(counterpart.z,H0)**2 # remove dl^2 prior from samples
+            tempdist = np.zeros(len(H0))
+            for k in range(len(H0)):
+                tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0[k]),self.temps[k])
             numnorm += tempdist*tempsky
         return numnorm
 
@@ -614,7 +630,7 @@ class gwcosmoLikelihood(object):
         distnum = np.zeros(len(H0))
         for i in range(len(H0)):
             def Inum(z):
-                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z)*self.ps_z(z)
                 return temp
             distnum[i] = quad(Inum,0.0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
         skynum = 1.
@@ -802,7 +818,9 @@ class gwcosmoLikelihood(object):
                     weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
                 else:
                     weight = 1.0
-                tempdist = self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0))/self.cosmo.dl_zH0(zsmear[n], H0)**2 # remove dl^2 prior from samples
+                tempdist = np.zeros(len(H0))
+                for k in range(len(H0)):
+                    tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0[k]),self.temps[k])
                 numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
 
                 if self.basic:
@@ -853,8 +871,8 @@ class gwcosmoLikelihood(object):
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             
             def Inum(z,M):
-                temp = self.px_dl(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)/self.cosmo.dl_zH0(z,H0[i])**2 # remove dl^2 prior from samples
+                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:

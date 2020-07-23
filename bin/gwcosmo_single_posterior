@@ -295,7 +295,7 @@ else:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
     
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(samples,skymap,catalog,pdet,EM_counterpart=counterpart,
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
                                            radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)
