@@ -176,7 +176,6 @@ class gwcosmoLikelihood(object):
             self.allm = self.galaxy_catalog.m[sel].flatten()
             self.allsigmaz = self.galaxy_catalog.sigmaz[sel].flatten()
             self.allcolor = self.galaxy_catalog.color[sel].flatten()
-            print(self.allcolor)
             self.mth = self.galaxy_catalog.mth()
             self.nGal = len(self.allz)
         
