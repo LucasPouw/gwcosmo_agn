@@ -90,7 +90,8 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.band = band
-        
+        self.reweight = reweight
+
         sp = SchechterParams(self.band)
         self.alpha = sp.alpha
         self.Mstar_obs = sp.Mstar
@@ -218,7 +219,10 @@ class gwcosmoLikelihood(object):
         Returns a probability for a given distance dl
         from the interpolated function.
         """
-        return splev(dl, temp, ext=3)
+        if self.reweight==True:
+            return splev(dl, temp, ext=3)
+        else:
+            return splev(dl, temp, ext=3)/dl**2
 
     def px_H0G(self, H0):
         """
