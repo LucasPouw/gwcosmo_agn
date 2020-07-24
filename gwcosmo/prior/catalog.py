@@ -80,6 +80,7 @@ class galaxy(object):
         self.dec = dec
         self.z = z
         self.m = m
+        self.Kcorr = Kcorr
         self.sigmaz = sigmaz
         self.dl = self.luminosity_distance()
         self.M = self.absolute_magnitude()
@@ -206,3 +207,4 @@ class galaxyCatalog(object):
         the sky map's credible region above the given threshold"""
         skymap_ind = self.above_percentile(skymap, thresh)
         return np.in1d(gal_ind, skymap_ind)
+

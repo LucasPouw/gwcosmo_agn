@@ -90,7 +90,7 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.band = band
-        
+
         sp = SchechterParams(self.band)
         self.alpha = sp.alpha
         self.Mstar_obs = sp.Mstar
@@ -265,6 +265,7 @@ class gwcosmoLikelihood(object):
             decs = self.alldec[ind].flatten()
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
+            Kcorrs = self.Kcorr[ind].flatten()
             
             if self.weighted:
                 mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
@@ -282,10 +283,11 @@ class gwcosmoLikelihood(object):
                 numinner=np.zeros(len(H0))
                 a = (0.0 - zs[i]) / sigzs[i]
                 zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
+                zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
                 # loop over random draws from galaxies
-                for n in range(nsmear):
+                for n in range(len(zsmear)):
                     if self.weighted:
-                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                     else:
                         weight = 1.0
                     tempdist = np.zeros(len(H0))
@@ -335,10 +337,11 @@ class gwcosmoLikelihood(object):
             deninner=np.zeros(len(H0))
             a = (0.0 - self.allz[i]) / self.allsigmaz[i]
             zsmear = truncnorm.rvs(a, 5, loc=self.allz[i], scale=self.allsigmaz[i], size=nsmear)
+            zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
             # loop over random draws from galaxies
-            for n in range(nsmear):
+            for n in range(len(zsmear)):
                 if self.weighted:
-                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
                 else:
                     weight = 1.0
                 if self.basic:
@@ -378,7 +381,7 @@ class gwcosmoLikelihood(object):
         bar = progressbar.ProgressBar()
         print("Calculating p(G|H0,D)")
         for i in bar(range(len(H0))):
-            def I(z,M):
+            def I(M,z):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
@@ -394,8 +397,8 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             
-            num[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),epsabs=0,epsrel=1.49e-4)[0]
-            den[i] = dblquad(I,Mmin,Mmax,lambda x: 0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            num[i] = dblquad(I,0,self.zcut,lambda x: Mmin,lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax),epsabs=0,epsrel=1.49e-4)[0]
+            den[i] = dblquad(I,0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
         return self.pGD    
@@ -445,9 +448,10 @@ class gwcosmoLikelihood(object):
         print("Calculating p(x|H0,bar{G})")
         for i in bar(range(len(H0))):
 
-            def Inum(z,M):
+            def Inum(M,z):
                 temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
             *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)
+
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -456,9 +460,10 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                distnum[i] = dblquad(Inum,0.0,self.zcut, lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                            + dblquad(Inum,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
-                distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                distnum[i] = dblquad(Inum,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
         if self.EM_counterpart != None:
@@ -511,7 +516,7 @@ class gwcosmoLikelihood(object):
         print("Calculating p(D|H0,bar{G})")
         for i in bar(range(len(H0))):
 
-            def I(z,M):
+            def I(M,z):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
@@ -524,9 +529,10 @@ class gwcosmoLikelihood(object):
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den[i] = dblquad(I,0.0,self.zcut, lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
+                        + dblquad(I,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
-                den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+                den[i] = dblquad(I,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
         if allsky == True:
             pDnG = den*norm
         else:
@@ -777,6 +783,7 @@ class gwcosmoLikelihood(object):
         decs = self.alldec[ind].flatten()
         ms = self.allm[ind].flatten()
         sigzs = self.allsigmaz[ind].flatten()
+        Kcorrs = self.Kcorr[ind].flatten()
         
         max_mth = np.amax(ms)
         N = len(zs)
@@ -800,10 +807,11 @@ class gwcosmoLikelihood(object):
             
             a = (0.0 - zs[i]) / sigzs[i]
             zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
+            zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
             # loop over random draws from galaxies
-            for n in range(nsmear):
+            for n in range(len(zsmear)):
                 if self.weighted:
-                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0))
+                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
                 else:
                     weight = 1.0
                 tempdist = np.zeros(len(H0))
