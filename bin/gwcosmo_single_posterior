@@ -292,7 +292,7 @@ else:
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,reweight=reweight,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,
                                            uncertainty=uncertainty,basic=basic,
-                                           rate=rate_evolution,Lambda=Lambda,band=band)
+                                           rate=rate_evolution,Lambda=Lambda,Kcorr=Kcorr)
 
     likelihood_original,pxG,pDG,pGD,catalog_fraction, pxnG,pDnG,pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
 

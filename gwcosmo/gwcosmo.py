@@ -91,8 +91,12 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.Kcorr = Kcorr
-        self.band = galaxy_catalog.band
         self.reweight = reweight
+        
+        try:
+            self.band = galaxy_catalog.band
+        except:
+            self.band = 'B' # hack so that population analysis works from command line.
 
 
         sp = SchechterParams(self.band)
@@ -152,33 +156,36 @@ class gwcosmoLikelihood(object):
             self.temp = splrep(dl_array,vals)
 
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
-        self.radec_lim = self.galaxy_catalog.radec_lim[0]
-        if self.radec_lim == 0:
-            self.whole_cat = True
-        else:
-            self.whole_cat = False
-        self.ra_min = self.galaxy_catalog.radec_lim[1]
-        self.ra_max = self.galaxy_catalog.radec_lim[2]
-        self.dec_min = self.galaxy_catalog.radec_lim[3]
-        self.dec_max = self.galaxy_catalog.radec_lim[4]
-        
-        if self.Kcorr == True:
-            self.zcut = 0.5
-            self.color_name = self.galaxy_catalog.color_name
-        else:
-            self.zcut = 10.
-        
-        if self.whole_cat == False:
-            def skynorm(dec,ra):
-                return np.cos(dec)
-            self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,
-                                            lambda x: self.dec_min, 
-                                            lambda x: self.dec_max,
-                                            epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
-            self.rest_fraction = 1-self.catalog_fraction
-            print('This catalog covers {}% of the full sky'.format(self.catalog_fraction*100))
+
             
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
+            self.radec_lim = self.galaxy_catalog.radec_lim[0]
+            if self.radec_lim == 0:
+                self.whole_cat = True
+            else:
+                self.whole_cat = False
+            self.ra_min = self.galaxy_catalog.radec_lim[1]
+            self.ra_max = self.galaxy_catalog.radec_lim[2]
+            self.dec_min = self.galaxy_catalog.radec_lim[3]
+            self.dec_max = self.galaxy_catalog.radec_lim[4]
+            
+            if self.Kcorr == True:
+                self.zcut = 0.5
+                self.color_name = self.galaxy_catalog.color_name
+            else:
+                self.zcut = 10.
+            
+            if self.whole_cat == False:
+                def skynorm(dec,ra):
+                    return np.cos(dec)
+                self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,
+                                                lambda x: self.dec_min, 
+                                                lambda x: self.dec_max,
+                                                epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
+                self.rest_fraction = 1-self.catalog_fraction
+                print('This catalog covers {}% of the full sky'.format(self.catalog_fraction*100))
+        
+        
             #find galaxies within the bounds of the galaxy catalog
             sel = np.argwhere((self.ra_min <= self.galaxy_catalog.ra) & \
                               (self.galaxy_catalog.ra <= self.ra_max) & \
