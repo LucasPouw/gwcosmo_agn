@@ -36,6 +36,7 @@ import gwcosmo
 
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
+from .utilities.schechter_params import *
 
 import time
 import progressbar
@@ -100,19 +101,12 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.band = band
-
-        if self.band == 'B':
-            self.alpha = -1.07
-            self.Mstar_obs = -20.457
-            self.Mobs_min = -22.96
-            self.Mobs_max = -12.96
-        elif self.band == 'K':
-            self.alpha = -1.02
-            self.Mstar_obs = -23.55
-            self.Mobs_min = -27.
-            self.Mobs_max = -12.96
-        else:
-            raise Exception("Expected 'B' or 'K' band argument")    
+        
+        sp = SchechterParams(self.band)
+        self.alpha = sp.alpha
+        self.Mstar_obs = sp.Mstar
+        self.Mobs_min = sp.Mmin
+        self.Mobs_max = sp.Mmax
             
         if galaxy_catalog == None:
             self.galaxy_catalog = None
@@ -161,13 +155,15 @@ class gwcosmoLikelihood(object):
 
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
         if self.whole_cat == False:
-            if all(radec_lim) == None:
+            if self.galaxy_catalog.radec_lim[0] == 0:
+                self.radec_lim = None
                 print('must include ra and dec limits for a catalog which only covers part of the sky')
             else:
-                self.ra_min = radec_lim[0]
-                self.ra_max = radec_lim[1]
-                self.dec_min = radec_lim[2]
-                self.dec_max = radec_lim[3]
+                self.radec_lim = 1
+            self.ra_min = self.galaxy_catalog.radec_lim[1]
+            self.ra_max = self.galaxy_catalog.radec_lim[2]
+            self.dec_min = self.galaxy_catalog.radec_lim[3]
+            self.dec_max = self.galaxy_catalog.radec_lim[4]
             
             def skynorm(dec,ra):
                 return np.cos(dec)
@@ -180,15 +176,20 @@ class gwcosmoLikelihood(object):
             self.ra_max = np.pi*2.0
             self.dec_min = -np.pi/2.0
             self.dec_max = np.pi/2.0
-
+            
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             #find galaxies within the bounds of the galaxy catalog
-            ind = np.argwhere((self.ra_min <= galaxy_catalog.ra) & (galaxy_catalog.ra <= self.ra_max) & (self.dec_min <= galaxy_catalog.dec) & (galaxy_catalog.dec <= self.dec_max))
-            self.allz = galaxy_catalog.z[ind].flatten()
-            self.allra = galaxy_catalog.ra[ind].flatten()
-            self.alldec = galaxy_catalog.dec[ind].flatten()
-            self.allm = galaxy_catalog.m[ind].flatten()
-            self.allsigmaz = galaxy_catalog.sigmaz[ind].flatten()
+            sel = np.argwhere((self.ra_min <= self.galaxy_catalog.ra) & \
+                              (self.galaxy_catalog.ra <= self.ra_max) & \
+                              (self.dec_min <= self.galaxy_catalog.dec) & \
+                              (self.galaxy_catalog.dec <= self.dec_max))
+
+            self.allz = self.galaxy_catalog.z[sel].flatten()
+            self.allra = self.galaxy_catalog.ra[sel].flatten()
+            self.alldec = self.galaxy_catalog.dec[sel].flatten()
+            self.allm = self.galaxy_catalog.m[sel].flatten()
+            self.allsigmaz = self.galaxy_catalog.sigmaz[sel].flatten()
+            self.mth = self.galaxy_catalog.mth()
             self.nGal = len(self.allz)
         
             if self.uncertainty == False:

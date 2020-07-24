@@ -219,14 +219,15 @@ else:
         samples = None
         
     if opts.method == 'statistical':
-        if galaxy_catalog[-2:] == '.p':
-            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog)
+        if galaxy_catalog[-5:] == '.hdf5':
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog,band=band)
+            print("Using "+str(band)+"-band maggies.")
         else:
             print('Not a compatible catalog.')
         
-        if catalog.skypatch['allsky'] is not None:
+        if catalog.radec_lim[0] == 1:
             allsky = False
-            radeclims = catalog.skypatch['allsky']
+            radeclims = catalog.radec_lim[0]
         else:
             allsky = True
             radeclims = None
