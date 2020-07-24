@@ -103,6 +103,8 @@ parser = OptionParser(
         Option("--full_waveform", default='True',
             help="Use detection probability calculated using full waveforms (default=True) otherwise just use the inspiral part \
                 (only use full_waveform = False for O2-H0 backwards compatibility"),
+        Option("--Kcorrections", default='False',
+            help="Apply K-corrections."),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -197,6 +199,7 @@ else:
     new_skypatch=str2bool(opts.new_skypatch)
     band = str(opts.catalog_band)
     full_waveform=str2bool(opts.full_waveform)
+    Kcorr = str2bool(opts.Kcorrections)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -220,17 +223,10 @@ else:
         
     if opts.method == 'statistical':
         if galaxy_catalog[-5:] == '.hdf5':
-            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog,band=band)
+            catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=galaxy_catalog,band=band,Kcorr=Kcorr)
             print("Using "+str(band)+"-band maggies.")
         else:
             print('Not a compatible catalog.')
-        
-        if catalog.radec_lim[0] == 1:
-            allsky = False
-            radeclims = catalog.radec_lim[0]
-        else:
-            allsky = True
-            radeclims = None
 
         counterpart = None
         population = False
@@ -241,8 +237,6 @@ else:
         galaxy_weighting = False
         completion = False
         catalog = None      
-        allsky = True
-        radeclims = None
         counterpart = None
 
     if (opts.method == "counterpart" and opts.counterpart is None):
@@ -264,14 +258,10 @@ else:
                 counterpart.get_galaxy(0).sigmaz = counterpart_v
             else:
                 counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
-            allsky = True
-            radeclims = None
             population = False
 
     elif (opts.method == "counterpart" and opts.counterpart is not None):
         catalog = None
-        allsky = True
-        radeclims = None
         population = False
 
     if full_waveform is True:
@@ -297,8 +287,8 @@ else:
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
     
     me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,EM_counterpart=counterpart,
-                                           linear=linear,weighted=galaxy_weighting,whole_cat=allsky,
-                                           radec_lim=radeclims,uncertainty=uncertainty,basic=basic,
+                                           linear=linear,weighted=galaxy_weighting,
+                                           uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)
 
     likelihood_original,pxG,pDG,pGD,catalog_fraction, pxnG,pDnG,pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)

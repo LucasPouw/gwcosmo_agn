@@ -49,8 +49,6 @@ class gwcosmoLikelihood(object):
 
     Parameters
     ----------
-    event_type : str
-        Type of gravitational wave event (either 'BNS', 'BNS-uniform' or 'BBH')
     GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object 
         Gravitational wave event samples
     skymap : gwcosmo.likelihood.skymap.skymap object
@@ -64,17 +62,10 @@ class gwcosmoLikelihood(object):
         The matter fraction of the universe (default=0.3)
     linear : bool, optional
         Use linear cosmology (default=False)
-    weighted : bool, optional
-        Use luminosity weighting (default=False)
     weights : str, optional
         Specifies type of luminosity weighting to use: 'schechter' or 'trivial'
         (default='schechter') 'trivial' is only for testing purposes and
         should not be used in analysis
-    whole_cat : bool, optional
-        Does the galaxy catalog provided cover the whole sky? (default=True)
-    radec_lim : array_like, optional
-        Needed if whole_cat=False. RA and Dec limits on the catalog in the
-        format np.array([ramin,ramax,decmin,decmax]) in radians
     basic : bool, optional
         If True, uses pdet suitable for MDC analysis (default=False)
     uncertainty : bool, optional
@@ -87,15 +78,13 @@ class gwcosmoLikelihood(object):
     """
 
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
-                 Omega_m=0.308, linear=False, weighted=False, whole_cat=True, radec_lim=None,
-                 basic=False, uncertainty=False, rate='constant', Lambda=3.0, area=0.999, band='B'):
+                 Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
+                 rate='constant', Lambda=3.0, area=0.999, band='B'):
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
         self.linear = linear
         self.weighted = weighted
-        self.whole_cat = whole_cat
-        self.radec_lim = radec_lim
         self.basic = basic
         self.uncertainty = uncertainty
         self.skymap = skymap
@@ -154,28 +143,25 @@ class gwcosmoLikelihood(object):
             self.temp = splrep(dl_array,vals)
 
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
+        self.radec_lim = self.galaxy_catalog.radec_lim[0]
+        if self.radec_lim == 0:
+            self.whole_cat = True
+        else:
+            self.whole_cat = False
+        self.ra_min = self.galaxy_catalog.radec_lim[1]
+        self.ra_max = self.galaxy_catalog.radec_lim[2]
+        self.dec_min = self.galaxy_catalog.radec_lim[3]
+        self.dec_max = self.galaxy_catalog.radec_lim[4]
+        
         if self.whole_cat == False:
-            if self.galaxy_catalog.radec_lim[0] == 0:
-                self.radec_lim = None
-                print('must include ra and dec limits for a catalog which only covers part of the sky')
-            else:
-                self.radec_lim = 1
-            self.ra_min = self.galaxy_catalog.radec_lim[1]
-            self.ra_max = self.galaxy_catalog.radec_lim[2]
-            self.dec_min = self.galaxy_catalog.radec_lim[3]
-            self.dec_max = self.galaxy_catalog.radec_lim[4]
-            
             def skynorm(dec,ra):
                 return np.cos(dec)
-            self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
+            self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,
+                                            lambda x: self.dec_min, 
+                                            lambda x: self.dec_max,
+                                            epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
             self.rest_fraction = 1-self.catalog_fraction
             print('This catalog covers {}% of the full sky'.format(self.catalog_fraction*100))
-
-        else:
-            self.ra_min = 0.0
-            self.ra_max = np.pi*2.0
-            self.dec_min = -np.pi/2.0
-            self.dec_max = np.pi/2.0
             
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             #find galaxies within the bounds of the galaxy catalog
@@ -189,6 +175,8 @@ class gwcosmoLikelihood(object):
             self.alldec = self.galaxy_catalog.dec[sel].flatten()
             self.allm = self.galaxy_catalog.m[sel].flatten()
             self.allsigmaz = self.galaxy_catalog.sigmaz[sel].flatten()
+            self.allcolor = self.galaxy_catalog.color[sel].flatten()
+            print(self.allcolor)
             self.mth = self.galaxy_catalog.mth()
             self.nGal = len(self.allz)
         
@@ -724,7 +712,6 @@ class gwcosmoLikelihood(object):
         
             if complete==True:
                 likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
-                
 
             else:
                 if all(self.pGD)==None:
@@ -751,7 +738,7 @@ class gwcosmoLikelihood(object):
             self.pnGD = np.zeros(len(H0))
             pxnG = np.zeros(len(H0))
             self.pDnG = np.ones(len(H0))
-      
+
         if (self.whole_cat==True) or (self.EM_counterpart != None) or (population==True):
             pDnG_rest_of_sky = np.ones(len(H0))
             pxnG_rest_of_sky = np.zeros(len(H0))

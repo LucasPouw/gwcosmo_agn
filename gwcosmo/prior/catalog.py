@@ -18,6 +18,8 @@ from ..utilities.schechter_function import *
 catalog_data_path = pkg_resources.resource_filename('gwcosmo',
                                                     'data/catalog_data/')
 
+Kcorr_bands = {'B':'B', 'K':'K', 'u':'r', 'g':'r', 'r':'g', 'i':'g', 'z':'r'}
+Kcorr_signs = {'B':1, 'K':1, 'u':1, 'g':1, 'r':-1, 'i':-1, 'z':-1}
 
 def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
     """
@@ -116,11 +118,11 @@ class galaxyCatalog(object):
     thresh: Probablity contained within sky map region
     band: key of band
     """
-    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9, band='B'):
+    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9, band='B', Kcorr=False):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
-            self.extract_galaxies(skymap_filename=skymap_filename, thresh=thresh, band=band)
+            self.extract_galaxies(skymap_filename=skymap_filename, thresh=thresh, band=band, Kcorr=Kcorr)
 
         if catalog_file is None:
             self.catalog_name = ""
@@ -146,10 +148,11 @@ class galaxyCatalog(object):
             mth = np.median(m)
         return mth
 
-    def extract_galaxies(self, skymap_filename=None, thresh=.9, band='B'):
-        if band == 'constant':
-            band = 'B'
+    def extract_galaxies(self, skymap_filename=None, thresh=.9, band='B', Kcorr=False):
         band_key = 'm_{0}'.format(band)
+        if Kcorr is True:
+            band_Kcorr = Kcorr_bands[band]
+            band_Kcorr_key = 'm_{0}'.format(band_Kcorr)
         if skymap_filename:
             skymap = hp.read_map(skymap_filename, verbose=False)
         gal_ind = self.dictionary['skymap_indices'][:]
@@ -159,6 +162,8 @@ class galaxyCatalog(object):
             z = self.dictionary['z'][:]
             sigmaz = self.dictionary['sigmaz'][:]
             m = self.dictionary[band_key][:]
+            if Kcorr is True:
+                m_K = self.dictionary[band_Kcorr_key][:]
             radec_lim = self.dictionary['radec_lim'][:]
         else:
             ind = self.galaxies_within_region(skymap, gal_ind, thresh)
@@ -167,10 +172,22 @@ class galaxyCatalog(object):
             z = self.dictionary['z'][ind]
             sigmaz = self.dictionary['sigmaz'][ind]
             m = self.dictionary[band_key][ind]
+            if Kcorr is True:
+                m_K = self.dictionary[band_Kcorr_key][ind]
             radec_lim = self.dictionary['radec_lim'][:]
         self.band = band
         self.radec_lim = radec_lim
+        if Kcorr is True:
+            mask = (~np.isnan(m))&(~np.isnan(m_K))
+            m_K = m_K[mask]
+        else:
+            mask = ~np.isnan(m)
+        ra, dec, z, m = ra[mask], dec[mask], z[mask], m[mask]
         self.ra, self.dec, self.z, self.sigmaz, self.m = ra, dec, z, sigmaz, m
+        if Kcorr is True:
+            self.color = Kcorr_signs[band]*(m - m_K)
+        else:
+            self.color = np.zeros(len(m))
         return ra, dec, z, m, sigmaz
     
     def above_percentile(self, skymap, thresh):
