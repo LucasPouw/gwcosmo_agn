@@ -37,6 +37,7 @@ import gwcosmo
 from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
 from .utilities.schechter_params import *
+from .utilities.calc_kcor import *
 
 import time
 import progressbar
@@ -73,13 +74,13 @@ class gwcosmoLikelihood(object):
         for (default=False)
     rate : str, optional
         specifies rate evolution model, 'const' or 'evolving'
-    band : str, optional
-        specify B or K band catalog (and hence Schechter function parameters) (default='B')
+    Kcorr : bool, optional
+        If true, will attempt to apply K corrections (default=False)
     """
 
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
-                 rate='constant', Lambda=3.0, area=0.999, band='B'):
+                 rate='constant', Lambda=3.0, area=0.999, Kcorr=False):
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
@@ -89,7 +90,9 @@ class gwcosmoLikelihood(object):
         self.uncertainty = uncertainty
         self.skymap = skymap
         self.area = area
-        self.band = band
+        self.Kcorr = Kcorr
+        
+        self.band = galaxy_catalog.band
 
         sp = SchechterParams(self.band)
         self.alpha = sp.alpha
@@ -153,6 +156,12 @@ class gwcosmoLikelihood(object):
         self.dec_min = self.galaxy_catalog.radec_lim[3]
         self.dec_max = self.galaxy_catalog.radec_lim[4]
         
+        if self.Kcorr == True:
+            self.zcut = 0.5
+            self.color_name = self.galaxy_catalog.color_name
+        else:
+            self.zcut = 10.
+        
         if self.whole_cat == False:
             def skynorm(dec,ra):
                 return np.cos(dec)
@@ -168,7 +177,8 @@ class gwcosmoLikelihood(object):
             sel = np.argwhere((self.ra_min <= self.galaxy_catalog.ra) & \
                               (self.galaxy_catalog.ra <= self.ra_max) & \
                               (self.dec_min <= self.galaxy_catalog.dec) & \
-                              (self.galaxy_catalog.dec <= self.dec_max))
+                              (self.galaxy_catalog.dec <= self.dec_max) & \
+                              ((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut))
 
             self.allz = self.galaxy_catalog.z[sel].flatten()
             self.allra = self.galaxy_catalog.ra[sel].flatten()
@@ -176,7 +186,6 @@ class gwcosmoLikelihood(object):
             self.allm = self.galaxy_catalog.m[sel].flatten()
             self.allsigmaz = self.galaxy_catalog.sigmaz[sel].flatten()
             self.allcolor = self.galaxy_catalog.color[sel].flatten()
-            print(self.allcolor)
             self.mth = self.galaxy_catalog.mth()
             self.nGal = len(self.allz)
         
@@ -265,7 +274,7 @@ class gwcosmoLikelihood(object):
             decs = self.alldec[ind].flatten()
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
-            Kcorrs = self.Kcorr[ind].flatten()
+            colors = self.allcolor[ind].flatten()
             
             if self.weighted:
                 mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
@@ -287,7 +296,11 @@ class gwcosmoLikelihood(object):
                 # loop over random draws from galaxies
                 for n in range(len(zsmear)):
                     if self.weighted:
-                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
+                        if self.Kcorr == True:
+                            Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                        else:
+                            Kcorr = 0.
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                     else:
                         weight = 1.0
                     tempdist = np.zeros(len(H0))
@@ -341,7 +354,11 @@ class gwcosmoLikelihood(object):
             # loop over random draws from galaxies
             for n in range(len(zsmear)):
                 if self.weighted:
-                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=self.Kcorr[i])
+                    if self.Kcorr == True:
+                        Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=self.allcolor[i])
+                    else:
+                        Kcorr = 0.
+                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                 else:
                     weight = 1.0
                 if self.basic:
@@ -783,7 +800,7 @@ class gwcosmoLikelihood(object):
         decs = self.alldec[ind].flatten()
         ms = self.allm[ind].flatten()
         sigzs = self.allsigmaz[ind].flatten()
-        Kcorrs = self.Kcorr[ind].flatten()
+        colors = self.allcolor[ind].flatten()
         
         max_mth = np.amax(ms)
         N = len(zs)
@@ -811,7 +828,11 @@ class gwcosmoLikelihood(object):
             # loop over random draws from galaxies
             for n in range(len(zsmear)):
                 if self.weighted:
-                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorrs[i])
+                    if self.Kcorr == True:
+                        Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                    else:
+                        Kcorr = 0.
+                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                 else:
                     weight = 1.0
                 tempdist = np.zeros(len(H0))

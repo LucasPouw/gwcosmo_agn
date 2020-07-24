@@ -20,6 +20,7 @@ catalog_data_path = pkg_resources.resource_filename('gwcosmo',
 
 Kcorr_bands = {'B':'B', 'K':'K', 'u':'r', 'g':'r', 'r':'g', 'i':'g', 'z':'r'}
 Kcorr_signs = {'B':1, 'K':1, 'u':1, 'g':1, 'r':-1, 'i':-1, 'z':-1}
+color_names = {'B':None, 'K':None, 'u':'u - r', 'g':'g - r', 'r':'g - r', 'i':'g - i', 'z':'r - z'}
 
 def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
     """
@@ -154,6 +155,7 @@ class galaxyCatalog(object):
         if Kcorr is True:
             band_Kcorr = Kcorr_bands[band]
             band_Kcorr_key = 'm_{0}'.format(band_Kcorr)
+            self.color_name = color_names[band]
         if skymap_filename:
             skymap = hp.read_map(skymap_filename, verbose=False)
         gal_ind = self.dictionary['skymap_indices'][:]
@@ -183,7 +185,7 @@ class galaxyCatalog(object):
             m_K = m_K[mask]
         else:
             mask = ~np.isnan(m)
-        ra, dec, z, m = ra[mask], dec[mask], z[mask], m[mask]
+        ra, dec, z, m, sigmaz = ra[mask], dec[mask], z[mask], m[mask], sigmaz[mask]
         self.ra, self.dec, self.z, self.sigmaz, self.m = ra, dec, z, sigmaz, m
         if Kcorr is True:
             self.color = Kcorr_signs[band]*(m - m_K)
