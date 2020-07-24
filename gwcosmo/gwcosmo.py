@@ -78,7 +78,7 @@ class gwcosmoLikelihood(object):
         If true, will attempt to apply K corrections (default=False)
     """
 
-    def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, EM_counterpart=None,
+    def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, reweight=False, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
                  rate='constant', Lambda=3.0, area=0.999, Kcorr=False):
         self.H0 = H0
@@ -91,8 +91,9 @@ class gwcosmoLikelihood(object):
         self.skymap = skymap
         self.area = area
         self.Kcorr = Kcorr
-        
         self.band = galaxy_catalog.band
+        self.reweight = reweight
+
 
         sp = SchechterParams(self.band)
         self.alpha = sp.alpha
@@ -124,9 +125,14 @@ class gwcosmoLikelihood(object):
         if GW_data is not None:
             temps = []
             norms = []
-            print("Reweighting samples")
+            if reweight == True:
+                print("Reweighting samples")
+            seed = np.random.randint(10000)
             for H0 in self.H0:
-                distkernel, norm = GW_data.marginalized_distance(H0, 1.6, 5, 100)
+                if reweight == True:
+                    distkernel, norm = GW_data.marginalized_distance_reweight(H0, 1.6, 5, 100,seed=seed)
+                else:
+                    distkernel, norm = GW_data.marginalized_distance(H0)
                 distmin = 0.5*np.amin(GW_data.distance)
                 distmax = 2.0*np.amax(GW_data.distance)
                 dl_array = np.linspace(distmin, distmax, 500)
@@ -223,7 +229,10 @@ class gwcosmoLikelihood(object):
         Returns a probability for a given distance dl
         from the interpolated function.
         """
-        return splev(dl, temp, ext=3)
+        if self.reweight==True:
+            return splev(dl, temp, ext=3)
+        else:
+            return splev(dl, temp, ext=3)/dl**2
 
     def px_H0G(self, H0):
         """

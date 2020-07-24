@@ -105,6 +105,8 @@ parser = OptionParser(
                 (only use full_waveform = False for O2-H0 backwards compatibility"),
         Option("--Kcorrections", default='False',
             help="Apply K-corrections."),
+        Option("--reweight", default='False',
+            help="Reweight samples to pop model."),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
@@ -200,6 +202,7 @@ else:
     band = str(opts.catalog_band)
     full_waveform=str2bool(opts.full_waveform)
     Kcorr = str2bool(opts.Kcorrections)
+    reweight = str2bool(opts.reweight)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -286,7 +289,7 @@ else:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
     
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,EM_counterpart=counterpart,
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,reweight=reweight,EM_counterpart=counterpart,
                                            linear=linear,weighted=galaxy_weighting,
                                            uncertainty=uncertainty,basic=basic,
                                            rate=rate_evolution,Lambda=Lambda,band=band)

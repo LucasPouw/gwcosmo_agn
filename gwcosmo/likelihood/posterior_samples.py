@@ -128,10 +128,10 @@ class posterior_samples(object):
         mass_2_source = self.mass_2/(1+redshift)
         return redshift, mass_1_source, mass_2_source
         
-    def reweight_samples(self, H0, alpha, mmin, mmax):
+    def reweight_samples(self, H0, alpha, mmin, mmax, seed=1):
         # Prior distribution used in the LVC analysis
         prior = PriorDict()
-        prior['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=10000)
+        prior['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
 
         # Prior distribution used in this work
         new_prior = PriorDict(conversion_function=constrain_m1m2)
@@ -143,7 +143,7 @@ class posterior_samples(object):
         
         # Re-weight
         weights = new_prior['mass_1'].prob(mass_1_source) * new_prior['mass_2'].prob(mass_2_source) / prior["luminosity_distance"].prob(self.distance)
-
+        np.random.seed(seed)
         draws = np.random.uniform(0, max(weights), weights.shape)
         keep = weights > draws
         m1det = self.mass_1[keep]
@@ -151,11 +151,18 @@ class posterior_samples(object):
         dl = self.distance[keep]
         return dl, weights
 
-    def marginalized_distance(self, H0, alpha, mmin, mmax):
+    def marginalized_distance_reweight(self, H0, alpha, mmin, mmax, seed=1):
         """
         Computes the marginalized distance posterior KDE.
         """
-        dl, weights = self.reweight_samples(H0, alpha, mmin, mmax)
+        dl, weights = self.reweight_samples(H0, alpha, mmin, mmax, seed=seed)
         newevidence = np.sum(weights)/len(weights)
         norm = newevidence
         return gaussian_kde(dl), norm
+
+    def marginalized_distance(self, H0):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        norm = 1
+        return gaussian_kde(self.distance), norm
