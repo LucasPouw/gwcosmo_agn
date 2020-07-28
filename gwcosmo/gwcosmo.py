@@ -98,7 +98,6 @@ class gwcosmoLikelihood(object):
         except:
             self.band = 'B' # hack so that population analysis works from command line.
 
-
         sp = SchechterParams(self.band)
         self.alpha = sp.alpha
         self.Mstar_obs = sp.Mstar
@@ -131,10 +130,20 @@ class gwcosmoLikelihood(object):
             norms = []
             if reweight == True:
                 print("Reweighting samples")
+
             seed = np.random.randint(10000)
+            name = pdet.mass_distribution
+            if name == 'BBH-powerlaw':
+                alpha = pdet.alpha
+                mmin = pdet.Mmin
+                mmax = pdet.Mmax
+
             for H0 in self.H0:
                 if reweight == True:
-                    distkernel, norm = GW_data.marginalized_distance_reweight(H0, 1.6, 5, 100,seed=seed)
+                    if name == 'BBH-powerlaw':
+                        distkernel, norm = GW_data.marginalized_distance_reweight(H0, name, alpha, mmin, mmax, seed=seed)
+                    else:
+                        distkernel, norm = GW_data.marginalized_distance_reweight(H0, name, seed=seed)          
                 else:
                     distkernel, norm = GW_data.marginalized_distance(H0)
                 distmin = 0.5*np.amin(GW_data.distance)

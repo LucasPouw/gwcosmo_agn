@@ -12,8 +12,16 @@ from scipy.stats import ncx2, norm
 from scipy.interpolate import splev, splrep
 from astropy import constants as const
 from astropy import units as u
+from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint, DeltaFunction
+from bilby import gw
 
 import gwcosmo
+
+
+def constrain_m1m2(parameters):
+    converted_parameters = parameters.copy()
+    converted_parameters['m1m2'] = parameters['mass_1'] - parameters['mass_2']
+    return converted_parameters
 
 
 def pH0(H0, prior='log'):
@@ -40,134 +48,74 @@ def pH0(H0, prior='log'):
     if prior == 'log':
         return 1./H0
 
+
+class mass_distribution(object):
+    def __init__(self, name, alpha=1.6, mmin=5, mmax=50, m1=50, m2=50):
+        self.name = name
+        self.alpha = alpha
+        self.mmin = mmin
+        self.mmax = mmax
+        self.m1 = m1
+        self.m2 = m2
+        
+        if self.name == 'BBH-powerlaw':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['mass_1'] = PowerLaw(alpha=-self.alpha, minimum=self.mmin, maximum=self.mmax)
+            dist['mass_2'] = Uniform(minimum=self.mmin, maximum=self.mmax)
+            dist['m1m2'] = Constraint(minimum=self.mmin, maximum=self.mmax)
+
+        if self.name == 'BNS':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['mass_1'] = Uniform(minimum=1, maximum=3)
+            dist['mass_2'] = Uniform(minimum=1, maximum=3)
+            dist['m1m2'] = Constraint(minimum=1, maximum=3) 
+
+        if self.name == 'NSBH':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['mass_1'] = PowerLaw(alpha=-self.alpha, minimum=self.mmin, maximum=self.mmax)
+            dist['mass_2'] = Uniform(minimum=1, maximum=3)
+            dist['m1m2'] = Constraint(minimum=self.mmin, maximum=self.mmax)
+            
+        if self.name == 'BBH-constant':
+            dist = PriorDict()
+            dist['mass_1'] = DeltaFunction(self.m1)
+            dist['mass_2'] = DeltaFunction(self.m2)
+
+        self.dist = dist
+            
+    def sample(self, N_samples):
+        samples = self.dist.sample(N_samples)
+        return samples['mass_1'], samples['mass_2']
     
-def BBH_mass_distribution(N, mmin=5., mmax=40., alpha=1.6):
-    """
-    Returns p(m1,m2)
-    The prior on the mass distribution that follows a power
-    law for BBHs.
-
-    Parameters
-    ----------
-    N : integer
-        Number of masses sampled
-    mmin : float
-        minimum mass
-    mmax : float
-        maximum mass
-    alpha : float
-        slope of the power law p(m) = m^-\alpha where alpha > 0
-
-    Returns
-    -------
-    float or array_like
-        m1, m2
-    """
-    alpha_ = -1*alpha
-    u = np.random.rand(N)
-    if alpha_ != -1:
-        m1 = (u*(mmax**(alpha_+1)-mmin**(alpha_+1)) +
-              mmin**(alpha_+1))**(1.0/(alpha_+1))
-        print('Powerlaw mass distribution with alpha = ' + str(alpha))
-    else:
-        m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
-        print('Flat in log mass distribution')
-    m2 = np.random.uniform(low=mmin, high=m1)
-    return m1, m2
+    def prob(self, samples, parameter):
+        return self.dist[parameter].prob(samples)
 
 
-def BBH_constant_mass(N, M1=50., M2=50.):
-    """
-    Returns p(M1,M2) for given masses.
+class distance_distribution(object):
+    def __init__(self, name):
+        self.name = name
+        
+        if self.name == 'BBH-powerlaw':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
 
-    Parameters
-    ----------
-    N : integer
-        Number of masses sampled
-    M1 : float
-        source mass
-    M2 : float
-        source mass
-    -------
-    float or array_like
-        m1, m2
-    """
-    m1=[]
-    m2=[]
-    while len(m1) < N:
-        m1.append(M1)
-        m2.append(M2)
-    m1 = np.array(m1)
-    m2 = np.array(m2)
-    print('BBH source masses M1 = ' + str(M1) + ' M2 = '+ str(M2))
-    return m1, m2
+        if self.name == 'BNS':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=1000)
 
+        if self.name == 'NSBH':
+            dist = PriorDict(conversion_function=constrain_m1m2)
+            dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=1000)
+            
+        if self.name == 'BBH-constant':
+            dist = PriorDict()
+            dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
 
-def BNS_gaussian_distribution(N, mean=1.35, sigma=0.15):
-    """
-    Returns p(m1,m2)
-    The prior on the mass distribution that follows gaussian for BNSs.
-
-    Parameters
-    ----------
-    N : integer
-        Number of masses sampled
-    mean : float
-        mean of gaussian dist
-    sigma : float
-        std of gaussian dist
-
-    Returns
-    -------
-    float or array_like
-        mass1, mass2
-    """
-    mass1 = []
-    mass2 = []
-    while len(mass1) < N:
-        m1 = np.random.normal(mean, sigma)
-        m2 = np.random.normal(mean, sigma)
-        if m2 > m1:
-            m3 = m2
-            m2 = m1
-            m1 = m3
-        mass1.append(m1)
-        mass2.append(m2)
-    mass1 = np.array(mass1)
-    mass2 = np.array(mass2)
-    return mass1, mass2
-
-
-def BNS_uniform_distribution(N, mmin=1., mmax=3.):
-    """
-    Returns p(m1,m2)
-    The prior on the mass distribution that follows gaussian for BNSs.
-
-    Parameters
-    ----------
-    N : integer
-        Number of masses sampled
-    mmin : float
-        minimum mass
-    mmax : float
-        maximum mass
-
-    Returns
-    -------
-    float or array_like
-        mass1, mass2
-    """
-    mass1 = []
-    mass2 = []
-    while len(mass1) < N:
-        m1 = np.random.uniform(mmin, mmax)
-        m2 = np.random.uniform(mmin, mmax)
-        if m2 > m1:
-            m3 = m2
-            m2 = m1
-            m1 = m3
-        mass1.append(m1)
-        mass2.append(m2)
-    mass1 = np.array(mass1)
-    mass2 = np.array(mass2)
-    return mass1, mass2
+        self.dist = dist
+            
+    def sample(self, N_samples):
+        samples = self.dist.sample(N_samples)
+        return samples['luminosity_distance']
+    
+    def prob(self, samples):
+        return self.dist['luminosity_distance'].prob(samples)

@@ -13,6 +13,7 @@ import h5py
 from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
 from bilby import gw
 from ..utilities.standard_cosmology import z_dlH0
+from ..prior.priors import *
 
 from astropy.cosmology import FlatLambdaCDM, z_at_value
 import astropy.units as u
@@ -128,21 +129,18 @@ class posterior_samples(object):
         mass_2_source = self.mass_2/(1+redshift)
         return redshift, mass_1_source, mass_2_source
         
-    def reweight_samples(self, H0, alpha, mmin, mmax, seed=1):
+    def reweight_samples(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
         # Prior distribution used in the LVC analysis
-        prior = PriorDict()
-        prior['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
+        prior = distance_distribution(name=name)
 
         # Prior distribution used in this work
-        new_prior = PriorDict(conversion_function=constrain_m1m2)
-        new_prior['mass_1'] = PowerLaw(alpha=-alpha, minimum=mmin, maximum=mmax)
-        new_prior['mass_2'] = Uniform(minimum=mmin, maximum=mmax)
-        new_prior['m1m2'] = Constraint(minimum=mmin, maximum=mmax)
+        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
+
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
         
         # Re-weight
-        weights = new_prior['mass_1'].prob(mass_1_source) * new_prior['mass_2'].prob(mass_2_source) / prior["luminosity_distance"].prob(self.distance)
+        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2') / prior.prob(self.distance)
         np.random.seed(seed)
         draws = np.random.uniform(0, max(weights), weights.shape)
         keep = weights > draws
@@ -151,13 +149,12 @@ class posterior_samples(object):
         dl = self.distance[keep]
         return dl, weights
 
-    def marginalized_distance_reweight(self, H0, alpha, mmin, mmax, seed=1):
+    def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
         """
         Computes the marginalized distance posterior KDE.
         """
-        dl, weights = self.reweight_samples(H0, alpha, mmin, mmax, seed=seed)
-        newevidence = np.sum(weights)/len(weights)
-        norm = newevidence
+        dl, weights = self.reweight_samples(H0, name, alpha=alpha, mmin=mmin, mmax=mmax, seed=seed)
+        norm = np.sum(weights)/len(weights)
         return gaussian_kde(dl), norm
 
     def marginalized_distance(self, H0):
