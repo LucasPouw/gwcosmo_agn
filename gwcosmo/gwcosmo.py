@@ -172,8 +172,10 @@ class gwcosmoLikelihood(object):
             if self.Kcorr == True:
                 self.zcut = 0.5
                 self.color_name = self.galaxy_catalog.color_name
+                self.color_limit = self.galaxy_catalog.color_limit
             else:
                 self.zcut = 10.
+                self.color_limit = [-np.inf,np.inf]
             
             if self.whole_cat == False:
                 def skynorm(dec,ra):
@@ -191,7 +193,9 @@ class gwcosmoLikelihood(object):
                               (self.galaxy_catalog.ra <= self.ra_max) & \
                               (self.dec_min <= self.galaxy_catalog.dec) & \
                               (self.galaxy_catalog.dec <= self.dec_max) & \
-                              ((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut))
+                              ((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut) & \
+                              (self.color_limit[0] <= galaxy_catalog.color) & \
+                              (galaxy_catalog.color <= self.color_limit[1]))
 
             self.allz = self.galaxy_catalog.z[sel].flatten()
             self.allra = self.galaxy_catalog.ra[sel].flatten()

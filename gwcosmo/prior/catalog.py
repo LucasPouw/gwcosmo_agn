@@ -21,6 +21,7 @@ catalog_data_path = pkg_resources.resource_filename('gwcosmo',
 Kcorr_bands = {'B':'B', 'K':'K', 'u':'r', 'g':'r', 'r':'g', 'i':'g', 'z':'r'}
 Kcorr_signs = {'B':1, 'K':1, 'u':1, 'g':1, 'r':-1, 'i':-1, 'z':-1}
 color_names = {'B':None, 'K':None, 'u':'u - r', 'g':'g - r', 'r':'g - r', 'i':'g - i', 'z':'r - z'}
+color_limits = {'u - r':[-0.1,2.9], 'g - r':[-0.1,1.9], 'g - i':[0,3], 'r - z':[0,1.5]}
 
 def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
     """
@@ -156,6 +157,7 @@ class galaxyCatalog(object):
             band_Kcorr = Kcorr_bands[band]
             band_Kcorr_key = 'm_{0}'.format(band_Kcorr)
             self.color_name = color_names[band]
+            self.color_limit = color_limits[self.color_name]
         if skymap_filename:
             skymap = hp.read_map(skymap_filename, verbose=False)
         gal_ind = self.dictionary['skymap_indices'][:]
