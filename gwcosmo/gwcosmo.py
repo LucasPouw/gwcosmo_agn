@@ -321,7 +321,10 @@ class gwcosmoLikelihood(object):
                 numinner=np.zeros(len(H0))
                 a = (0.0 - zs[i]) / sigzs[i]
                 zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
-                zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
+                zsmear = zsmear[np.argwhere(zsmear<self.zcut)].flatten() # remove support above the catalogue hard redshift cut
+                tempdist = np.zeros([len(H0),len(zsmear)])
+                for k in range(len(H0)):
+                    tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
                 # loop over random draws from galaxies
                 for n in range(len(zsmear)):
                     if self.weighted:
@@ -332,10 +335,7 @@ class gwcosmoLikelihood(object):
                         weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                     else:
                         weight = 1.0
-                    tempdist = np.zeros(len(H0))
-                    for k in range(len(H0)):
-                        tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0[k]),self.temps[k])
-                    numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
+                    numinner += tempdist[:,n]*tempsky[i]*weight
                 normnuminner = numinner/nsmear
                 num += normnuminner
 
@@ -853,7 +853,10 @@ class gwcosmoLikelihood(object):
             
             a = (0.0 - zs[i]) / sigzs[i]
             zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
-            zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
+            zsmear = zsmear[np.argwhere(zsmear<self.zcut)].flatten() # remove support above the catalogue hard redshift cut
+            tempdist = np.zeros([len(H0),len(zsmear)])
+            for k in range(len(H0)):
+                tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
             # loop over random draws from galaxies
             for n in range(len(zsmear)):
                 if self.weighted:
@@ -864,10 +867,8 @@ class gwcosmoLikelihood(object):
                     weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                 else:
                     weight = 1.0
-                tempdist = np.zeros(len(H0))
-                for k in range(len(H0)):
-                    tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear[n], H0[k]),self.temps[k])
-                numinner += tempdist*tempsky[i]*weight*self.ps_z(zsmear[n])
+
+                numinner += tempdist[:,n]*tempsky[i]*weight
 
                 if self.basic:
                     prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
