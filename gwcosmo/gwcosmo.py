@@ -80,7 +80,7 @@ class gwcosmoLikelihood(object):
 
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, reweight=False, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
-                 rate='constant', Lambda=3.0, area=0.999, Kcorr=False):
+                 rate='constant', population_params=None, area=0.999, Kcorr=False):
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
@@ -93,13 +93,26 @@ class gwcosmoLikelihood(object):
         self.Kcorr = Kcorr
         self.reweight = reweight
         
+        if population_params is None:
+            self.mass_distribution = pdet.mass_distribution
+            self.alpha = 1.6
+            self.mmin = 5
+            self.mmax = 100
+            self.Lambda = 0
+        else:
+            self.mass_distribution = population_params['mass_distribution']
+            self.alpha = population_params['alpha']
+            self.mmin = population_params['alpha']
+            self.mmax = population_params['mmax']
+            self.Lambda = population_params['Lambda']
+
         try:
             self.band = galaxy_catalog.band
         except:
             self.band = 'B' # hack so that population analysis works from command line.
 
         sp = SchechterParams(self.band)
-        self.alpha = sp.alpha
+        self.alpha_sp = sp.alpha
         self.Mstar_obs = sp.Mstar
         self.Mobs_min = sp.Mmin
         self.Mobs_max = sp.Mmax
@@ -130,20 +143,10 @@ class gwcosmoLikelihood(object):
             norms = []
             if reweight == True:
                 print("Reweighting samples")
-
             seed = np.random.randint(10000)
-            name = pdet.mass_distribution
-            if name == 'BBH-powerlaw':
-                alpha = pdet.alpha
-                mmin = pdet.Mmin
-                mmax = pdet.Mmax
-
             for H0 in self.H0:
                 if reweight == True:
-                    if name == 'BBH-powerlaw':
-                        distkernel, norm = GW_data.marginalized_distance_reweight(H0, name, alpha, mmin, mmax, seed=seed)
-                    else:
-                        distkernel, norm = GW_data.marginalized_distance_reweight(H0, name, seed=seed)          
+                    distkernel, norm = GW_data.marginalized_distance_reweight(H0, self.mass_distribution, self.alpha, self.mmin, self.mmax, seed=seed)
                 else:
                     distkernel, norm = GW_data.marginalized_distance(H0)
                 distmin = 0.5*np.amin(GW_data.distance)
@@ -236,7 +239,6 @@ class gwcosmoLikelihood(object):
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.rate = rate
-        self.Lambda = Lambda
 
     def ps_z(self, z):
         if self.rate == 'constant':
@@ -429,9 +431,9 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
             def I(M,z):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -496,7 +498,7 @@ class gwcosmoLikelihood(object):
 
             def Inum(M,z):
                 temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
 
                 if self.weighted:
                     return temp*L_M(M)
@@ -564,9 +566,9 @@ class gwcosmoLikelihood(object):
 
             def I(M,z):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -638,9 +640,9 @@ class gwcosmoLikelihood(object):
 
             def I(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -919,7 +921,7 @@ class gwcosmoLikelihood(object):
             
             def Inum(z,M):
                 temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.ps_z(z)
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
@@ -928,9 +930,9 @@ class gwcosmoLikelihood(object):
             
             def Iden(z,M):
                 if self.basic:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
                 else:
-                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
+                    temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_zH0_eval(z,H0[i])*self.zprior(z)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:

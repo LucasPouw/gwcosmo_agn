@@ -195,14 +195,16 @@ else:
     Lambda = float(opts.Lambda)
     psd = str(opts.psd)
     alpha = float(opts.powerlaw_slope)
-    Mmin = float(opts.minimum_mass)
-    Mmax = float(opts.maximum_mass)
+    mmin = float(opts.minimum_mass)
+    mmax = float(opts.maximum_mass)
     Nsamps = 20000
     new_skypatch=str2bool(opts.new_skypatch)
     band = str(opts.catalog_band)
     full_waveform=str2bool(opts.full_waveform)
     Kcorr = str2bool(opts.Kcorrections)
     reweight = str2bool(opts.reweight)
+    
+    population_params = dict(mass_distribution=mass_distribution,alpha=alpha,mmin=mmin,mmax=mmax,Lambda=Lambda)
 
     options_string = opts.method
     outputfile = str(opts.outputfile)
@@ -274,14 +276,14 @@ else:
 
     if mass_distribution == 'BBH-powerlaw':
         
-        pdet_path = data_path + '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, mmin, mmax, Nsamps, kind)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution (alpha = {}) at {} sensitivity using the {}'.format(mass_distribution, alpha, psd, kind))
         else:
             print('Calculating detection probability from scratch. This will take a while... Consider using a precomputed one for speed.')
-            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd,
-                                                                      basic=basic, full_waveform=full_waveform)
+            pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution,asd=psd,
+                                                                      basic=basic,full_waveform=full_waveform)
 
     if (mass_distribution == 'BNS' or mass_distribution == 'NSBH'):
         pdet_path = data_path + '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
@@ -289,12 +291,12 @@ else:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
     
-    me = gwcosmo.gwcosmo.gwcosmoLikelihood(H0,samples,skymap,catalog,pdet,reweight=reweight,EM_counterpart=counterpart,
-                                           linear=linear,weighted=galaxy_weighting,
-                                           uncertainty=uncertainty,basic=basic,
-                                           rate=rate_evolution,Lambda=Lambda,Kcorr=Kcorr)
+    me = gwcosmo.gwcosmo.gwcosmoLikelihood(
+        H0,samples,skymap,catalog,pdet,reweight=reweight,EM_counterpart=counterpart,
+        linear=linear,weighted=galaxy_weighting,uncertainty=uncertainty,basic=basic,
+        rate=rate_evolution,population_params=population_params,Kcorr=Kcorr)
 
-    likelihood_original,pxG,pDG,pGD,catalog_fraction, pxnG,pDnG,pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
+    likelihood_original,pxG,pDG,pGD,catalog_fraction,pxnG,pDnG,pnGD,pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
 
     likelihood = np.array(likelihood_original)/np.sum(np.array(likelihood_original)*dH0)
 
