@@ -102,7 +102,7 @@ class gwcosmoLikelihood(object):
         else:
             self.mass_distribution = population_params['mass_distribution']
             self.alpha = population_params['alpha']
-            self.mmin = population_params['alpha']
+            self.mmin = population_params['mmin']
             self.mmax = population_params['mmax']
             self.Lambda = population_params['Lambda']
 
