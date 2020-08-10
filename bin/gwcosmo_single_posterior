@@ -105,7 +105,7 @@ parser = OptionParser(
                 (only use full_waveform = False for O2-H0 backwards compatibility"),
         Option("--Kcorrections", default='False',
             help="Apply K-corrections."),
-        Option("--reweight", default='False',
+        Option("--reweight", default='True',
             help="Reweight samples to pop model."),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
@@ -283,7 +283,7 @@ else:
         else:
             print('Calculating detection probability from scratch. This will take a while... Consider using a precomputed one for speed.')
             pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution,asd=psd,
-                                                                      basic=basic,full_waveform=full_waveform)
+                                                                      basic=basic,full_waveform=full_waveform,H0=H0)
 
     if (mass_distribution == 'BNS' or mass_distribution == 'NSBH'):
         pdet_path = data_path + '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
