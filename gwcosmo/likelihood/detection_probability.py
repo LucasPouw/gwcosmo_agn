@@ -12,7 +12,8 @@ from scipy.stats import ncx2
 from scipy.special import logit, expit
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
-from gwcosmo.prior.priors import *
+from gwcosmo.prior.priors import mass_distribution as mass_prior
+
 import pickle
 import time
 import progressbar
@@ -114,18 +115,18 @@ class DetectionProbability(object):
         self.psis = np.random.rand(N)*2.0*np.pi
         self.phis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS':
-            mass_prior = mass_distribution(self.mass_distribution)
+            mass_priors = mass_prior(self.mass_distribution)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'NSBH':
-            mass_prior = mass_distribution(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
+            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
-            mass_prior = mass_distribution(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
+            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
         if self.mass_distribution == 'BBH-constant':
-            mass_prior = mass_distribution(self.mass_distribution, self.M1, self.M2)
+            mass_priors = mass_prior(self.mass_distribution, self.M1, self.M2)
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
-        m1, m2 = mass_prior.sample(N)
+        m1, m2 = mass_priors.sample(N)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
