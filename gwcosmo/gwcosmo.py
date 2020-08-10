@@ -325,19 +325,21 @@ class gwcosmoLikelihood(object):
                 zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
                 zsmear = zsmear[np.argwhere(zsmear<self.zcut)].flatten() # remove support above the catalogue hard redshift cut
                 tempdist = np.zeros([len(H0),len(zsmear)])
-                for k in range(len(H0)):
-                    tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
+                if len(zsmear)>0:
+                    for k in range(len(H0)):
+                        tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
                 # loop over random draws from galaxies
-                for n in range(len(zsmear)):
-                    if self.weighted:
-                        if self.Kcorr == True:
-                            Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                    for n in range(len(zsmear)):
+                        if self.weighted:
+                            if self.Kcorr == True:
+                                Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                            else:
+                                Kcorr = 0.
+                            weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                         else:
-                            Kcorr = 0.
-                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
-                    else:
-                        weight = 1.0
-                    numinner += tempdist[:,n]*tempsky[i]*weight
+                            weight = 1.0
+                        numinner += tempdist[:,n]*tempsky[i]*weight
+                 
                 normnuminner = numinner/nsmear
                 num += normnuminner
 
@@ -382,21 +384,22 @@ class gwcosmoLikelihood(object):
             a = (0.0 - self.allz[i]) / self.allsigmaz[i]
             zsmear = truncnorm.rvs(a, 5, loc=self.allz[i], scale=self.allsigmaz[i], size=nsmear)
             zsmear = zsmear[np.argwhere(zsmear<self.zcut)] # remove support above the catalogue hard redshift cut
+            if len(zsmear)>0:
             # loop over random draws from galaxies
-            for n in range(len(zsmear)):
-                if self.weighted:
-                    if self.Kcorr == True:
-                        Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=self.allcolor[i])
+                for n in range(len(zsmear)):
+                    if self.weighted:
+                        if self.Kcorr == True:
+                            Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=self.allcolor[i])
+                        else:
+                            Kcorr = 0.
+                        weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                     else:
-                        Kcorr = 0.
-                    weight = L_mdl(self.allm[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
-                else:
-                    weight = 1.0
-                if self.basic:
-                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
-                else:
-                    prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
-                deninner += prob*weight*self.ps_z(zsmear[n])
+                        weight = 1.0
+                    if self.basic:
+                        prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
+                    else:
+                        prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
+                    deninner += prob*weight*self.ps_z(zsmear[n])
             normdeninner = deninner/nsmear
             den += normdeninner
 
@@ -857,26 +860,27 @@ class gwcosmoLikelihood(object):
             zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
             zsmear = zsmear[np.argwhere(zsmear<self.zcut)].flatten() # remove support above the catalogue hard redshift cut
             tempdist = np.zeros([len(H0),len(zsmear)])
-            for k in range(len(H0)):
-                tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
+            if len(zsmear)>0:
+                for k in range(len(H0)):
+                    tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
             # loop over random draws from galaxies
-            for n in range(len(zsmear)):
-                if self.weighted:
-                    if self.Kcorr == True:
-                        Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                for n in range(len(zsmear)):
+                    if self.weighted:
+                        if self.Kcorr == True:
+                            Kcorr = calc_kcor(self.band,zsmear[n],self.color_name,colour_value=colors[i])
+                        else:
+                            Kcorr = 0.
+                        weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
                     else:
-                        Kcorr = 0.
-                    weight = L_mdl(ms[i], self.cosmo.dl_zH0(zsmear[n], H0), Kcorr=Kcorr)
-                else:
-                    weight = 1.0
+                        weight = 1.0
 
-                numinner += tempdist[:,n]*tempsky[i]*weight
+                    numinner += tempdist[:,n]*tempsky[i]*weight
 
-                if self.basic:
-                    prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
-                else:
-                    prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
-                deninner += prob*weight*self.ps_z(zsmear[n])
+                    if self.basic:
+                        prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
+                    else:
+                        prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
+                    deninner += prob*weight*self.ps_z(zsmear[n])
             normnuminner = numinner/nsmear
             num += normnuminner
             normdeninner = deninner/nsmear
