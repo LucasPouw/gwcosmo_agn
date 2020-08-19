@@ -22,9 +22,9 @@ class SchechterParams():
         
     def values(self, band):
         if band == 'B':
-            return -1.07, -20.457, -22.96, -12.96
+            return -1.07, -19.70, -22.96, -12.96
         elif band == 'K':
-            return -1.02, -23.55, -27.0, -12.96
+            return -1.02, -22.77, -27.0, -12.96
         elif band == 'u':
             return -0.92, -17.93, -21.93, -15.54 #TODO check Mmin and Mmax
         elif band == 'g':
