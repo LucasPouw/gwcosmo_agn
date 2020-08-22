@@ -385,5 +385,5 @@ class fast_cosmology(object):
             # Local cosmology
             return z*c/H0
         else:
-            # Standard cosmology
+            # Standard cosmology     
             return splev(z, self.interp, ext=3)*c/H0
