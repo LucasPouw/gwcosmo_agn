@@ -76,7 +76,7 @@ class galaxy(object):
     m : Apparent magnitude dictonary
     sigmaz : Galaxy redshift uncertainty
     """
-    def __init__(self, index=0, ra=0, dec=0, z=1, m={'band':20}, sigmaz=0):
+    def __init__(self, index=0, ra=0, dec=0, z=1, m={'band':20}, sigmaz=0, Kcorr=0):
         self.index = index
         self.ra = ra
         self.dec = dec

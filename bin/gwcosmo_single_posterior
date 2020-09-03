@@ -171,7 +171,7 @@ else:
     if opts.method == 'counterpart':
         galaxy_weighting = False
         completion = True
-        if (opts.counterpart is not None and opts.counterpart[-2:] == '.p'):
+        if (opts.counterpart is not None and opts.counterpart[-5:] == '.hdf5'):
             counterpart = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=opts.counterpart)
         else:
             if opts.counterpart_ra is not None:
@@ -246,23 +246,23 @@ else:
 
     if (opts.method == "counterpart" and opts.counterpart is None):
         catalog = None
-        counterpart = gwcosmo.prior.catalog.galaxyCatalog()
+        counterpart = gwcosmo.prior.catalog.galaxy()
         if (opts.counterpart_ra is None or
             opts.counterpart_dec is None or
             opts.counterpart_z is None):
             parser.error('The counterpart method requires the ra, dec, and z of the galaxy.')
         else:
-            counterpart.get_galaxy(0).ra = counterpart_ra*np.pi/180.
-            counterpart.get_galaxy(0).dec = counterpart_dec*np.pi/180.
+            counterpart.ra = counterpart_ra*np.pi/180.
+            counterpart.dec = counterpart_dec*np.pi/180.
             if (counterpart_z > 0) & (counterpart_z < 3):
-                counterpart.get_galaxy(0).z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z)
+                counterpart.z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z)
             else:
-                counterpart.get_galaxy(0).z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z/speed_of_light)
+                counterpart.z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z/speed_of_light)
 
             if (counterpart_v > 0) & (counterpart_v < 1):
-                counterpart.get_galaxy(0).sigmaz = counterpart_v
+                counterpart.sigmaz = counterpart_v
             else:
-                counterpart.get_galaxy(0).sigmaz = counterpart_v/speed_of_light
+                counterpart.sigmaz = counterpart_v/speed_of_light
             population = False
 
     elif (opts.method == "counterpart" and opts.counterpart is not None):

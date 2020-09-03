@@ -120,23 +120,15 @@ class gwcosmoLikelihood(object):
         if galaxy_catalog == None:
             self.galaxy_catalog = None
             self.mth = None
-            self.EM_counterpart = None
+            self.EM_counterpart = EM_counterpart
             self.whole_cat = True
         else:
-            if self.uncertainty == False:
-                self.galaxy_catalog = galaxy_catalog
-                self.mth = galaxy_catalog.mth()
-                self.EM_counterpart = None
-                if EM_counterpart is not None:
-                    self.EM_counterpart = EM_counterpart
-            else:
-                if galaxy_catalog is not None:
-                    self.galaxy_catalog = galaxy_catalog
-                    self.mth = galaxy_catalog.mth()
+            self.galaxy_catalog = galaxy_catalog
+            self.mth = galaxy_catalog.mth()
+            self.EM_counterpart = None
 
-                self.EM_counterpart = None
-        if EM_counterpart is not None:
-            self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
+        #if EM_counterpart is not None: FIX ME
+        #    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
             
         if GW_data is not None:
             temps = []
@@ -163,7 +155,7 @@ class gwcosmoLikelihood(object):
             self.temp = splrep(dl_array,vals)
 
         if (GW_data is None and self.EM_counterpart is not None):
-            counterpart = self.EM_counterpart.get_galaxy(0)
+            counterpart = self.EM_counterpart
             dl_array, vals = self.skymap.lineofsight_distance(counterpart.ra, counterpart.dec)
             self.temp = splrep(dl_array,vals)
 
@@ -608,9 +600,9 @@ class gwcosmoLikelihood(object):
             p(x|H0,counterpart)
         """
         numnorm = np.zeros(len(H0))
-        nGalEM = self.EM_counterpart.nGal()
+        nGalEM = 1 
         for i in range(nGalEM):
-            counterpart = self.EM_counterpart.get_galaxy(i)
+            counterpart = self.EM_counterpart
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
             tempdist = np.zeros(len(H0))
             for k in range(len(H0)):
