@@ -24,13 +24,6 @@ Om0 = 0.308
 zmin = 0.0001
 zmax = 10
 zs = np.linspace(zmin, zmax, 10000)
-speed_of_light = constants.c.to('km/s').value
-
-def E(z,Om):
-    return np.sqrt(Om*(1+z)**3 + (1.0-Om))
-
-def dL_by_z_H0(z,dL,h0,Om0):
-    return dL/(1+z) + speed_of_light*(1+z)/(h0*E(z,Om0))
 
 def constrain_m1m2(parameters):
     converted_parameters = parameters.copy()
@@ -146,10 +139,8 @@ class posterior_samples(object):
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
         
-        jacobian = dL_by_z_H0(redshift,self.distance,H0,Om0=0.308)*(1+redshift)**2
-        
         # Re-weight
-        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2') / prior.prob(self.distance) / jacobian
+        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2') / prior.prob(self.distance)
         np.random.seed(seed)
         draws = np.random.uniform(0, max(weights), weights.shape)
         keep = weights > draws
