@@ -49,7 +49,7 @@ class posterior_samples(object):
     def load_posterior_samples(self):
         """
         Method to handle different types of posterior samples file formats.
-        Currently it supports .dat (LALinference), .hdf5 (GWTC-1), 
+        Currently it supports .dat (LALinference), .hdf5 (GWTC-1),
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
         if self.posterior_samples[-3:] == 'dat':
@@ -122,23 +122,22 @@ class posterior_samples(object):
 
     def compute_source_frame_samples(self, H0):
         cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
-        dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value    
+        dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value
         z_at_dL = interp1d(dLs,zs)
         redshift = z_at_dL(self.distance)
         mass_1_source = self.mass_1/(1+redshift)
         mass_2_source = self.mass_2/(1+redshift)
         return redshift, mass_1_source, mass_2_source
-        
+
     def reweight_samples(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
         # Prior distribution used in the LVC analysis
         prior = distance_distribution(name=name)
-
         # Prior distribution used in this work
         new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
 
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
-        
+
         # Re-weight
         weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2') / prior.prob(self.distance)
         np.random.seed(seed)
@@ -148,6 +147,31 @@ class posterior_samples(object):
         m2det = self.mass_2[keep]
         dl = self.distance[keep]
         return dl, weights
+
+
+    def marginalized_redshift_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        # Prior distribution used in this work
+        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
+
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+
+        # Re-weight
+        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2')
+        norm = np.sum(weights)
+        return gaussian_kde(redshift,weights=weights), norm
+
+    def marginalized_redshift(self, H0):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+        norm = 1
+        return gaussian_kde(redshift), norm
 
     def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
         """

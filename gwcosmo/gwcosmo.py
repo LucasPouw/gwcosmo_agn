@@ -26,11 +26,15 @@ warnings.filterwarnings("ignore")
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm, truncnorm
-from scipy.interpolate import splev, splrep
+from scipy.interpolate import splev, splrep, interp1d
 from astropy import constants as const
 from astropy import units as u
 from ligo.skymap.moc import rasterize
 from ligo.skymap.core import uniq2ang
+
+import astropy.constants as constants
+
+
 
 import gwcosmo
 
@@ -50,7 +54,7 @@ class gwcosmoLikelihood(object):
 
     Parameters
     ----------
-    GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object 
+    GW_data : gwcosmo.likelihood.posterior_samples.posterior_samples object
         Gravitational wave event samples
     skymap : gwcosmo.likelihood.skymap.skymap object
         Gravitational wave event skymap
@@ -58,7 +62,7 @@ class gwcosmoLikelihood(object):
         The relevant galaxy catalog
     EM_counterpart : gwcosmo.prior.catalog.galaxyCatalog object, optional
         EM_counterpart data (default=None)
-        If not None, will default to using this over the galaxy_catalog 
+        If not None, will default to using this over the galaxy_catalog
     Omega_m : float, optional
         The matter fraction of the universe (default=0.3)
     linear : bool, optional
@@ -81,6 +85,7 @@ class gwcosmoLikelihood(object):
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, reweight=False, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
                  rate='constant', population_params=None, area=0.999, Kcorr=False):
+        print('Usign Simone version\n')
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
@@ -92,7 +97,7 @@ class gwcosmoLikelihood(object):
         self.area = area
         self.Kcorr = Kcorr
         self.reweight = reweight
-        
+
         if population_params is None:
             self.mass_distribution = pdet.mass_distribution
             self.alpha = 1.6
@@ -116,7 +121,7 @@ class gwcosmoLikelihood(object):
         self.Mstar_obs = sp.Mstar
         self.Mobs_min = sp.Mmin
         self.Mobs_max = sp.Mmax
-            
+
         if galaxy_catalog == None:
             self.galaxy_catalog = None
             self.mth = None
@@ -129,24 +134,29 @@ class gwcosmoLikelihood(object):
 
         #if EM_counterpart is not None: FIX ME
         #    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
-            
+
         if GW_data is not None:
             temps = []
             norms = []
             if reweight == True:
                 print("Reweighting samples")
             seed = np.random.randint(10000)
-            for H0 in self.H0:
+            bar = progressbar.ProgressBar()
+            z_max = []
+            for H0 in bar(self.H0):
                 if reweight == True:
-                    distkernel, norm = GW_data.marginalized_distance_reweight(H0, self.mass_distribution, self.alpha, self.mmin, self.mmax, seed=seed)
+                    zkernel, norm = GW_data.marginalized_redshift_reweight(H0, self.mass_distribution, self.alpha, self.mmin, self.mmax)
                 else:
-                    distkernel, norm = GW_data.marginalized_distance(H0)
-                distmin = 0.5*np.amin(GW_data.distance)
-                distmax = 2.0*np.amax(GW_data.distance)
-                dl_array = np.linspace(distmin, distmax, 500)
-                vals = distkernel(dl_array)
-                temps.append(splrep(dl_array, vals))
+                    zkernel, norm = GW_data.marginalized_redshift(H0)
+
+                zmin = np.min(zkernel.dataset)
+                zmax = np.max(zkernel.dataset)
+                z_max.append(1.5*zmax)
+                z_array = np.linspace(zmin, zmax, 500)
+                vals = zkernel(z_array)
+                temps.append(interp1d(z_array, vals,bounds_error=False,fill_value=0))
                 norms.append(norm)
+            self.zmax_GW=z_max
             self.temps = np.array(temps)
             self.norms = np.array(norms)
 
@@ -161,7 +171,7 @@ class gwcosmoLikelihood(object):
 
         # TODO: calculate mth for the patch of catalog being used, if whole_cat=False
 
-            
+
         if (self.EM_counterpart is None and self.galaxy_catalog is not None):
             self.radec_lim = self.galaxy_catalog.radec_lim[0]
             if self.radec_lim == 0:
@@ -172,7 +182,7 @@ class gwcosmoLikelihood(object):
             self.ra_max = self.galaxy_catalog.radec_lim[2]
             self.dec_min = self.galaxy_catalog.radec_lim[3]
             self.dec_max = self.galaxy_catalog.radec_lim[4]
-            
+
             if self.Kcorr == True:
                 self.zcut = 0.5
                 self.color_name = self.galaxy_catalog.color_name
@@ -180,18 +190,18 @@ class gwcosmoLikelihood(object):
             else:
                 self.zcut = 10.
                 self.color_limit = [-np.inf,np.inf]
-            
+
             if self.whole_cat == False:
                 def skynorm(dec,ra):
                     return np.cos(dec)
                 self.catalog_fraction = dblquad(skynorm,self.ra_min,self.ra_max,
-                                                lambda x: self.dec_min, 
+                                                lambda x: self.dec_min,
                                                 lambda x: self.dec_max,
                                                 epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
                 self.rest_fraction = 1-self.catalog_fraction
                 print('This catalog covers {}% of the full sky'.format(self.catalog_fraction*100))
-        
-        
+
+
             #find galaxies within the bounds of the galaxy catalog
             sel = np.argwhere((self.ra_min <= self.galaxy_catalog.ra) & \
                               (self.galaxy_catalog.ra <= self.ra_max) & \
@@ -209,7 +219,7 @@ class gwcosmoLikelihood(object):
             self.allcolor = self.galaxy_catalog.color[sel].flatten()
             self.mth = self.galaxy_catalog.mth()
             self.nGal = len(self.allz)
-        
+
             if self.uncertainty == False:
                 self.nsmear_fine = 1
                 self.nsmear_coarse = 1
@@ -217,7 +227,7 @@ class gwcosmoLikelihood(object):
             else:
                 self.nsmear_fine = 10000
                 self.nsmear_coarse = 20
-                  
+
         self.pDG = None
         self.pGD = None
         self.pnGD = None
@@ -227,7 +237,7 @@ class gwcosmoLikelihood(object):
         # should be well above any redshift value that could
         # impact the results for the considered H0 values.
         self.zmax = 10.
-        
+
         self.zprior = redshift_prior(Omega_m=self.Omega_m, linear=self.linear)
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.rate = rate
@@ -247,6 +257,25 @@ class gwcosmoLikelihood(object):
             return splev(dl, temp, ext=3)
         else:
             return splev(dl, temp, ext=3)/dl**2
+
+    def pz_xH0(self,z,temp):
+        """
+        Returns p(z|x,H0)
+        """
+        return temp(z)
+
+    def E(self,z,Om):
+        return np.sqrt(Om*(1+z)**3 + (1.0-Om))
+
+    def dL_by_z_H0(self,z,H0,Om0):
+        speed_of_light = constants.c.to('km/s').value
+        return self.cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
+
+    def jacobian_times_prior(self,z,H0,Om0=0.308):
+
+        jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
+        dl = self.cosmo.dl_zH0(z, H0)
+        return jacobian*(dl**2)
 
     def px_H0G(self, H0):
         """
@@ -284,7 +313,7 @@ class gwcosmoLikelihood(object):
                 tempsky = self.skymap.skyprob(counterpart.ra, counterpart.dec)*self.skymap.npix
                 tempdist = np.zeros(len(H0))
                 for k in range(len(H0)):
-                    tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0[k]),self.temps[k])
+                    tempdist[k] = self.norms[k]*self.pz_xH0(z,self.temps[k])/self.jacobian_times_prior(z,H0[k])
                 numnorm += tempdist*tempsky
 
         else:
@@ -298,12 +327,12 @@ class gwcosmoLikelihood(object):
             ms = self.allm[ind].flatten()
             sigzs = self.allsigmaz[ind].flatten()
             colors = self.allcolor[ind].flatten()
-            
+
             if self.weighted:
                 mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
             else:
                 mlim = 1.0
-            
+
             bar = progressbar.ProgressBar()
             print("Calculating p(x|H0,G)")
             # loop over galaxies
@@ -319,7 +348,7 @@ class gwcosmoLikelihood(object):
                 tempdist = np.zeros([len(H0),len(zsmear)])
                 if len(zsmear)>0:
                     for k in range(len(H0)):
-                        tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
+                        tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/self.jacobian_times_prior(zsmear,H0[k])
                 # loop over random draws from galaxies
                     for n in range(len(zsmear)):
                         if self.weighted:
@@ -331,13 +360,13 @@ class gwcosmoLikelihood(object):
                         else:
                             weight = 1.0
                         numinner += tempdist[:,n]*tempsky[i]*weight
-                 
+
                 normnuminner = numinner/nsmear
                 num += normnuminner
 
             print("{} galaxies from this catalog lie in the event's {}% confidence interval".format(len(zs),self.area*100))
             numnorm = num/self.nGal
-            
+
         return numnorm
 
 
@@ -346,24 +375,24 @@ class gwcosmoLikelihood(object):
         Returns p(D|H0,G) (the normalising factor for px_H0G).
         This corresponds to the denominator of Eq 12 in the methods doc.
         The probability of detection as a function of H0, conditioned on the source being inside the galaxy catalog
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
-            p(D|H0,G)        
-        """     
+            p(D|H0,G)
+        """
         den = np.zeros(len(H0))
 
         if self.weighted:
             mlim = np.percentile(np.sort(self.allm),0.01) # more draws for galaxies in brightest 0.01 percent
         else:
             mlim = 1.0
-            
+
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,G)")
         # loop over galaxies
@@ -405,21 +434,21 @@ class gwcosmoLikelihood(object):
         Returns p(G|H0,D)
         This corresponds to Eq 16 in the doc.
         The probability that the host galaxy is in the catalogue given detection and H0.
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
-            p(G|H0,D) 
-        """  
+            p(G|H0,D)
+        """
         # Warning - this integral misbehaves for small values of H0 (<25 kms-1Mpc-1).  TODO: fix this.
-        num = np.zeros(len(H0)) 
+        num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        
+
         # TODO: vectorize this if possible
         bar = progressbar.ProgressBar()
         print("Calculating p(G|H0,D)")
@@ -433,18 +462,18 @@ class gwcosmoLikelihood(object):
                     return temp*L_M(M)
                 else:
                     return temp
-            
+
             # Mmin and Mmax currently corresponding to 10L* and 0.001L* respectively, to correspond with MDC
             # Will want to change in future.
             # TODO: test how sensitive this result is to changing Mmin and Mmax.
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
-            
+
             num[i] = dblquad(I,0,self.zcut,lambda x: Mmin,lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax),epsabs=0,epsrel=1.49e-4)[0]
             den[i] = dblquad(I,0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
         self.pGD = num/den
-        return self.pGD    
+        return self.pGD
 
 
     def pnG_H0D(self,H0):
@@ -452,34 +481,34 @@ class gwcosmoLikelihood(object):
         Returns 1.0 - pG_H0D(H0).
         This corresponds to Eq 17 in the doc.
         The probability that a galaxy is not in the catalogue given detection and H0
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
-            p(bar{G}|H0,D) 
+            p(bar{G}|H0,D)
         """
         if all(self.pGD)==None:
             self.pGD = self.pG_H0D(H0)
         self.pnGD = 1.0 - self.pGD
         return self.pnGD
-       
-        
+
+
     def px_H0nG(self,H0,allsky=True):
         """
         Returns p(x|H0,bar{G}).
         This corresponds to the numerator of Eq 19 in the doc
         The likelihood of the GW data given H0, conditioned on the source being outside the galaxy catalog for an
-        all sky or patchy galaxy catalog.        
+        all sky or patchy galaxy catalog.
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
@@ -492,8 +521,8 @@ class gwcosmoLikelihood(object):
         for i in bar(range(len(H0))):
 
             def Inum(M,z):
-                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
+                temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
 
                 if self.weighted:
                     return temp*L_M(M)
@@ -504,18 +533,18 @@ class gwcosmoLikelihood(object):
             Mmax = M_Mobs(H0[i],self.Mobs_max)
             if allsky == True:
                 distnum[i] = dblquad(Inum,0.0,self.zcut, lambda x: min(max(M_mdl(self.mth,self.cosmo.dl_zH0(x,H0[i])),Mmin),Mmax), lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0] \
-                            + dblquad(Inum,self.zcut,self.zmax, lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
+                            + dblquad(Inum,self.zcut,self.zmax_GW[i], lambda x: Mmin, lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
             else:
-                distnum[i] = dblquad(Inum,0.0,self.zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
+                distnum[i] = dblquad(Inum,0.0,self.zmax_GW[i],lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
 
-        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')    
+        # TODO: expand this case to look at a skypatch around the counterpart ('pencilbeam')
         if self.EM_counterpart != None:
             nGalEM = self.EM_counterpart.nGal()
             for i in range(nGalEM):
                 counterpart = self.EM_counterpart.get_galaxy(i)
                 tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
                 num += distnum*tempsky
-        
+
         else:
             pixind = range(self.skymap.npix)
             theta,rapix = hp.pix2ang(self.skymap.nside,pixind,nest=True)
@@ -523,7 +552,7 @@ class gwcosmoLikelihood(object):
             idx = (self.ra_min <= rapix) & (rapix <= self.ra_max) & (self.dec_min <= decpix) & (decpix <= self.dec_max)
             if allsky == True:
                 skynum = self.skymap.prob[idx].sum()
-            else: 
+            else:
                 skynum = 1.0 - self.skymap.prob[idx].sum()
             print("{}% of the event's sky probability is contained within the patch covered by the catalog".format(skynum*100))
             num = distnum*skynum
@@ -536,25 +565,25 @@ class gwcosmoLikelihood(object):
         This corresponds to the denominator of Eq 19 in the doc.
         The probability of detection as a function of H0, conditioned on the source being outside the galaxy catalog for an
         all sky or patchy galaxy catalog.
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
-            p(D|H0,bar{G})     
-        """  
-        # TODO: same fixes as for pG_H0D 
+            p(D|H0,bar{G})
+        """
+        # TODO: same fixes as for pG_H0D
         den = np.zeros(len(H0))
-        
+
         def skynorm(dec,ra):
             return np.cos(dec)
-                
+
         norm = dblquad(skynorm,self.ra_min,self.ra_max,lambda x: self.dec_min,lambda x: self.dec_max,epsabs=0,epsrel=1.49e-4)[0]/(4.*np.pi)
-        
+
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0,bar{G})")
         for i in bar(range(len(H0))):
@@ -580,7 +609,7 @@ class gwcosmoLikelihood(object):
             pDnG = den*norm
         else:
             pDnG = den*(1.-norm)
-                
+
         return pDnG
 
     def px_H0_counterpart(self,H0):
@@ -588,25 +617,25 @@ class gwcosmoLikelihood(object):
         Returns p(x|H0,counterpart)
         This corresponds to the numerator or Eq 6 in the doc.
         The likelihood of the GW data given H0 and direct counterpart.
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
             p(x|H0,counterpart)
         """
         numnorm = np.zeros(len(H0))
-        nGalEM = 1 
+        nGalEM = 1
         for i in range(nGalEM):
             counterpart = self.EM_counterpart
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
             tempdist = np.zeros(len(H0))
             for k in range(len(H0)):
-                tempdist[k] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(counterpart.z, H0[k]),self.temps[k])
+                tempdist[k] = self.norms[k]*self.pz_xH0(counterpart.z,self.temps[k])/self.jacobian_times_prior(counterpart.z,H0[k])
             numnorm += tempdist*tempsky
         return numnorm
 
@@ -616,19 +645,19 @@ class gwcosmoLikelihood(object):
         Returns p(D|H0).
         This corresponds to the denominator of Eq 6 in the doc.
         The probability of detection as a function of H0, marginalised over redshift, and absolute magnitude
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         float or array_like
-            p(D|H0)  
+            p(D|H0)
         """
         den = np.zeros(len(H0))
-        
+
         bar = progressbar.ProgressBar()
         print("Calculating p(D|H0)")
         for i in bar(range(len(H0))):
@@ -648,13 +677,13 @@ class gwcosmoLikelihood(object):
 
             den[i] = dblquad(I,Mmin,Mmax,lambda x: 0.0,lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
 
-        self.pDnG = den   
+        self.pDnG = den
         return self.pDnG
 
 
     def px_H0_empty(self,H0):
         """
-        Returns the numerator of the empty catalog case        
+        Returns the numerator of the empty catalog case
         Parameters
         ----------
         H0 : float or array_like
@@ -668,9 +697,9 @@ class gwcosmoLikelihood(object):
         distnum = np.zeros(len(H0))
         for i in range(len(H0)):
             def Inum(z):
-                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z)*self.ps_z(z)
+                temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
                 return temp
-            distnum[i] = quad(Inum,0.0,self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+            distnum[i] = quad(Inum,0.0,self.zmax_GW[i],epsabs=0,epsrel=1.49e-4)[0]
         skynum = 1.
         num = distnum*skynum
         return num
@@ -688,8 +717,8 @@ class gwcosmoLikelihood(object):
         Returns
         -------
         float or array_like
-            p(D|H0,bar{G})     
-        """  
+            p(D|H0,bar{G})
+        """
         den = np.zeros(len(H0))
         for i in range(len(H0)):
             def I(z):
@@ -703,7 +732,7 @@ class gwcosmoLikelihood(object):
         """
         The likelihood for a single event
         This corresponds to Eq 3 (statistical) or Eq 6 (counterpart) in the doc, depending on parameter choices.
-        
+
         Parameters
         ----------
         H0 : float or array_like
@@ -714,19 +743,19 @@ class gwcosmoLikelihood(object):
             Choice of counterpart analysis (default='direct')
             if 'direct', will assume the counterpart is correct with certainty
             if 'pencilbeam', will assume the host galaxy is along the counterpart's line of sight, but may be beyond it
-            
+
         Returns
         -------
         float or array_like
             p(x|H0,D)
-        """        
+        """
         if self.EM_counterpart != None:
-            
+
             if counterpart_case == 'direct':
                 pxG = self.px_H0_counterpart(H0)
                 self.pDG = self.pD_H0(H0)
                 likelihood = pxG/self.pDG # Eq 6
-                
+
             # The pencilbeam case is currently coded up along the line of sight of the counterpart
             # For GW170817 the likelihood produced is identical to the 'direct' counterpart case
             # TODO: allow this to cover a small patch of sky
@@ -741,8 +770,8 @@ class gwcosmoLikelihood(object):
                 if all(self.pDnG)==None:
                     self.pDnG = self.pD_H0nG(H0)
                 pxnG = self.px_H0nG(H0)
-                
-                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3 along a single line of sight       
+
+                likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3 along a single line of sight
             else:
                 print("Please specify counterpart_case ('direct' or 'pencilbeam').")
 
@@ -758,7 +787,7 @@ class gwcosmoLikelihood(object):
             pxG = self.px_H0G(H0)
             if all(self.pDG)==None:
                 self.pDG = self.pD_H0G(H0)
-        
+
             if complete==True:
                 likelihood = pxG/self.pDG # Eq 3 with p(G|H0,D)=1 and p(bar{G}|H0,D)=0
 
@@ -769,9 +798,9 @@ class gwcosmoLikelihood(object):
                     self.pnGD = self.pnG_H0D(H0)
                 if all(self.pDnG)==None:
                     self.pDnG = self.pD_H0nG(H0)
-                    
+
                 pxnG = self.px_H0nG(H0)
-    
+
                 likelihood = self.pGD*(pxG/self.pDG) + self.pnGD*(pxnG/self.pDnG) # Eq 3
 
 
@@ -793,22 +822,22 @@ class gwcosmoLikelihood(object):
             pxnG_rest_of_sky = np.zeros(len(H0))
             self.rest_fraction = 0
             self.catalog_fraction = 1
-        
+
 
         return likelihood,pxG,self.pDG,self.pGD,self.catalog_fraction, pxnG,self.pDnG,self.pnGD, pxnG_rest_of_sky,pDnG_rest_of_sky,self.rest_fraction
 
 
     def px_DGH0_skypatch(self,H0):
         """
-        The "in catalog" part of the new skypatch method 
+        The "in catalog" part of the new skypatch method
         using a catalog which follows the GW event's sky patch contour
         p(x|D,G,H0)
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         arrays
@@ -827,34 +856,34 @@ class gwcosmoLikelihood(object):
         ms = self.allm[ind].flatten()
         sigzs = self.allsigmaz[ind].flatten()
         colors = self.allcolor[ind].flatten()
-        
+
         max_mth = np.amax(ms)
         N = len(zs)
-        
+
         if self.weighted:
             mlim = np.percentile(np.sort(ms),0.01) # more draws for galaxies in brightest 0.01 percent
         else:
-            mlim = 1.0   
-                 
+            mlim = 1.0
+
         bar = progressbar.ProgressBar()
         print("Calculating p(x|D,H0,G) for this event's skyarea")
         # loop over galaxies
         for i in bar(range(N)):
             numinner=np.zeros(len(H0))
             deninner=np.zeros(len(H0))
-            
+
             if ms[i] <= mlim: #do more loops over brightest galaxies
                 nsmear = self.nsmear_fine
             else:
                 nsmear = self.nsmear_coarse
-            
+
             a = (0.0 - zs[i]) / sigzs[i]
             zsmear = truncnorm.rvs(a, 5, loc=zs[i], scale=sigzs[i], size=nsmear)
             zsmear = zsmear[np.argwhere(zsmear<self.zcut)].flatten() # remove support above the catalogue hard redshift cut
             tempdist = np.zeros([len(H0),len(zsmear)])
             if len(zsmear)>0:
                 for k in range(len(H0)):
-                    tempdist[k,:] = self.norms[k]*self.px_dl(self.cosmo.dl_zH0(zsmear, H0[k]),self.temps[k])*self.ps_z(zsmear)
+                    tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/self.jacobian_times_prior(zsmear,H0[k])
             # loop over random draws from galaxies
                 for n in range(len(zsmear)):
                     if self.weighted:
@@ -879,27 +908,27 @@ class gwcosmoLikelihood(object):
             den += normdeninner
         print("{} galaxies from this catalog lie in the event's {}% confidence interval".format(len(zs),self.area*100))
         numnorm = num/self.nGal
-        
+
         if N >= 500:
             self.mth = np.median(ms)
         else:
             self.mth = max_mth #update mth to reflect the area within the event's sky localisation (max m within patch)
-        
+
         print('event patch apparent magnitude threshold: {}'.format(self.mth))
         print("{} galaxies (out of a total possible {}) are supported by this event's skymap".format(N,self.nGal))
         return num,den
-        
+
     def px_DnGH0_skypatch(self,H0):
         """
-        The "beyond catalog" part of the new skypatch method 
+        The "beyond catalog" part of the new skypatch method
         using a catalog which follows the GW event's sky patch contour
         p(x|D,Gbar,H0)
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         arrays
@@ -907,23 +936,23 @@ class gwcosmoLikelihood(object):
         """
         distnum = np.zeros(len(H0))
         distden = np.zeros(len(H0))
-        
+
         bar = progressbar.ProgressBar()
         print("Calculating p(x|D,H0,bar{G}) for this event's skyarea")
         for i in bar(range(len(H0))):
-        
+
             Mmin = M_Mobs(H0[i],self.Mobs_min)
             Mmax = M_Mobs(H0[i],self.Mobs_max)
-            
+
             def Inum(z,M):
-                temp = self.norms[i]*self.px_dl(self.cosmo.dl_zH0(z,H0[i]),self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
+                temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z) \
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
                 if self.weighted:
                     return temp*L_M(M)
                 else:
                     return temp
-            distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
-            
+            distnum[i] = dblquad(Inum,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax_GW[i],epsabs=0,epsrel=1.49e-4)[0]
+
             def Iden(z,M):
                 if self.basic:
                     temp = SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(z,H0[i]))*self.zprior(z)*self.ps_z(z)
@@ -933,50 +962,49 @@ class gwcosmoLikelihood(object):
                     return temp*L_M(M)
                 else:
                     return temp
-            distden[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]           
-            
+            distden[i] = dblquad(Iden,Mmin,Mmax,lambda x: z_dlH0(dl_mM(self.mth,x),H0[i],linear=self.linear),lambda x: self.zmax,epsabs=0,epsrel=1.49e-4)[0]
+
         skynum = 1.0
         num = distnum*skynum
         a = len(np.asarray(np.where(self.skymap.prob!=0)).flatten()) # find number of pixels with any GW event support
         skyden = a/self.skymap.npix
         den = distden*skyden
-        
+
         return num,den
 
-        
+
     def likelihood_skypatch(self,H0,complete=False):
         """
-        The event likelihood using the new skypatch method 
+        The event likelihood using the new skypatch method
         p(x|D,H0)
-        
+
         Parameters
         ----------
         H0 : float or array_like
             Hubble constant value(s) in kms-1Mpc-1
-            
+
         Returns
         -------
         array
             the unnormalised likelihood
-        """        
+        """
         pxDG_num,pxDG_den = self.px_DGH0_skypatch(H0)
-        
+
 
         if complete==True:
             likelihood = pxDG_num/pxDG_den
             pGD = np.ones(len(H0))
             pnGD = np.zeros(len(H0))
             pxDnG_num = np.zeros(len(H0))
-            pxDnG_den = np.ones(len(H0))            
+            pxDnG_den = np.ones(len(H0))
 
         else:
             pGD = self.pG_H0D(H0)
             pnGD = self.pnG_H0D(H0)
-                
+
             pxDnG_num,pxDnG_den = self.px_DnGH0_skypatch(H0)
             pxDnG = pxDnG_num/pxDnG_den
 
-            likelihood = pGD*(pxDG_num/pxDG_den) + pnGD*pxDnG 
+            likelihood = pGD*(pxDG_num/pxDG_den) + pnGD*pxDnG
 
         return likelihood,pxDG_num,pxDG_den,pGD,pnGD,pxDnG_num,pxDnG_den
-        
