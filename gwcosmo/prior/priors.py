@@ -83,14 +83,18 @@ class mass_distribution(object):
 
         if self.name == 'BBH-powerlaw':
             # ms1 is not a bug in mass_2. That depends only on that var
+
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms1)
+            arr_result[(ms1>self.mmax) | (ms2<self.mmin)]=0
 
         if self.name == 'BNS':
             # We assume p(m1,m2)=p(m1)p(m2)
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
+            arr_result[(ms1>3) | (ms2<1)]=0
 
         if self.name == 'NSBH':
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
+            arr_result[(ms1>self.mmax) | (ms1<self.mmin) | (ms2<1) | (ms2>3)]=0
 
         if self.name == 'BBH-constant':
             arr_result = self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
