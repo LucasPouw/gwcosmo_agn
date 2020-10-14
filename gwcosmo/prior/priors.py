@@ -57,44 +57,51 @@ class mass_distribution(object):
         self.mmax = mmax
         self.m1 = m1
         self.m2 = m2
-        
+
+        dist = {}
+
         if self.name == 'BBH-powerlaw':
-            dist = PriorDict(conversion_function=constrain_m1m2)
-            dist['mass_1'] = PowerLaw(alpha=-self.alpha, minimum=self.mmin, maximum=self.mmax)
-            dist['mass_2'] = Uniform(minimum=self.mmin, maximum=self.mmax)
-            dist['m1m2'] = Constraint(minimum=self.mmin, maximum=self.mmax)
+            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            dist['mass_2'] = lambda m1s: 1/(m1s-self.mmin)
 
         if self.name == 'BNS':
-            dist = PriorDict(conversion_function=constrain_m1m2)
-            dist['mass_1'] = Uniform(minimum=1, maximum=3)
-            dist['mass_2'] = Uniform(minimum=1, maximum=3)
-            dist['m1m2'] = Constraint(minimum=1, maximum=3) 
+            # We assume p(m1,m2)=p(m1)p(m2)
+            dist['mass_1'] = lambda m1s: 1/(3-1)
+            dist['mass_2'] = lambda m2s: 1/(3-1)
 
         if self.name == 'NSBH':
-            dist = PriorDict(conversion_function=constrain_m1m2)
-            dist['mass_1'] = PowerLaw(alpha=-self.alpha, minimum=self.mmin, maximum=self.mmax)
-            dist['mass_2'] = Uniform(minimum=1, maximum=3)
-            dist['m1m2'] = Constraint(minimum=self.mmin, maximum=self.mmax)
-            
+            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            dist['mass_2'] = lambda m2s: 1/(3-1)
+
         if self.name == 'BBH-constant':
-            dist = PriorDict()
             dist['mass_1'] = DeltaFunction(self.m1)
             dist['mass_2'] = DeltaFunction(self.m2)
 
         self.dist = dist
-            
-    def sample(self, N_samples):
-        samples = self.dist.sample(N_samples)
-        return samples['mass_1'], samples['mass_2']
-    
-    def prob(self, samples, parameter):
-        return self.dist[parameter].prob(samples)
+
+    def joint_prob(self, ms1, ms2):
+
+        if self.name == 'BBH-powerlaw':
+            # ms1 is not a bug in mass_2. That depends only on that var
+            arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms1)
+
+        if self.name == 'BNS':
+            # We assume p(m1,m2)=p(m1)p(m2)
+            arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
+
+        if self.name == 'NSBH':
+            arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
+
+        if self.name == 'BBH-constant':
+            arr_result = self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
+
+        return arr_result
 
 
 class distance_distribution(object):
     def __init__(self, name):
         self.name = name
-        
+
         if self.name == 'BBH-powerlaw':
             dist = PriorDict(conversion_function=constrain_m1m2)
             dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
@@ -106,16 +113,16 @@ class distance_distribution(object):
         if self.name == 'NSBH':
             dist = PriorDict(conversion_function=constrain_m1m2)
             dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=1000)
-            
+
         if self.name == 'BBH-constant':
             dist = PriorDict()
             dist['luminosity_distance'] = PowerLaw(alpha=2, minimum=1, maximum=15000)
 
         self.dist = dist
-            
+
     def sample(self, N_samples):
         samples = self.dist.sample(N_samples)
         return samples['luminosity_distance']
-    
+
     def prob(self, samples):
         return self.dist['luminosity_distance'].prob(samples)

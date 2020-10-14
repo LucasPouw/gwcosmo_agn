@@ -151,7 +151,7 @@ class gwcosmoLikelihood(object):
 
                 zmin = np.min(zkernel.dataset)
                 zmax = np.max(zkernel.dataset)
-                z_max.append(5*zmax)
+                z_max.append(3*zmax)
                 z_array = np.linspace(zmin, zmax, 500)
                 vals = zkernel(z_array)
                 temps.append(interp1d(z_array, vals,bounds_error=False,fill_value=0))

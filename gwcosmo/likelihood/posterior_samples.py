@@ -139,7 +139,7 @@ class posterior_samples(object):
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
 
         # Re-weight
-        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2') / prior.prob(self.distance)
+        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/ prior.prob(self.distance)
         np.random.seed(seed)
         draws = np.random.uniform(0, max(weights), weights.shape)
         keep = weights > draws
@@ -160,7 +160,7 @@ class posterior_samples(object):
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
 
         # Re-weight
-        weights = new_prior.prob(mass_1_source, 'mass_1') * new_prior.prob(mass_2_source, 'mass_2')
+        weights = new_prior.joint_prob(mass_1_source,mass_2_source)
         norm = np.sum(weights)
         return gaussian_kde(redshift,weights=weights), norm
 
