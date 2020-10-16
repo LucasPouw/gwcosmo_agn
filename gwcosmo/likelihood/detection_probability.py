@@ -12,7 +12,7 @@ from scipy.stats import ncx2
 from scipy.special import logit, expit
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
-from gwcosmo.prior.priors import mass_distribution as mass_prior
+from gwcosmo.prior.priors import mass_sampling as mass_prior
 
 import pickle
 import time

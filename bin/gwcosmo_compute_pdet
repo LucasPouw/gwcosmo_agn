@@ -103,7 +103,7 @@ if full_waveform is True:
     kind = 'full_waveform'
 else:
     kind = 'inspiral'
-    
+
 if opts.combine is None:
     if mass_distribution == 'BBH-powerlaw':
         print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) 

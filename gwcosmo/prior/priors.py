@@ -18,11 +18,6 @@ from bilby import gw
 import gwcosmo
 
 
-def constrain_m1m2(parameters):
-    converted_parameters = parameters.copy()
-    converted_parameters['m1m2'] = parameters['mass_1'] - parameters['mass_2']
-    return converted_parameters
-
 
 def pH0(H0, prior='log'):
     """
@@ -47,6 +42,62 @@ def pH0(H0, prior='log'):
         return np.ones(len(H0))
     if prior == 'log':
         return 1./H0
+
+class mass_sampling(object):
+     def __init__(self, name, alpha=1.6, mmin=5, mmax=50, m1=50, m2=50):
+        self.name = name
+        self.alpha = alpha
+        self.mmin = mmin
+        self.mmax = mmax
+        self.m1 = m1
+        self.m2 = m2
+     
+     def sample(self, N_samples):
+        if self.name == 'BBH-powerlaw':
+           m1, m2 =  self.Binary_mass_distribution(name='BBH-powerlaw', N=N_samples, mmin=self.mmin, mmax=self.mmax, alpha=self.alpha)      
+        elif self.name == 'BNS':
+           m1, m2 =  self.Binary_mass_distribution(name='BNS', N=N_samples, mmin=1.0, mmax=3.0, alpha=0.0)
+        elif self.name == 'NSBH':
+           m1, m2 =  self.Binary_mass_distribution(name='NSBH', N=N_samples, mmin=self.mmin, mmax=self.mmax, alpha=self.alpha)
+        return m1, m2
+
+     def Binary_mass_distribution(self, name, N, mmin=5., mmax=40., alpha=1.6):
+        """
+        Returns p(m1,m2)
+        The prior on the mass distribution that follows a power
+        law for BBHs.
+
+        Parameters
+        ----------
+        N : integer
+            Number of masses sampled
+        mmin : float
+            minimum mass
+        mmax : float
+            maximum mass
+        alpha : float
+            slope of the power law p(m) = m^-\alpha where alpha > 0
+
+        Returns
+        -------
+        float or array_like
+            m1, m2
+        """
+        alpha_ = -1*alpha
+        u = np.random.rand(N)
+        if alpha_ != -1:
+           m1 = (u*(mmax**(alpha_+1)-mmin**(alpha_+1)) +
+              mmin**(alpha_+1))**(1.0/(alpha_+1))
+           print('Powerlaw mass distribution with alpha = ' + str(alpha))
+        else:
+           m1 = np.exp(u*(np.log(mmax)-np.log(mmin))+np.log(mmin))
+           print('Flat in log mass distribution')
+        if name== 'NSBH':
+           m2 = np.random.uniform(low=1.0, high=3.0, size=N)
+        else:
+           m2 = np.random.uniform(low=mmin, high=m1)
+        return m1, m2
+
 
 
 class mass_distribution(object):

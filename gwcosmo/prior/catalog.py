@@ -22,12 +22,12 @@ Kcorr_bands = {'B':'B', 'K':'K', 'u':'r', 'g':'r', 'r':'g', 'i':'g', 'z':'r'}
 Kcorr_signs = {'B':1, 'K':1, 'u':1, 'g':1, 'r':-1, 'i':-1, 'z':-1}
 color_names = {'B':None, 'K':None, 'u':'u - r', 'g':'g - r', 'r':'g - r', 'i':'g - i', 'z':'r - z'}
 color_limits = {'u - r':[-0.1,2.9], 'g - r':[-0.1,1.9], 'g - i':[0,3], 'r - z':[0,1.5]}
-
+'''
 def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
-    """
+    
     A function which "smears" out galaxies in the catalog, therefore
     incorporating redshift uncetainties.
-    """
+    
     sort = np.argsort(m)
     ra, dec, z, sigmaz, m, tempsky = ra[sort], dec[sort], z[sort], sigmaz[sort], m[sort], tempsky[sort]
     
@@ -62,7 +62,7 @@ def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
     nsmear_uncert = np.concatenate(nsmear_uncert).ravel()
 
     return ra_uncert, dec_uncert, z_uncert, m_uncert, tempsky_uncert, nsmear_uncert
-
+'''
 class galaxy(object):
     """
     Class to store galaxy objects.
@@ -108,7 +108,39 @@ class galaxy(object):
             for band in self.M:
                 L[band] = L_M(self.M[band])
             return L
+     
+    def redshiftUncertainty(self):
+       """
+    A function which "smears" out galaxies in the catalog, therefore
+    incorporating redshift uncetainties.
+       """
+       ra=self.ra
+       dec=self.dec
+       sigmaz=self.sigmaz
+       z=self.z
 
+       z_uncert = []
+       ra_uncert = []
+       dec_uncert = []
+       
+       nsmear_uncert = []
+       
+          
+       nsmear = 10000
+       z_uncert.append(np.random.normal(z,np.abs(sigmaz),nsmear))
+       ra_uncert.append(np.repeat(ra,nsmear))
+       dec_uncert.append(np.repeat(dec,nsmear))
+          
+       nsmear_uncert.append(np.repeat(nsmear,nsmear))
+
+       z_uncert = np.concatenate(z_uncert).ravel()
+       ra_uncert = np.concatenate(ra_uncert).ravel()
+       dec_uncert = np.concatenate(dec_uncert).ravel()
+       
+       #tempsky_uncert = np.concatenate(tempsky_uncert).ravel()
+       nsmear_uncert = np.concatenate(nsmear_uncert).ravel()
+
+       return ra_uncert, dec_uncert, z_uncert, nsmear_uncert
 
 class galaxyCatalog(object):
     """
