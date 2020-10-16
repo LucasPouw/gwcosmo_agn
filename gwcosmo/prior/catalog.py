@@ -24,10 +24,10 @@ color_names = {'B':None, 'K':None, 'u':'u - r', 'g':'g - r', 'r':'g - r', 'i':'g
 color_limits = {'u - r':[-0.1,2.9], 'g - r':[-0.1,1.9], 'g - i':[0,3], 'r - z':[0,1.5]}
 
 def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
-    
+    """    
     A function which "smears" out galaxies in the catalog, therefore
     incorporating redshift uncetainties.
-    
+    """
     sort = np.argsort(m)
     ra, dec, z, sigmaz, m, tempsky = ra[sort], dec[sort], z[sort], sigmaz[sort], m[sort], tempsky[sort]
     
