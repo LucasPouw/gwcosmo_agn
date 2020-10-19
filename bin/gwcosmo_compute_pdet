@@ -175,7 +175,6 @@ else:
     Omega_m = pdets.Omega_m
     linear = pdets.linear
     seed = pdets.seed
-    basic = pdets.basic
     detectors = pdets.detectors
 
     if full_waveform is True:
@@ -198,7 +197,6 @@ else:
     pdet.Omega_m = Omega_m
     pdet.linear = linear
     pdet.seed = seed
-    pdet.basic = basic
     pdet.detectors = detectors
 
     logit_prob=logit(prob)
