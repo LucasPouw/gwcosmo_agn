@@ -171,6 +171,12 @@ else:
     Mmax = pdets.Mmax
     psd = pdets.asd
     full_waveform = pdets.full_waveform
+    network_snr_threshold = pdets.snr_threshold
+    Omega_m = pdets.Omega_m
+    linear = pdets.linear
+    seed = pdets.seed
+    basic = pdets.basic
+    detectors = pdets.detectors
 
     if full_waveform is True:
        kind = 'full_waveform'
@@ -189,6 +195,11 @@ else:
     pdet.dl_array = dl_array
     pdet.m1 = m1
     pdet.m2 = m2
+    pdet.Omega_m = Omega_m
+    pdet.linear = linear
+    pdet.seed = seed
+    pdet.basic = basic
+    pdet.detectors = detectors
 
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):

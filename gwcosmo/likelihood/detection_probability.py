@@ -83,7 +83,8 @@ class DetectionProbability(object):
         self.full_waveform = full_waveform
         self.constant_H0 = constant_H0
         self.seed = seed
-        
+        self.basic = basic 
+       
         np.random.seed(seed)
         
         ASD_data = {}
