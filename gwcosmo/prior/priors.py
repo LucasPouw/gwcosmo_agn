@@ -112,7 +112,10 @@ class mass_distribution(object):
         dist = {}
 
         if self.name == 'BBH-powerlaw':
-            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            if self.alpha != 1:
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            else:
+                ####   fill this    ####
             dist['mass_2'] = lambda m1s: 1/(m1s-self.mmin)
 
         if self.name == 'BNS':
@@ -121,7 +124,10 @@ class mass_distribution(object):
             dist['mass_2'] = lambda m2s: 1/(3-1)
 
         if self.name == 'NSBH':
-            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            if self.alpha != 1:
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+             else:
+               ####   fill this    ####
             dist['mass_2'] = lambda m2s: 1/(3-1)
 
         if self.name == 'BBH-constant':
