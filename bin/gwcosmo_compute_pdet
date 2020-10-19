@@ -128,6 +128,16 @@ if opts.combine is None:
 
 else:
     probs = {}
+    for file in os.listdir(pdet_path):
+        if file.endswith(".p"):
+            pdets = pickle.load(open(os.path.join(pdet_path,str(file)), 'rb'))
+            psd = pdets.asd
+            alpha = pdets.alpha
+            Mmin = pdets.Mmin
+            Mmax = pdets.Mmax
+            mass_distribution = pdets.mass_distribution
+            break
+
     for h0 in H0:
         try:
             pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+str(alpha)+'_'+str(int(h0))+'.p', 'rb'))
@@ -146,9 +156,39 @@ else:
                     linear=False, basic=False, M1=50., M2=50.,
                     constant_H0=False, H0=H0vec, full_waveform=True)
     
+    Nsamps = pdets.Nsamps
+    RAs = pdets.RAs
+    Decs = pdets.Decs
+    incs = pdets.incs
+    psis = pdets.psis
+    phis = pdets.phis
+    mass_distribution = pdets.mass_distribution
+    dl_array = pdets.dl_array
+    m1 = pdets.m1/1.988e30
+    m2 = pdets.m2/1.988e30
+    alpha = pdets.alpha
+    Mmin = pdets.Mmin
+    Mmax = pdets.Mmax
+    psd = pdets.asd
+    full_waveform = pdets.full_waveform
+
+    if full_waveform is True:
+       kind = 'full_waveform'
+    else:
+       kind = 'inspiral'
+
     pdet.H0vec = H0vec
     pdet.Nsamps = Nsamps
     pdet.prob = prob
+    pdet.RAs = RAs
+    pdet.Decs = Decs
+    pdet.incs = incs
+    pdet.psis = psis
+    pdet.phis = phis
+    pdet.mass_distribution = mass_distribution
+    pdet.dl_array = dl_array
+    pdet.m1 = m1
+    pdet.m2 = m2
 
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
