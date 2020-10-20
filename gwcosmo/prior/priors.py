@@ -51,10 +51,10 @@ class mass_sampling(object):
         self.mmax = mmax
         self.m1 = m1
         self.m2 = m2
-     
+
      def sample(self, N_samples):
         if self.name == 'BBH-powerlaw':
-           m1, m2 =  self.Binary_mass_distribution(name='BBH-powerlaw', N=N_samples, mmin=self.mmin, mmax=self.mmax, alpha=self.alpha)      
+           m1, m2 =  self.Binary_mass_distribution(name='BBH-powerlaw', N=N_samples, mmin=self.mmin, mmax=self.mmax, alpha=self.alpha)
         elif self.name == 'BNS':
            m1, m2 =  self.Binary_mass_distribution(name='BNS', N=N_samples, mmin=1.0, mmax=3.0, alpha=0.0)
         elif self.name == 'NSBH':
@@ -112,7 +112,12 @@ class mass_distribution(object):
         dist = {}
 
         if self.name == 'BBH-powerlaw':
-            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+
+            if self.alpha != 1:
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            else:
+                dist['mass_1'] = lambda m1s: np.power(m1s,-self.alpha)/(np.log(self.mmax)-np.log(self.mmin))
+
             dist['mass_2'] = lambda m1s: 1/(m1s-self.mmin)
 
         if self.name == 'BNS':
@@ -121,7 +126,11 @@ class mass_distribution(object):
             dist['mass_2'] = lambda m2s: 1/(3-1)
 
         if self.name == 'NSBH':
-            dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            if self.alpha != 1:
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+            else:
+                dist['mass_1'] = lambda m1s: np.power(m1s,-self.alpha)/(np.log(self.mmax)-np.log(self.mmin))
+
             dist['mass_2'] = lambda m2s: 1/(3-1)
 
         if self.name == 'BBH-constant':
