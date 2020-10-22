@@ -12,7 +12,7 @@ from astropy.table import Table
 import h5py
 from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
 from bilby import gw
-from ..utilities.standard_cosmology import z_dlH0
+from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
 from ..prior.priors import *
 
 from astropy.cosmology import FlatLambdaCDM, z_at_value
@@ -45,6 +45,22 @@ class posterior_samples(object):
             self.load_posterior_samples()
         except:
             print("No posterior samples were specified")
+
+
+    def E(self,z,Om):
+        return np.sqrt(Om*(1+z)**3 + (1.0-Om))
+
+    def dL_by_z_H0(self,z,H0,Om0):
+        speed_of_light = constants.c.to('km/s').value
+        cosmo = fast_cosmology(Omega_m=Om0)
+        return cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
+
+    def jacobian_times_prior(self,z,H0,Om0=0.308):
+
+        cosmo = fast_cosmology(Omega_m=Om0)
+        jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
+        dl = cosmo.dl_zH0(z, H0)
+        return jacobian*(dl**2)
 
     def load_posterior_samples(self):
         """
@@ -160,7 +176,7 @@ class posterior_samples(object):
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
 
         # Re-weight
-        weights = new_prior.joint_prob(mass_1_source,mass_2_source)
+        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift,H0)
         norm = np.sum(weights)
         return gaussian_kde(redshift,weights=weights), norm
 

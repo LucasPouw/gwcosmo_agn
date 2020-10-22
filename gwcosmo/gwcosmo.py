@@ -264,19 +264,6 @@ class gwcosmoLikelihood(object):
         """
         return temp(z)
 
-    def E(self,z,Om):
-        return np.sqrt(Om*(1+z)**3 + (1.0-Om))
-
-    def dL_by_z_H0(self,z,H0,Om0):
-        speed_of_light = constants.c.to('km/s').value
-        return self.cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
-
-    def jacobian_times_prior(self,z,H0,Om0=0.308):
-
-        jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
-        dl = self.cosmo.dl_zH0(z, H0)
-        return jacobian*(dl**2)
-
     def px_H0G(self, H0):
         """
         Returns p(x|H0,G) for given values of H0.
@@ -313,7 +300,7 @@ class gwcosmoLikelihood(object):
                 tempsky = self.skymap.skyprob(counterpart.ra, counterpart.dec)*self.skymap.npix
                 tempdist = np.zeros(len(H0))
                 for k in range(len(H0)):
-                    tempdist[k] = self.norms[k]*self.pz_xH0(z,self.temps[k])/self.jacobian_times_prior(z,H0[k])
+                    tempdist[k] = self.norms[k]*self.pz_xH0(z,self.temps[k])
                 numnorm += tempdist*tempsky
 
         else:
@@ -348,8 +335,7 @@ class gwcosmoLikelihood(object):
                 tempdist = np.zeros([len(H0),len(zsmear)])
                 if len(zsmear)>0:
                     for k in range(len(H0)):
-                        tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/self.jacobian_times_prior(zsmear,H0[k])
-                # loop over random draws from galaxies
+                        tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)
                     for n in range(len(zsmear)):
                         if self.weighted:
                             if self.Kcorr == True:
@@ -522,7 +508,7 @@ class gwcosmoLikelihood(object):
 
             def Inum(M,z):
                 temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
 
                 if self.weighted:
                     return temp*L_M(M)
@@ -635,7 +621,7 @@ class gwcosmoLikelihood(object):
             tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
             tempdist = np.zeros(len(H0))
             for k in range(len(H0)):
-                tempdist[k] = self.norms[k]*self.pz_xH0(counterpart.z,self.temps[k])/self.jacobian_times_prior(counterpart.z,H0[k])
+                tempdist[k] = self.norms[k]*self.pz_xH0(counterpart.z,self.temps[k])
             numnorm += tempdist*tempsky
         return numnorm
 
@@ -697,7 +683,7 @@ class gwcosmoLikelihood(object):
         distnum = np.zeros(len(H0))
         for i in range(len(H0)):
             def Inum(z):
-                temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
+                temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z)*self.ps_z(z)
                 return temp
             distnum[i] = quad(Inum,0.0,self.zmax_GW[i],epsabs=0,epsrel=1.49e-4)[0]
         skynum = 1.
@@ -883,7 +869,7 @@ class gwcosmoLikelihood(object):
             tempdist = np.zeros([len(H0),len(zsmear)])
             if len(zsmear)>0:
                 for k in range(len(H0)):
-                    tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/self.jacobian_times_prior(zsmear,H0[k])
+                    tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)
             # loop over random draws from galaxies
                 for n in range(len(zsmear)):
                     if self.weighted:
@@ -946,7 +932,7 @@ class gwcosmoLikelihood(object):
 
             def Inum(z,M):
                 temp = self.norms[i]*self.pz_xH0(z,self.temps[i])*self.zprior(z) \
-            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)/self.jacobian_times_prior(z,H0[i])
+            *SchechterMagFunction(H0=H0[i],Mstar_obs=self.Mstar_obs,alpha=self.alpha_sp)(M)*self.ps_z(z)
                 if self.weighted:
                     return temp*L_M(M)
                 else:
