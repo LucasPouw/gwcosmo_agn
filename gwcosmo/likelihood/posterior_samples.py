@@ -24,6 +24,7 @@ Om0 = 0.308
 zmin = 0.0001
 zmax = 10
 zs = np.linspace(zmin, zmax, 10000)
+cosmo = fast_cosmology(Omega_m=Om0)
 
 def constrain_m1m2(parameters):
     converted_parameters = parameters.copy()
@@ -186,8 +187,11 @@ class posterior_samples(object):
         """
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
-        norm = 1
-        return gaussian_kde(redshift), norm
+
+        # remove dl^2 prior and include dz/ddL jacobian
+        weights = 1/(self.dL_by_z_H0(redshift,H0,Om0)*cosmo.dl_zH0(redshift,H0)**2)
+        norm = np.sum(weights)
+        return gaussian_kde(redshift,weights=weights), norm
 
     def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
         """
