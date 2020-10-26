@@ -85,7 +85,7 @@ class gwcosmoLikelihood(object):
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, reweight=False, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
                  rate='constant', population_params=None, area=0.999, Kcorr=False):
-        print('Usign Simone version\n')
+
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
