@@ -247,6 +247,8 @@ else:
     if (opts.method == "counterpart" and opts.counterpart is None):
         catalog = None
         counterpart = gwcosmo.prior.catalog.galaxy()
+        reweight = False
+        skymap = None
         if (opts.counterpart_ra is None or
             opts.counterpart_dec is None or
             opts.counterpart_z is None):
@@ -268,6 +270,8 @@ else:
     elif (opts.method == "counterpart" and opts.counterpart is not None):
         catalog = None
         population = False
+        reweight = False
+        skymap = None
 
     if full_waveform is True:
         kind = 'full_waveform'
