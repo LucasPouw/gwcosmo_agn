@@ -85,7 +85,7 @@ class gwcosmoLikelihood(object):
     def __init__(self, H0, GW_data, skymap, galaxy_catalog, pdet, reweight=False, EM_counterpart=None,
                  Omega_m=0.308, linear=False, weighted=False, basic=False, uncertainty=False,
                  rate='constant', population_params=None, area=0.999, Kcorr=False):
-        print('Usign Simone version\n')
+
         self.H0 = H0
         self.pdet = pdet
         self.Omega_m = Omega_m
@@ -132,8 +132,6 @@ class gwcosmoLikelihood(object):
             self.mth = galaxy_catalog.mth()
             self.EM_counterpart = None
 
-        #if EM_counterpart is not None: FIX ME
-        #    self.EM_counterpart = EM_counterpart.redshiftUncertainty(peculiarVelocityCorr=True)
 
         if GW_data is not None:
             temps = []
@@ -614,16 +612,16 @@ class gwcosmoLikelihood(object):
         float or array_like
             p(x|H0,counterpart)
         """
-        numnorm = np.zeros(len(H0))
-        nGalEM = 1
-        for i in range(nGalEM):
-            counterpart = self.EM_counterpart
-            tempsky = self.skymap.skyprob(counterpart.ra,counterpart.dec)*self.skymap.npix
-            tempdist = np.zeros(len(H0))
-            for k in range(len(H0)):
-                tempdist[k] = self.norms[k]*self.pz_xH0(counterpart.z,self.temps[k])
-            numnorm += tempdist*tempsky
-        return numnorm
+        z = self.EM_counterpart.z
+        sigma = self.EM_counterpart.sigmaz
+        a = (0.0 - z) / sigma # boundary so samples don't go below 0
+        zsmear = truncnorm.rvs(a, 5, loc=z, scale=sigma, size=10000)
+
+        num = np.zeros(len(H0))
+        for k in range(len(H0)):
+            num[k] = np.sum(self.norms[k]*self.pz_xH0(zsmear,self.temps[k]))
+
+        return num
 
 
     def pD_H0(self,H0):

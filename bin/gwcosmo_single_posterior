@@ -255,9 +255,9 @@ else:
             counterpart.ra = counterpart_ra*np.pi/180.
             counterpart.dec = counterpart_dec*np.pi/180.
             if (counterpart_z > 0) & (counterpart_z < 3):
-                counterpart.z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z)
+                counterpart.z = counterpart_z 
             else:
-                counterpart.z = zhelio_to_zcmb(counterpart.ra, counterpart.dec, counterpart_z/speed_of_light)
+                counterpart.z = counterpart_z/speed_of_light
 
             if (counterpart_v > 0) & (counterpart_v < 1):
                 counterpart.sigmaz = counterpart_v
