@@ -62,7 +62,9 @@ parser = OptionParser(
         Option("--combine", default=None,
             help="Directory of constant_H0 Pdets to combine into single Pdet pickle."),
         Option("--outputfile", default=None,
-            help="Name of output pdet file.")
+            help="Name of output pdet file."),
+        Option("--snr", default='12.0', type=float,
+            help="Network SNR threshold.")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -90,7 +92,7 @@ linear = str2bool(opts.linear_cosmology)
 basic = str2bool(opts.basic_pdet)
 full_waveform = str2bool(opts.full_waveform)
 Nsamps = int(opts.Nsamps)
-
+network_snr_threshold = float(opts.snr)
 constant_H0 = str2bool(opts.constant_H0)
 pdet_path = str(opts.combine)
 
@@ -114,7 +116,7 @@ if opts.combine is None:
     pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic,
                                                               linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax,
                                                               full_waveform=full_waveform, Nsamps=Nsamps, 
-                                                              constant_H0=constant_H0, H0=H0)
+                                                              constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
 
     if opts.outputfile is None:
         if mass_distribution == 'BBH-powerlaw':
@@ -152,7 +154,7 @@ else:
     pdet = gwcosmo.likelihood.detection_probability.DetectionProbability(
                     mass_distribution=mass_distribution, alpha=alpha,
                     asd=psd, detectors=['H1', 'L1'], Nsamps=2,
-                    network_snr_threshold=12, Omega_m=0.308,
+                    network_snr_threshold=12.0, Omega_m=0.308,
                     linear=False, basic=False, M1=50., M2=50.,
                     constant_H0=False, H0=H0vec, full_waveform=True)
     
@@ -198,6 +200,7 @@ else:
     pdet.linear = linear
     pdet.seed = seed
     pdet.detectors = detectors
+    pdet.network_snr_threshold = network_snr_threshold
 
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
@@ -206,11 +209,11 @@ else:
     pdet.interp_average = interp_average
     
     if mass_distribution == 'BBH-powerlaw':
-        pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution,
+        pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution,
                                                                              str(alpha), str(Mmin), str(Mmax), 
-                                                                             str(Nsamps), kind)
+                                                                             str(Nsamps), kind,network_snr_threshold)
     else:
-        pdet_path = '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, str(Nsamps), kind)
+        pdet_path = '{}PSD_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution, str(Nsamps), kind,network_snr_threshold)
     
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 

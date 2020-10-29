@@ -110,7 +110,9 @@ parser = OptionParser(
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
         Option("--plot", default=None,
-            help="Plot .npz file")
+            help="Plot .npz file"),
+        Option("--snr", default='12.0', type=float,
+            help="Network SNR threshold.")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -203,7 +205,7 @@ else:
     full_waveform=str2bool(opts.full_waveform)
     Kcorr = str2bool(opts.Kcorrections)
     reweight = str2bool(opts.reweight)
-
+    network_snr_threshold = float(opts.snr)
     population_params = dict(mass_distribution=mass_distribution,alpha=alpha,mmin=mmin,mmax=mmax,Lambda=Lambda)
 
     options_string = opts.method
@@ -276,7 +278,7 @@ else:
 
     if mass_distribution == 'BBH-powerlaw':
 
-        pdet_path = data_path + '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, mmin, mmax, Nsamps, kind)
+        pdet_path = data_path + '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution, alpha, mmin, mmax, Nsamps, kind,network_snr_threshold)
         print(pdet_path)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
@@ -284,10 +286,10 @@ else:
         else:
             print('Calculating detection probability from scratch. This will take a while... Consider using a precomputed one for speed.')
             pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution,asd=psd,
-                                                                      basic=basic,full_waveform=full_waveform,H0=H0)
+                                                                      basic=basic,full_waveform=full_waveform,H0=H0,network_snr_threshold=network_snr_threshold)
 
     if (mass_distribution == 'BNS' or mass_distribution == 'NSBH'):
-        pdet_path = data_path + '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
+        pdet_path = data_path + '{}PSD_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution, Nsamps, kind,network_snr_threshold)
         if os.path.isfile(pdet_path) is True:
             pdet = pickle.load(open(pdet_path, 'rb'))
             print('Loading precomputed pdet with a {} mass distribution at {} sensitivity.'.format(mass_distribution, psd))
