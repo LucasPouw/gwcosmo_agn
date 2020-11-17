@@ -27,7 +27,7 @@ class SchechterMagFunctionInternal(object):
         return self.evaluate(m)/self.norm
 
 
-def SchechterMagFunction(H0=70., Mstar_obs=-20.457, alpha=-1.07, phistar=1.):
+def SchechterMagFunction(H0=70., Mstar_obs=-19.70, alpha=-1.07, phistar=1.):
     """
     Returns a Schechter magnitude function fort a given set of parameters
 

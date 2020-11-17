@@ -10,6 +10,26 @@ from astropy import units as u
 from astropy import constants as const
 from astropy.table import Table
 import h5py
+from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
+from bilby import gw
+from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
+from ..prior.priors import *
+
+from astropy.cosmology import FlatLambdaCDM, z_at_value
+import astropy.units as u
+import astropy.constants as constants
+from scipy.interpolate import interp1d
+
+Om0 = 0.308
+zmin = 0.0001
+zmax = 10
+zs = np.linspace(zmin, zmax, 10000)
+cosmo = fast_cosmology(Omega_m=Om0)
+
+def constrain_m1m2(parameters):
+    converted_parameters = parameters.copy()
+    converted_parameters['m1m2'] = parameters['mass_1'] - parameters['mass_2']
+    return converted_parameters
 
 
 class posterior_samples(object):
@@ -27,10 +47,26 @@ class posterior_samples(object):
         except:
             print("No posterior samples were specified")
 
+
+    def E(self,z,Om):
+        return np.sqrt(Om*(1+z)**3 + (1.0-Om))
+
+    def dL_by_z_H0(self,z,H0,Om0):
+        speed_of_light = constants.c.to('km/s').value
+        cosmo = fast_cosmology(Omega_m=Om0)
+        return cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
+
+    def jacobian_times_prior(self,z,H0,Om0=0.308):
+
+        cosmo = fast_cosmology(Omega_m=Om0)
+        jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
+        dl = cosmo.dl_zH0(z, H0)
+        return jacobian*(dl**2)
+
     def load_posterior_samples(self):
         """
         Method to handle different types of posterior samples file formats.
-        Currently it supports .dat (LALinference), .hdf5 (GWTC-1), 
+        Currently it supports .dat (LALinference), .hdf5 (GWTC-1),
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
         if self.posterior_samples[-3:] == 'dat':
@@ -95,14 +131,79 @@ class posterior_samples(object):
             self.nsamples = len(self.distance)
             file.close()
 
-    def marginalized_distance(self):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        return gaussian_kde(self.distance)
-
     def marginalized_sky(self):
         """
         Computes the marginalized sky localization posterior KDE.
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
+
+    def compute_source_frame_samples(self, H0):
+        cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
+        dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value
+        z_at_dL = interp1d(dLs,zs)
+        redshift = z_at_dL(self.distance)
+        mass_1_source = self.mass_1/(1+redshift)
+        mass_2_source = self.mass_2/(1+redshift)
+        return redshift, mass_1_source, mass_2_source
+
+    def reweight_samples(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
+        # Prior distribution used in the LVC analysis
+        prior = distance_distribution(name=name)
+        # Prior distribution used in this work
+        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
+
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+
+        # Re-weight
+        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/ prior.prob(self.distance)
+        np.random.seed(seed)
+        draws = np.random.uniform(0, max(weights), weights.shape)
+        keep = weights > draws
+        m1det = self.mass_1[keep]
+        m2det = self.mass_2[keep]
+        dl = self.distance[keep]
+        return dl, weights
+
+
+    def marginalized_redshift_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        # Prior distribution used in this work
+        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
+
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+
+        # Re-weight
+        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift,H0)
+        norm = np.sum(weights)
+        return gaussian_kde(redshift,weights=weights), norm
+
+    def marginalized_redshift(self, H0):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        # Get source frame masses
+        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
+
+        # remove dl^2 prior and include dz/ddL jacobian
+        weights = 1/(self.dL_by_z_H0(redshift,H0,Om0)*cosmo.dl_zH0(redshift,H0)**2)
+        norm = np.sum(weights)
+        return gaussian_kde(redshift,weights=weights), norm
+
+    def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        dl, weights = self.reweight_samples(H0, name, alpha=alpha, mmin=mmin, mmax=mmax, seed=seed)
+        norm = np.sum(weights)/len(weights)
+        return gaussian_kde(dl), norm
+
+    def marginalized_distance(self, H0):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        norm = 1
+        return gaussian_kde(self.distance), norm

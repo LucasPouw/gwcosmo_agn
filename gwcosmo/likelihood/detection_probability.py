@@ -12,7 +12,8 @@ from scipy.stats import ncx2
 from scipy.special import logit, expit
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
-from gwcosmo.prior.priors import *
+from gwcosmo.prior.priors import mass_sampling as mass_prior
+
 import pickle
 import time
 import progressbar
@@ -82,7 +83,7 @@ class DetectionProbability(object):
         self.full_waveform = full_waveform
         self.constant_H0 = constant_H0
         self.seed = seed
-        
+       
         np.random.seed(seed)
         
         ASD_data = {}
@@ -114,18 +115,18 @@ class DetectionProbability(object):
         self.psis = np.random.rand(N)*2.0*np.pi
         self.phis = np.random.rand(N)*2.0*np.pi
         if self.mass_distribution == 'BNS':
-            m1, m2 = BNS_uniform_distribution(N, mmin=1.0, mmax=3.0)
+            mass_priors = mass_prior(self.mass_distribution)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'NSBH':
-            m1, _ = BBH_mass_distribution(N, mmin=self.Mmin, mmax=self.Mmax, alpha=self.alpha)
-            _, m2 = BNS_uniform_distribution(N, mmin=1.0, mmax=3.0)
+            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         if self.mass_distribution == 'BBH-powerlaw':
-            m1, m2 = BBH_mass_distribution(N, mmin=self.Mmin, mmax=self.Mmax, alpha=self.alpha)
+            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
         if self.mass_distribution == 'BBH-constant':
-            m1, m2 = BBH_constant_mass(N, M1=self.M1, M2=self.M2)
+            mass_priors = mass_prior(self.mass_distribution, self.M1, self.M2)
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
+        m1, m2 = mass_priors.sample(N)
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
