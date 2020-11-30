@@ -76,7 +76,7 @@ parser = OptionParser(
             help="Set galaxy catalog weighting"),
         Option("--catalog_band", default='B', type=str,
             help = "choose between a 'B' band or a 'K' band catalog"),
-        Option("--completion", default='False',
+        Option("--complete", default='False',
             help="Assumes a complete catalog."),
         Option("--uncertainty", default='True',
             help="Apply redshift uncertainties."),
@@ -168,11 +168,11 @@ else:
 
     if opts.method == 'statistical':
         galaxy_weighting = str2bool(opts.galaxy_weighting)
-        completion = str2bool(opts.completion)
+        complete = str2bool(opts.complete)
 
     if opts.method == 'counterpart':
         galaxy_weighting = False
-        completion = True
+        complete = True
         if (opts.counterpart is not None and opts.counterpart[-5:] == '.hdf5'):
             counterpart = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=opts.counterpart)
         else:
@@ -242,7 +242,7 @@ else:
         population = True
         new_skypatch = False
         galaxy_weighting = False
-        completion = False
+        complete = False
         catalog = None
         counterpart = None
 
@@ -299,7 +299,7 @@ else:
         linear=linear,weighted=galaxy_weighting,uncertainty=uncertainty,basic=basic,
         rate=rate_evolution,population_params=population_params,Kcorr=Kcorr)
 
-    likelihood_original,pxG,pDG,pGD,catalog_fraction,pxnG,pDnG,pnGD,pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=completion,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
+    likelihood_original,pxG,pDG,pGD,catalog_fraction,pxnG,pDnG,pnGD,pxnG_rest_of_sky,pDnG_rest_of_sky,rest_fraction = me.likelihood(H0,complete=complete,counterpart_case='direct',new_skypatch=new_skypatch,population=population)
 
     likelihood = np.array(likelihood_original)/np.sum(np.array(likelihood_original)*dH0)
 

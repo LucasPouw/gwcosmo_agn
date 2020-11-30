@@ -18,13 +18,14 @@ from ..prior.priors import *
 from astropy.cosmology import FlatLambdaCDM, z_at_value
 import astropy.units as u
 import astropy.constants as constants
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 
 Om0 = 0.308
 zmin = 0.0001
 zmax = 10
 zs = np.linspace(zmin, zmax, 10000)
 cosmo = fast_cosmology(Omega_m=Om0)
+speed_of_light = constants.c.to('km/s').value
 
 def constrain_m1m2(parameters):
     converted_parameters = parameters.copy()
@@ -52,13 +53,9 @@ class posterior_samples(object):
         return np.sqrt(Om*(1+z)**3 + (1.0-Om))
 
     def dL_by_z_H0(self,z,H0,Om0):
-        speed_of_light = constants.c.to('km/s').value
-        cosmo = fast_cosmology(Omega_m=Om0)
         return cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
 
     def jacobian_times_prior(self,z,H0,Om0=0.308):
-
-        cosmo = fast_cosmology(Omega_m=Om0)
         jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
         dl = cosmo.dl_zH0(z, H0)
         return jacobian*(dl**2)
@@ -207,3 +204,47 @@ class posterior_samples(object):
         """
         norm = 1
         return gaussian_kde(self.distance), norm
+
+
+class make_px_function(object):
+    """
+    Make a line of sight, or sky-marginalised, function of the GW data in
+    redshift and H0.
+
+    Parameters
+    ----------
+    samples : posterior_samples object
+        The GW samples
+    H0 : array
+    reweight_samples : bool, optional
+        Should the samples be reweighted to the same source-frame mass prior
+        as used in the selection effects? (Default=True)
+    """
+    def __init__(self, samples,H0,reweight_samples=True,mass_distribution='BBH-powerlaw',alpha=1.6,mmin=5.0,mmax=100.):
+        redshift_bins = 500
+        vals = np.zeros((len(H0),redshift_bins))
+        zmin = z_dlH0(np.amin(samples.distance),H0[0])*0.5
+        zmax = z_dlH0(np.amax(samples.distance),H0[-1])*2.
+        for i,H in enumerate(H0):
+            if reweight_samples == True:
+                # TODO fix this for BNS
+                zkernel, norm = samples.marginalized_redshift_reweight(H, mass_distribution, alpha, mmin, mmax)
+            else:
+                zkernel, norm = samples.marginalized_redshift(H)
+            z_array = np.linspace(zmin, zmax, redshift_bins)
+            vals[i,:] = zkernel(z_array)*norm
+        self.temps = interp2d(z_array,H0,vals,bounds_error=False, fill_value=0)
+        
+    def px_zH0(self,z,H0):
+        """
+        Returns p(x|z,H0)
+        BE CAREFUL ABOUT THE ORDERING OF z and H0! 
+        Interp2d returns results corresponding to an ordered input array
+        """
+        return self.temps(z,H0)
+        
+    def __call__(self, z,H0):
+        return self.px_zH0(z,H0)
+
+
+

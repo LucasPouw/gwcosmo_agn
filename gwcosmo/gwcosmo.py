@@ -46,6 +46,175 @@ from .utilities.calc_kcor import *
 import time
 import progressbar
 
+class LuminosityWeighting():
+    """
+    Host galaxy probability relation to luminosity
+    """
+    def __init__(self, luminosity_weights=False):
+        if luminosity_weights:
+            self.__call__ = self.weighted_call
+        else:
+            self.__call__ = self.unweighted_call
+    def weighted_call(self, M):
+        return L(M)
+    def unweighted_call(self, M):
+        return 1.
+        
+       
+
+class RedshiftEvolution():
+    """
+    Merger rate relation to redshift
+    
+    TODO: consider how Lambda might need to be marginalised over in future
+    """
+    def __init__(self, redshift_evolution=False):
+        self.redshift_evolution = redshift_evolution
+        
+    def evolving(self, z, Lambda=0.):
+        return (1+z)**Lambda
+        
+    def constant(self, z, Lambda=0.):
+        return 1.
+        
+    def __call__(self, z, Lambda=0.):
+        if self.redshift_evolution:
+            return self.evolving(z,Lambda=Lambda)
+        else:
+            return self.constant(z,Lambda=Lambda)
+            
+def z_nsmear(z, sigz, nsmear, zcut=10.):
+    """
+    Draw redshift samples from a galaxy. Ensure no samples fall below z=0
+    Remove samples above the redshift cut. zcut cannot be used as an upper limit
+    for the draw, as this will cause an overdensity of support.
+    """
+    a = (0.0 - z) / sigz
+    zsmear = truncnorm.rvs(a, 5, loc=z, scale=sigz, size=nsmear)
+    zsmear = zsmear[np.where(zsmear<zcut)[0]].flatten()
+    return zsmear #TODO order these before returning them?
+        
+
+def pxorD_zH0(z, H0, pxorD_function, zprior, zrates, Lambda=0.):
+    """
+    Definition of p(x|z,H0)*p(z)*p(s|z), or p(D|z,H0)*p(z)*p(s|z)
+    
+    Parameters
+    ----------
+    H0 : float or array of floats
+        The Hubble constant (kms-1Mpc-1)
+    z : float or array of floats
+        Redshift
+    pxorD_function : function
+        p(x|z,H0) or p(D|z,H0)
+    zprior : gwcosmo.utilities.standard_cosmology.redshift_prior object
+        The redshift prior, p(z)
+    zrates : gwcosmo.gwcosmo.RedshiftEvolution object
+        Merger rate evolution, p(s|z)
+    Lambda : float, optional
+        Merger rate evolution parameter (default=0)
+        
+    Returns
+    -------
+    Float or array of floats
+        Probability of GW data evaluated for a specific H0 and z
+    """
+    return pxorD_function(z,H0)*zprior(z)*zrates(z,Lambda=Lambda)
+    
+def z_integral(I, zmin=0., zmax=10.):
+    """
+    Integral of the function I over redshift space
+    
+    Parameters
+    ----------
+    I : function
+        The integrand
+    zmin : float
+        The lower redshift limit
+    zmax : float
+        The upper redshift limit
+    """
+    return quad(I,zmin,zmax,epsabs=0,epsrel=1.49e-4)[0]
+    
+def pxorD_H0(H0,pxorD_function,zprior,zrates,Lambda=0.,zmax=10.):
+    temp = np.zeros(len(H0))
+    for i,h in enumerate(H0):
+        def I(z):
+            return pxorD_zH0(z, h, pxorD_function, zprior, zrates, Lambda=Lambda)
+        temp[i] = z_integral(I,zmax=zmax)
+    return temp     
+    
+class EmptyCatalogLikelihood(object):
+    """
+    Calculations assuming no EM data (either counterpart or catalog).
+    All information comes from the distance distribution of GW events
+    or population assumptions which have not yet been marginalized over.
+    
+    This method is fast relative to the catalog methods, as it does not 
+    require an integral over either sky or absolute magnitude, only redshift.
+    """
+    def __init__(self, samples, pdet, zprior, zrates):
+        self.px_zH0 = samples
+        self.pdet = pdet
+        self.zprior = zprior
+        self.zrates = zrates
+        
+    def px_H0(self,H0,Lambda=0.,zmax=10.):
+        return pxorD_H0(H0,self.px_zH0,self.zprior,self.zrates,zmax=zmax)
+        
+    def pD_H0(self,H0,Lambda=0.,zmax=10.):
+        return pxorD_H0(H0,self.pdet.pD_zH0_eval,self.zprior,self.zrates,zmax=zmax)
+        
+    def likelihood(self,H0,Lambda=0.,zmax=10.):
+        num = self.px_H0(H0,Lambda=Lambda,zmax=zmax)
+        den = self.pD_H0(H0,Lambda=Lambda,zmax=zmax)
+        likelihood = num/den
+        return likelihood, num, den
+        
+class DirectCounterpartLikelihood(object):
+    """    
+    This method is fast relative to the catalog methods, as it does not 
+    require an integral over either sky or absolute magnitude, only redshift.
+    """
+    def __init__(self, samples, pdet, zprior, zrates):
+        self.px_zH0 = samples
+        self.pdet = pdet
+        self.zprior = zprior
+        self.zrates = zrates
+        
+    def px_H0(self,H0,counterpart_z,counterpart_sigmaz):
+        """
+        Returns p(x|H0,counterpart)
+        This corresponds to the numerator or Eq 6 in the doc.
+        The likelihood of the GW data given H0 and direct counterpart.
+
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        float or array_like
+            p(x|H0,counterpart)
+        """
+        zsmear =  z_nsmear(counterpart_z, counterpart_sigmaz, 10000)
+        num = np.zeros(len(H0))
+        for k,H in enumerate(H0):
+            num[k] = np.sum(self.px_zH0(zsmear,H)) 
+            # TODO should this include p(s|z)? Would come into play
+            # for host galaxies with large redshift uncertainty.
+        return num
+        
+    def pD_H0(self,H0,Lambda=0.,zmax=10.):
+        return pxorD_H0(H0,self.pdet.pD_zH0_eval,self.zprior,self.zrates,zmax=zmax)
+        
+    def likelihood(self,H0,counterpart_z,counterpart_sigmaz,Lambda=0.,zmax=10.):
+        num = self.px_H0(H0,counterpart_z,counterpart_sigmaz)
+        den = self.pD_H0(H0,Lambda=Lambda,zmax=zmax)
+        likelihood = num/den
+        return likelihood, num, den
+
 
 class gwcosmoLikelihood(object):
     """
@@ -67,10 +236,6 @@ class gwcosmoLikelihood(object):
         The matter fraction of the universe (default=0.3)
     linear : bool, optional
         Use linear cosmology (default=False)
-    weights : str, optional
-        Specifies type of luminosity weighting to use: 'schechter' or 'trivial'
-        (default='schechter') 'trivial' is only for testing purposes and
-        should not be used in analysis
     basic : bool, optional
         If True, uses pdet suitable for MDC analysis (default=False)
     uncertainty : bool, optional
