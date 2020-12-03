@@ -23,45 +23,6 @@ Kcorr_signs = {'B':1, 'K':1, 'u':1, 'g':1, 'r':-1, 'i':-1, 'z':-1}
 color_names = {'B':None, 'K':None, 'u':'u - r', 'g':'g - r', 'r':'g - r', 'i':'g - i', 'z':'r - z'}
 color_limits = {'u - r':[-0.1,2.9], 'g - r':[-0.1,1.9], 'g - i':[0,3], 'r - z':[0,1.5]}
 
-def redshiftUncertainty(ra, dec, z, sigmaz, m, tempsky, luminosity_weights):
-    """    
-    A function which "smears" out galaxies in the catalog, therefore
-    incorporating redshift uncetainties.
-    """
-    sort = np.argsort(m)
-    ra, dec, z, sigmaz, m, tempsky = ra[sort], dec[sort], z[sort], sigmaz[sort], m[sort], tempsky[sort]
-    
-    if luminosity_weights is not 'constant':
-        mlim = np.percentile(m,0.01) # more draws for galaxies in brightest 0.01 percent
-    else:
-        mlim = 1.0
-
-    z_uncert = []
-    ra_uncert = []
-    dec_uncert = []
-    m_uncert = []
-    tempsky_uncert = []
-    nsmear_uncert = []
-    for k in range(len(m)):
-        if m[k]<=mlim:
-            nsmear = 10000
-        else:
-            nsmear = 20
-        z_uncert.append(np.random.normal(z[k],sigmaz[k],nsmear))
-        ra_uncert.append(np.repeat(ra[k],nsmear))
-        dec_uncert.append(np.repeat(dec[k],nsmear))
-        m_uncert.append(np.repeat(m[k],nsmear))
-        tempsky_uncert.append(np.repeat(tempsky[k],nsmear))
-        nsmear_uncert.append(np.repeat(nsmear,nsmear))
-
-    z_uncert = np.concatenate(z_uncert).ravel()
-    ra_uncert = np.concatenate(ra_uncert).ravel()
-    dec_uncert = np.concatenate(dec_uncert).ravel()
-    m_uncert = np.concatenate(m_uncert).ravel()
-    tempsky_uncert = np.concatenate(tempsky_uncert).ravel()
-    nsmear_uncert = np.concatenate(nsmear_uncert).ravel()
-
-    return ra_uncert, dec_uncert, z_uncert, m_uncert, tempsky_uncert, nsmear_uncert
 
 class galaxy(object):
     """
