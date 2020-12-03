@@ -83,26 +83,18 @@ class GalaxyCatalogLikelihood(object):
         else:
             self.zcut = self.zmax
             self.color_limit = [-np.inf,np.inf]
-        
-        # find index of array which bounds the area confidence interval
-        prob_sorted = np.sort(skymap.prob)[::-1]
-        prob_sorted_cum = np.cumsum(prob_sorted)
-        idx = np.searchsorted(prob_sorted_cum, area)
-        minskypdf = prob_sorted[idx]*skymap.npix
-        tempsky = skymap.skyprob(catalog.ra, catalog.dec)*skymap.npix
 
-        #find galaxies within the bounds of the galaxy catalog
-        ind = np.where((tempsky >= minskypdf) & \
-                      ((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut) & \
+        #find galaxies below redshift cut, and with right colour information
+        ind = np.where(((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut) & \
                       (self.color_limit[0] <= galaxy_catalog.color) & \
                       (galaxy_catalog.color <= self.color_limit[1]))[0]
 
-        self.zs = catalog.z[ind]
-        self.ras = catalog.ra[ind]
-        self.decs = catalog.dec[ind]
-        self.ms = catalog.m[ind]
-        self.sigzs = catalog.sigmaz[ind]
-        self.colors = catalog.color[ind]
+        self.galz = catalog.z[ind]
+        self.galra = catalog.ra[ind]
+        self.galdec = catalog.dec[ind]
+        self.galm = catalog.m[ind]
+        self.galsigz = catalog.sigmaz[ind]
+        self.galcolor = catalog.color[ind]
         
 
 

@@ -83,16 +83,26 @@ class galaxyCatalog(object):
     thresh: Probablity contained within sky map region
     band: key of band
     """
-    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9, band='B', Kcorr=False):
+    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9999, band='B', Kcorr=False):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
-            self.extract_galaxies(skymap_filename=skymap_filename, thresh=thresh, band=band, Kcorr=Kcorr)
+            if skymap_filename is None:
+                skymap = None
+            else:
+                skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
+                
+            self.extract_galaxies(skymap=skymap, thresh=thresh, band=band, Kcorr=Kcorr)
+            
+            if skymap_filename is not None:
+                self.OmegaG,self.px_OmegaG = self.region_with_galaxies(skymap.prob, self.gal_ind, thresh)
 
         if catalog_file is None:
             self.catalog_name = ""
             self.dictionary = {'ra': [], 'dec': [], 'z': [], 'sigmaz': [],
                                'skymap_indices': [], 'radec_lim': [], 'm_{0}'.format(band): []}
+                               
+
 
     def __load_catalog(self):
         return h5py.File(self.catalog_file,'r')
@@ -113,7 +123,7 @@ class galaxyCatalog(object):
             mth = np.median(m)
         return mth
 
-    def extract_galaxies(self, skymap_filename=None, thresh=.9, band='B', Kcorr=False):
+    def extract_galaxies(self, skymap=None, thresh=.9, band='B', Kcorr=False):
         band_key = 'm_{0}'.format(band)
         if Kcorr is True:
             band_Kcorr = Kcorr_bands[band]
@@ -123,7 +133,7 @@ class galaxyCatalog(object):
             
         ra = self.dictionary['ra'][:]
         dec = self.dictionary['dec'][:]
-        if skymap_filename is None:
+        if skymap is None:
             z = self.dictionary['z'][:]
             sigmaz = self.dictionary['sigmaz'][:]
             m = self.dictionary[band_key][:]
@@ -131,9 +141,8 @@ class galaxyCatalog(object):
                 m_K = self.dictionary[band_Kcorr_key][:]
             radec_lim = self.dictionary['radec_lim'][:]
         else:
-            skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
-            gal_ind = skymap.indices(ra,dec)
-            ind = self.galaxies_within_region(skymap.prob, gal_ind, thresh)
+            self.gal_ind = skymap.indices(ra,dec)
+            ind = self.galaxies_within_region(skymap.prob, self.gal_ind, thresh)
             ra = self.dictionary['ra'][ind]
             dec = self.dictionary['dec'][ind]
             z = self.dictionary['z'][ind]
@@ -173,4 +182,15 @@ class galaxyCatalog(object):
         the sky map's credible region above the given threshold"""
         skymap_ind = self.above_percentile(skymap_prob, thresh)
         return np.in1d(gal_ind, skymap_ind)
+        
+    def region_with_galaxies(self, skymap_prob, gal_ind, thresh):
+        """
+        Finds fraction of sky with catalogue support, and and corresponding
+        fraction of GW sky probability
+        """
+        skymap_ind = self.above_percentile(skymap_prob, thresh)
+        ind = np.in1d(skymap_ind, gal_ind)
+        fraction_of_sky = len(ind)/len(skymap_prob)
+        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind][ind])
+        return fraction_of_sky,GW_prob_in_fraction_of_sky
 
