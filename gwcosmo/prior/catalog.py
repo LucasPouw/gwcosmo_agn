@@ -96,6 +96,7 @@ class galaxyCatalog(object):
             
             if skymap_filename is not None:
                 self.OmegaG,self.px_OmegaG = self.region_with_galaxies(skymap.prob, self.gal_ind, thresh)
+            # TODO: deal better with case when skymap isn't passed
 
         if catalog_file is None:
             self.catalog_name = ""

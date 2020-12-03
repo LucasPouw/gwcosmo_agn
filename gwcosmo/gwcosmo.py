@@ -61,10 +61,12 @@ class GalaxyCatalogLikelihood(object):
     This method is fast relative to the catalog methods, as it does not 
     require an integral over either sky or absolute magnitude, only redshift.
     """
-    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, area=0.9999):
+    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, mth=None, zcut=None, zmax=10.):
         self.base = base_functions
         self.cosmo = fast_cosmology
-        self.zmax = 10.
+        self.mth = mth
+        self.zmax = zmax
+        self.zcut = zcut
         self.skymap = skymap
         
         # read in Schechter function parameters corresponding to galaxy catalogue band
@@ -77,12 +79,18 @@ class GalaxyCatalogLikelihood(object):
         
         # Set redshift and colour limits based on whether Kcorrections are applied
         if galax_catalog.Kcorr == True:
-            self.zcut = 0.5
+            if zcut is None:
+                self.zcut = 0.5
             self.color_name = self.galaxy_catalog.color_name
             self.color_limit = self.galaxy_catalog.color_limit
         else:
-            self.zcut = self.zmax
+            if zcut is None:
+                self.zcut = self.zmax
             self.color_limit = [-np.inf,np.inf]
+        
+        
+        if mth is None:
+            self.mth = self.galaxy_catalog.mth()
 
         #find galaxies below redshift cut, and with right colour information
         ind = np.where(((self.galaxy_catalog.z-3*self.galaxy_catalog.sigmaz) <= self.zcut) & \
@@ -95,54 +103,80 @@ class GalaxyCatalogLikelihood(object):
         self.galm = catalog.m[ind]
         self.galsigz = catalog.sigmaz[ind]
         self.galcolor = catalog.color[ind]
+
+        self.OmegaG = catalog.OmegaG
+        self.px_OmegaG = catalog.px_OmegaG
         
-
-
-        # G_area - fraction of the sky covered by both catalogue and GW skymap
         
         self.pxG=None
         self.pDG=None
-        self.pG=None
-        self.pxB=None
-        self.pDB=None
-        self.pB=None
-        self.pxO=None
-        self.pDO=None
-        self.pO=None                
+        self.pG = np.ones(len(H0))
+        self.pxB = np.zeros(len(H0))
+        self.pDB = np.ones(len(H0))
+        self.pB = np.zeros(len(H0))
+        self.pxO = np.zeros(len(H0))
+        self.pDO = np.ones(len(H0))
+        self.pO = 0.           
         
-    def px_GH0(self,H0,Lambda=0.,zmax=10.):
-        return integral_over_z(H0,self.base.px_zH0_times_pz_times_ps_z,Lambda=Lambda,zmin=0.,zmax=zmax)
+    def pxD_GH0(self,H0,Lambda=0.):
+        """
+        Computes p(x|G,H0) and p(D|G,H0)
+        """
+        return np.ones(len(H0))
         
-    def pD_GH0(self,H0,Lambda=0.,zmax=10.):
-        return integral_over_z(H0,self.base.pD_zH0_times_pz_times_ps_z,Lambda=Lambda,zmin=0.,zmax=zmax)
-        
-    def pG_DH0(self,H0,mth,Lambda=0.):
+    def pGB_DH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
         """
         The probability that the host galaxy of a detected GW event is inside
         the galaxy catalogue.
         """
         Mmin = M_Mobs(H0,self.Mobs_min)
         Mmax = M_Mobs(H0,self.Mobs_max)
-        integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        return integral*self.G_area
+        num = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         
-    def px_BH0(self,H0,Lambda=0.,zmax=10.):
-        return integral_over_z(H0,self.base.px_zH0_times_pz_times_ps_z,Lambda=Lambda,zmin=0.,zmax=zmax)
+        integral = num/den
         
-    def pD_BH0(self,H0,Lambda=0.,zmax=10.):
-        return integral_over_z(H0,self.base.pD_zH0_times_pz_times_ps_z,Lambda=Lambda,zmin=0.,zmax=zmax)
+        pG = integral*self.OmegaG
+        pB = self.OmegaG(1.-integral)
+        return pG, pB, num, den
         
-    def pB_DH0(self,H0,mth,Lambda=0.):
+    def px_BH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
         """
-        The probability that the host galaxy of a detected GW event lies within 
-        the sky area of the galaxy catalogue, but beyond the apparent magnitude 
-        threshold.
+        Evaluate the likelihood of the GW data beyond the galaxy catalogue
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed
         """
-        #TODO sort where this should go with loops on H0
-        if all(self.pG)==None:
-            self.pG = self.pG_DH0(H0,mth,Lambda=Lambda)
-        self.pB = self.G_area - self.pG
-        return self.pB
+        Mmin = M_Mobs(H0,self.Mobs_min)
+        Mmax = M_Mobs(H0,self.Mobs_max)
+            
+        below_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        above_zcut_integral = 0.
+        if self.zcut < zmax:
+            above_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * self.px_OmegaG
+        
+    def pD_BH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
+        """
+        Evaluate the likelihood of the GW data beyond the galaxy catalogue
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed
+        """
+        Mmin = M_Mobs(H0,self.Mobs_min)
+        Mmax = M_Mobs(H0,self.Mobs_max)
+            
+        below_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        above_zcut_integral = 0.
+        if self.zcut < zmax:
+            above_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * self.OmegaG 
         
     def px_OH0(self,H0,Lambda=0.,zmax=10.):
         Mmin = M_Mobs(H0,self.Mmin_obs)
@@ -159,13 +193,40 @@ class GalaxyCatalogLikelihood(object):
         The probability that the host galaxy of a detected GW event lies outside
         the sky area of the galaxy catalogue.
         """
-        return 1.0 - self.G_area
+        return 1.0 - self.OmegaG
         
-    def likelihood(self,H0,Lambda=0.,zmax=10.):
-        num = self.px_H0(H0,Lambda=Lambda,zmax=zmax)
-        den = self.pD_H0(H0,Lambda=Lambda,zmax=zmax)
-        likelihood = num/den
-        return likelihood, num, den
+    def likelihood(self,H0,Lambda=0.,complete_catalog=False):
+        """
+        Complete the full likelihood.
+        Returns likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
+        where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
+        """
+        if zcut > self.zcut:
+            print('You galaxy luminosities may become unreliable with a redshift cut this high')
+        
+        print('Computing the in-catalogue part')
+        self.pxG, self.pDG = self.pxD_GH0(H0,Lambda=Lambda)
+
+        if not complete_catalog:
+            print('Computing the beyond catalogue part')   
+            for i,h in enumerate(H0):
+                self.pG[i], self.pB[i], num, den = self.pGB_DH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
+                self.pxB[i] = self.px_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
+            if zcut == zmax:
+                self.pDB = den - num
+            else:
+                print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
+                for i,h in enumerate(H0):
+                    self.pDB[i] = self.pD_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
+            if self.px_OmegaG < 0.999:
+                self.pO = self.pO_DH0()
+                self.pDO = den
+                print('Computing the contribution outside the catalogue footprint: this will take a little longer')
+                for i,h in enumerate(H0):
+                    self.pxO[i] = px_OH0(h,Lambda=Lambda,zmax=self.zmax)
+        
+        likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
+        return likelihood, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
 
 
 class DirectCounterpartLikelihood(object):
