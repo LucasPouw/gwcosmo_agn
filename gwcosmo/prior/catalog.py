@@ -14,6 +14,7 @@ import progressbar
 
 from ..utilities.standard_cosmology import *
 from ..utilities.schechter_function import *
+
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo',
                                                     'data/catalog_data/')
@@ -119,12 +120,10 @@ class galaxyCatalog(object):
             band_Kcorr_key = 'm_{0}'.format(band_Kcorr)
             self.color_name = color_names[band]
             self.color_limit = color_limits[self.color_name]
-        if skymap_filename:
-            skymap = hp.read_map(skymap_filename, verbose=False)
-        gal_ind = self.dictionary['skymap_indices'][:]
+            
+        ra = self.dictionary['ra'][:]
+        dec = self.dictionary['dec'][:]
         if skymap_filename is None:
-            ra = self.dictionary['ra'][:]
-            dec = self.dictionary['dec'][:]
             z = self.dictionary['z'][:]
             sigmaz = self.dictionary['sigmaz'][:]
             m = self.dictionary[band_key][:]
@@ -132,7 +131,9 @@ class galaxyCatalog(object):
                 m_K = self.dictionary[band_Kcorr_key][:]
             radec_lim = self.dictionary['radec_lim'][:]
         else:
-            ind = self.galaxies_within_region(skymap, gal_ind, thresh)
+            skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
+            gal_ind = skymap.indices(ra,dec)
+            ind = self.galaxies_within_region(skymap.prob, gal_ind, thresh)
             ra = self.dictionary['ra'][ind]
             dec = self.dictionary['dec'][ind]
             z = self.dictionary['z'][ind]
@@ -167,9 +168,9 @@ class galaxyCatalog(object):
         lim_ind = np.where(cumsum > thresh)[0][0]
         return ind_sorted[:lim_ind]
 
-    def galaxies_within_region(self, skymap, gal_ind, thresh):
+    def galaxies_within_region(self, skymap_prob, gal_ind, thresh):
         """Returns boolean array of whether galaxies are within
         the sky map's credible region above the given threshold"""
-        skymap_ind = self.above_percentile(skymap, thresh)
+        skymap_ind = self.above_percentile(skymap_prob, thresh)
         return np.in1d(gal_ind, skymap_ind)
 

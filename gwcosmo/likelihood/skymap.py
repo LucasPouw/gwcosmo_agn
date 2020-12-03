@@ -82,8 +82,14 @@ class skymap(object):
         Return the probability of a given sky location
         ra, dec: radians
         """
-        ipix_gal = hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=self.nested)
+        ipix_gal = self.indices(ra,dec)
         return self.prob[ipix_gal]
+
+    def indices(self, ra, dec):
+        """
+        Return the index of the skymap pixel that contains the coordinate ra,dec
+        """
+        return hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=self.nested)
 
     def marginalized_distance(self):
         mu = self.distmu[(self.distmu<np.inf) & (self.distmu>0)]
