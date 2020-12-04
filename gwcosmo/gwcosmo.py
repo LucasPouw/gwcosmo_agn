@@ -122,9 +122,11 @@ class GalaxyCatalogLikelihood(object):
         """
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
+
         num = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+
         den = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
+
         integral = num/den
         
         pG = integral*self.OmegaG
@@ -159,11 +161,11 @@ class GalaxyCatalogLikelihood(object):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
             
-        below_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        below_zcut_integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         
         above_zcut_integral = 0.
-        if self.zcut < zmax:
-            above_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        if zcut < zmax:
+            above_zcut_integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
 
         integral = below_zcut_integral + above_zcut_integral
 
