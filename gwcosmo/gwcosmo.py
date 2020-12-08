@@ -69,6 +69,7 @@ class GalaxyCatalogLikelihood(object):
         self.zmax = zmax
         self.zcut = zcut
         self.skymap = skymap
+        self.Kcorr = Kcorr
         
         # read in Schechter function parameters corresponding to galaxy catalogue band
         self.band = galaxy_catalog.band
@@ -92,9 +93,14 @@ class GalaxyCatalogLikelihood(object):
         
         if mth is None:
             self.mth = galaxy_catalog.mth()
+        
+        #TODO make this changeable from command line?
+        self.nfine = 10000
+        self.ncoarse = 10
 
         #find galaxies below redshift cut, and with right colour information
         ind = np.where(((galaxy_catalog.z-3*galaxy_catalog.sigmaz) <= self.zcut) & \
+                      (galaxy_catalog.m <= self.mth) & \
                       (self.color_limit[0] <= galaxy_catalog.color) & \
                       (galaxy_catalog.color <= self.color_limit[1]))[0]
 
@@ -102,8 +108,9 @@ class GalaxyCatalogLikelihood(object):
         self.galra = galaxy_catalog.ra[ind]
         self.galdec = galaxy_catalog.dec[ind]
         self.galm = galaxy_catalog.m[ind]
-        self.galsigz = galaxy_catalog.sigmaz[ind]
+        self.galsigmaz = galaxy_catalog.sigmaz[ind]
         self.galcolor = galaxy_catalog.color[ind]
+        self.nGal = len(self.galz)
 
         self.OmegaG = galaxy_catalog.OmegaG
         self.px_OmegaG = galaxy_catalog.px_OmegaG
@@ -111,9 +118,69 @@ class GalaxyCatalogLikelihood(object):
         
     def pxD_GH0(self,H0,Lambda=0.):
         """
-        Computes p(x|G,H0) and p(D|G,H0)
-        """
-        return np.ones(len(H0)),np.ones(len(H0))
+        The "in catalog" part of the new skypatch method
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,G,H0)
+
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        arrays
+            numerator and denominator
+        """      
+        if self.base.luminosity_weights.luminosity_weights == True:
+            # TODO: find better selection criteria for sampling
+            mlim = np.percentile(np.sort(self.galm),0.01) # more draws for galaxies in brightest 0.01 percent
+            nsamps = {'fine': self.nfine, 'coarse': self.ncoarse}
+            galindex = {'fine': np.where(self.galm <= mlim)[0], 'coarse': np.where(mlim < self.galm)[0]}
+        else:
+            nsamps = {'coarse': self.ncoarse}
+            galindex = {'coarse': np.arange(self.nGal)}
+        
+        tempnum = np.zeros([len(nsamps),len(H0)])
+        tempden = np.zeros([len(nsamps),len(H0)])
+        for i,key in enumerate(nsamps):
+            print('{} galaxies are getting sampled {}ly'.format(len(galindex[key]),key))
+            zs = self.galz[galindex[key]]
+            sigmazs = self.galsigmaz[galindex[key]]
+            ms = self.galm[galindex[key]]
+            ras = self.galra[galindex[key]]
+            decs = self.galdec[galindex[key]]
+            colors = self.galcolor[galindex[key]]  
+            
+            sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, nsamps[key], zcut=self.zcut)
+            
+            if self.Kcorr == True:
+                Kcorr = calc_kcor(self.band,sampz,self.color_name,colour_value=sampcolor)
+            else:
+                Kcorr = 0.
+                
+            tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
+            
+            zweights = self.base.zrates(sampz)
+            
+            for k,h in enumerate(H0):
+                numinner = self.base.px_zH0(sampz,h)
+                deninner = self.base.pD_zH0(sampz,h)
+                if self.base.luminosity_weights.luminosity_weights == True:
+                    sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
+                else:
+                    sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
+                    
+                Lweights = self.base.luminosity_weights(sampAbsM)
+                normsamp = 1./count
+                
+                tempnum[i,k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
+                tempden[i,k] = np.sum(deninner*Lweights*zweights*normsamp)
+                
+        num = np.sum(tempnum,axis=0)/self.nGal
+        den = np.sum(tempden,axis=0)/self.nGal
+
+        return num,den
         
     def pGB_DH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
         """
@@ -218,14 +285,14 @@ class GalaxyCatalogLikelihood(object):
                 self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
                 self.pxB[i] = self.px_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
             if self.zcut == self.zmax:
-                self.pDB = den - num
+                self.pDB = (den - num) * self.OmegaG
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
                     self.pDB[i] = self.pD_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
             if self.px_OmegaG < 0.999:
                 self.pO = self.pO_DH0()
-                self.pDO = den
+                self.pDO = den * (1.-self.OmegaG)
                 print('Computing the contribution outside the catalogue footprint: this will take a little longer')
                 for i,h in enumerate(H0):
                     self.pxO[i] = self.px_OH0(h,Lambda=Lambda,zmax=self.zmax)
@@ -389,25 +456,56 @@ class BaseFunctions():
 ################################ INTERNAL FUNCTIONS ############################
 ################################################################################
 
-    
-def integral_over_z_and_M(H0,function,Lambda=0.,zmin=0.,zmax=10.,Mmin=15.,Mmax=25.):
-    temp = np.zeros(len(H0))
-    for i,h in enumerate(H0):
-        def I(M,z):
-            return function(z, M, h, Lambda=Lambda)
-        temp[i] = dblquad(I,zmin,zmax,lambda x: Mmin,lambda x: Mmax,epsabs=0,epsrel=1.49e-4)[0]
-    return temp
 
-def z_nsmear(z, sigz, nsmear, zcut=10.):
+def z_nsmear(z, sigmaz, nsmear, zcut=10.):
     """
     Draw redshift samples from a galaxy. Ensure no samples fall below z=0
     Remove samples above the redshift cut. zcut cannot be used as an upper limit
     for the draw, as this will cause an overdensity of support.
     """
-    a = (0.0 - z) / sigz
-    zsmear = truncnorm.rvs(a, 5, loc=z, scale=sigz, size=nsmear)
+    a = (0.0 - z) / sigmaz
+    zsmear = truncnorm.rvs(a, 5, loc=z, scale=sigmaz, size=nsmear)
     zsmear = zsmear[np.where(zsmear<zcut)[0]].flatten()
     return zsmear #TODO order these before returning them?
+    
+    
+def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
+    """
+    Draw redshift samples from a galaxy. Ensure no samples fall below z=0
+    Remove samples above the redshift cut. zcut cannot be used as an upper limit
+    for the draw, as this will cause an overdensity of support.
+    """
+    
+    # get redshift samples, carefully not going below zero
+    a = (0.0 - z) / sigmaz
+    sampz = truncnorm.rvs(a, 5, loc=z, scale=sigmaz, size=[nsmear,len(z)]).flatten('F')
+
+    # repeat arrays for other gal parameters to give each sample full info
+    sampcolor = np.repeat(color,nsmear)
+    sampm = np.repeat(m,nsmear)
+    sampra = np.repeat(ra,nsmear)
+    sampdec = np.repeat(dec,nsmear)
+    count = np.ones(len(sampz))*nsmear
+
+    # remove samples above the redshift cut
+    ind = np.where(sampz < zcut)[0]
+    sampz = sampz[ind]
+    sampcolor = sampcolor[ind]
+    sampm = sampm[ind]
+    sampra = sampra[ind]
+    sampdec = sampdec[ind]
+    count = count[ind]
+    
+    # sort array in ascending order so that px_zH0 and pD_zH0 don't freak out
+    ind = np.argsort(sampz)
+    sampz = sampz[ind]
+    sampcolor = sampcolor[ind]
+    sampm = sampm[ind]
+    sampra = sampra[ind]
+    sampdec = sampdec[ind]
+    count = count[ind]
+    
+    return sampz, sampm, sampra, sampdec, sampcolor, count
     
 
 

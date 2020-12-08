@@ -89,13 +89,18 @@ class galaxyCatalog(object):
             self.dictionary = self.__load_catalog()
             if skymap_filename is None:
                 skymap = None
+                self.OmegaG = 1.0
+                self.px_OmegaG = 1.0
             else:
+                self.nside=128
                 skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
+                low_res_skymap = hp.pixelfunc.ud_grade(skymap.prob, self.nside, order_in='NEST', order_out='NEST')
+                skymap = low_res_skymap/np.sum(low_res_skymap) #renormalise
                 
             self.extract_galaxies(skymap=skymap, thresh=thresh, band=band, Kcorr=Kcorr)
             
             if skymap_filename is not None:
-                self.OmegaG,self.px_OmegaG = self.region_with_galaxies(skymap.prob, self.gal_ind, thresh)
+                self.OmegaG,self.px_OmegaG = self.region_with_galaxies(skymap, self.gal_ind, thresh)
             # TODO: deal better with case when skymap isn't passed
 
         if catalog_file is None:
@@ -142,8 +147,8 @@ class galaxyCatalog(object):
                 m_K = self.dictionary[band_Kcorr_key][:]
             radec_lim = self.dictionary['radec_lim'][:]
         else:
-            self.gal_ind = skymap.indices(ra,dec)
-            ind = self.galaxies_within_region(skymap.prob, self.gal_ind, thresh)
+            self.gal_ind = hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=True)
+            ind = self.galaxies_within_region(skymap, self.gal_ind, thresh)
             ra = self.dictionary['ra'][ind]
             dec = self.dictionary['dec'][ind]
             z = self.dictionary['z'][ind]
