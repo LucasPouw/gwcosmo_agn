@@ -80,10 +80,12 @@ class galaxyCatalog(object):
     ----------
     catalog_file : Path to catalog.hdf5 file
     skymap_filename : Path to skymap.fits(.gz) file
-    thresh: Probablity contained within sky map region
-    band: key of band
+    thresh : Probablity contained within sky map region
+    band : key of band
+    Kcorr : bool, should K corrections be applied?
+    Nside : resolution of skymap to use for calculating Omega_G and p(x|Omega_G)
     """
-    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9999, band='B', Kcorr=False):
+    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9999, band='B', Kcorr=False, Nside=64):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
@@ -92,7 +94,7 @@ class galaxyCatalog(object):
                 self.OmegaG = 1.0
                 self.px_OmegaG = 1.0
             else:
-                self.nside=128
+                self.nside=Nside
                 skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
                 low_res_skymap = hp.pixelfunc.ud_grade(skymap.prob, self.nside, order_in='NEST', order_out='NEST')
                 skymap = low_res_skymap/np.sum(low_res_skymap) #renormalise
