@@ -61,7 +61,7 @@ class GalaxyCatalogLikelihood(object):
     This method is fast relative to the catalog methods, as it does not 
     require an integral over either sky or absolute magnitude, only redshift.
     """
-    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, Kcorr=False, mth=None, zcut=None, zmax=10.):
+    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True):
         self.base = base_functions
         #self.galaxy_catalog = galaxy_catalog
         self.cosmo = fast_cosmology
@@ -98,6 +98,7 @@ class GalaxyCatalogLikelihood(object):
         self.nfine = 10000
         self.ncoarse = 10
 
+
         #find galaxies below redshift cut, and with right colour information
         ind = np.where(((galaxy_catalog.z-3*galaxy_catalog.sigmaz) <= self.zcut) & \
                       (galaxy_catalog.m <= self.mth) & \
@@ -111,6 +112,11 @@ class GalaxyCatalogLikelihood(object):
         self.galsigmaz = galaxy_catalog.sigmaz[ind]
         self.galcolor = galaxy_catalog.color[ind]
         self.nGal = len(self.galz)
+        
+        if zuncert == False:
+            self.nfine = 1
+            self.ncoarse = 1
+            self.galsigmaz = np.zeros(len(self.galz))
 
         self.OmegaG = galaxy_catalog.OmegaG
         self.px_OmegaG = galaxy_catalog.px_OmegaG
