@@ -248,14 +248,14 @@ class GalaxyCatalogLikelihood(object):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
         
-        integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        integral = quad(self.base.px_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         return integral * (1.-self.px_OmegaG)
         
     def pD_OH0(self,H0,Lambda=0.,zmax=10.):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
         
-        integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        integral = quad(self.base.pD_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         return integral * (1.-self.OmegaG)
         
     def pO_DH0(self):
@@ -298,10 +298,11 @@ class GalaxyCatalogLikelihood(object):
                     self.pDB[i] = self.pD_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
             if self.px_OmegaG < 0.999:
                 self.pO = self.pO_DH0()
-                self.pDO = den * (1.-self.OmegaG)
-                print('Computing the contribution outside the catalogue footprint: this will take a little longer')
+                #self.pDO = den * (1.-self.OmegaG) ### alternative to calculating pDO directly below, but requires both px_OH0 and px_OH0 to use dblquad (not quad) ###
+                print('Computing the contribution outside the catalogue footprint')
                 for i,h in enumerate(H0):
                     self.pxO[i] = self.px_OH0(h,Lambda=Lambda,zmax=self.zmax)
+                    self.pDO[i] = self.pD_OH0(h,Lambda=Lambda,zmax=self.zmax)
         
         likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
         return likelihood, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
@@ -1300,7 +1301,7 @@ class gwcosmoLikelihood(object):
         print('whole catalog apparent magnitude threshold: {}'.format(self.mth))
 
         tempsky = self.skymap.skyprob(self.allra, self.alldec)*self.skymap.npix
-        ind = np.argwhere(tempsky > 0.)
+        ind = np.argwhere(tempsky > 1.-self.area)
         tempsky = tempsky[ind].flatten()
         zs = self.allz[ind].flatten()
         ras = self.allra[ind].flatten()
