@@ -2,16 +2,6 @@
 gwcosmoLikelihood Module
 Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
 
-In general:
-p(x|z,H0,\Omega) is written as p(x|dl(z,H0))*p(x|\Omega)
-p(x|dL(z,H0)): self.norms[H0]*self.px_dl(dl(z,H0))
-p(x|\Omega): self.skymap.skyprob(ra,dec) or self.skymap.prob[idx]
-p(D|z,H0): pdet.pD_zH0_eval(z,H0)
-p(s|M(H0)): L_M(M) or L_mdl(m,dl(z,H0))
-p(z): zprior(z)
-p(M|H0): SchechterMagFunction(H0)(M)
-p(\Omega): this term comes out the front and cancels in most cases,
-and so does not appear explicitly.
 """
 from __future__ import absolute_import
 import lal
