@@ -121,7 +121,7 @@ class GalaxyCatalogLikelihood(object):
         self.OmegaG = galaxy_catalog.OmegaG
         self.px_OmegaG = galaxy_catalog.px_OmegaG
         
-        
+
     def pxD_GH0(self,H0,Lambda=0.):
         """
         The "in catalog" part of the new skypatch method
@@ -138,55 +138,90 @@ class GalaxyCatalogLikelihood(object):
         arrays
             numerator and denominator
         """      
+        galindex_sep = {}
         if self.base.luminosity_weights.luminosity_weights == True:
             # TODO: find better selection criteria for sampling
             mlim = np.percentile(np.sort(self.galm),0.01) # more draws for galaxies in brightest 0.01 percent
-            nsamps = {'fine': self.nfine, 'coarse': self.ncoarse}
+            samp_res = {'fine': self.nfine, 'coarse': self.ncoarse}
             galindex = {'fine': np.where(self.galm <= mlim)[0], 'coarse': np.where(mlim < self.galm)[0]}
+            
+            # for arrays with more than 1million entries, break into sub arrays
+            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
+            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
+            galindex_sep['coarse'] = {i+1 : chunks_coarse[i] for i in range(no_chunks_coarse)} 
+            galindex_sep['fine'] = {i : galindex['fine'] for i in range(1)} 
         else:
-            nsamps = {'coarse': self.ncoarse}
+            samp_res = {'coarse': self.ncoarse}
             galindex = {'coarse': np.arange(self.nGal)}
+            galindex_sep = {0 : {'coarse': np.arange(self.nGal)}}
         
-        tempnum = np.zeros([len(nsamps),len(H0)])
-        tempden = np.zeros([len(nsamps),len(H0)])
-        for i,key in enumerate(nsamps):
+        K = sum(len(v) for v in galindex.values()) # total number of sub arrays
+        tempnum = np.zeros([K,len(H0)])
+        tempden = np.zeros([K,len(H0)])
+        
+        # loop over sub arrays of galaxies
+        for i,key in enumerate(samp_res):
             print('{} galaxies are getting sampled {}ly'.format(len(galindex[key]),key))
-            zs = self.galz[galindex[key]]
-            sigmazs = self.galsigmaz[galindex[key]]
-            ms = self.galm[galindex[key]]
-            ras = self.galra[galindex[key]]
-            decs = self.galdec[galindex[key]]
-            colors = self.galcolor[galindex[key]]  
-            
-            sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, nsamps[key], zcut=self.zcut)
-            
-            if self.Kcorr == True:
-                Kcorr = calc_kcor(self.band,sampz,self.color_name,colour_value=sampcolor)
-            else:
-                Kcorr = 0.
+            for n, key2 in enumerate(galindex_sep[key]):
+                zs = self.galz[galindex_sep[key][key2]]
+                sigmazs = self.galsigmaz[galindex_sep[key][key2]]
+                ms = self.galm[galindex_sep[key][key2]]
+                ras = self.galra[galindex_sep[key][key2]]
+                decs = self.galdec[galindex_sep[key][key2]]
+                colors = self.galcolor[galindex_sep[key][key2]]
                 
-            tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
-            
-            zweights = self.base.zrates(sampz)
-            
-            for k,h in enumerate(H0):
-                numinner = self.base.px_zH0(sampz,h)
-                deninner = self.base.pD_zH0(sampz,h)
-                if self.base.luminosity_weights.luminosity_weights == True:
-                    sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
-                else:
-                    sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
+                sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=self.zcut)
                     
-                Lweights = self.base.luminosity_weights(sampAbsM)
-                normsamp = 1./count
-                
-                tempnum[i,k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
-                tempden[i,k] = np.sum(deninner*Lweights*zweights*normsamp)
+                tempnum[key2,:],tempden[key2,:] = self.__pxD_GH0_internal(H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=Lambda)
                 
         num = np.sum(tempnum,axis=0)/self.nGal
         den = np.sum(tempden,axis=0)/self.nGal
 
-        return num,den
+        return num,den        
+        
+    def __pxD_GH0_internal(self,H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=0.):
+        """
+        The "in catalog" part of the new skypatch method
+        using a catalog which follows the GW event's sky patch contour
+        p(x|D,G,H0)
+
+        Parameters
+        ----------
+        H0 : float or array_like
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        arrays
+            numerator and denominator
+        """      
+            
+        if self.Kcorr == True:
+            Kcorr = calc_kcor(self.band,sampz,self.color_name,colour_value=sampcolor)
+        else:
+            Kcorr = 0.
+            
+        tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
+        
+        zweights = self.base.zrates(sampz,Lambda=Lambda)
+        
+        tempnum = np.zeros([len(H0)])
+        tempden = np.zeros([len(H0)])
+        for k,h in enumerate(H0):
+            numinner = self.base.px_zH0(sampz,h)
+            deninner = self.base.pD_zH0(sampz,h)
+            if self.base.luminosity_weights.luminosity_weights == True:
+                sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
+            else:
+                sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
+                
+            Lweights = self.base.luminosity_weights(sampAbsM)
+            normsamp = 1./count
+            
+            tempnum[k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
+            tempden[k] = np.sum(deninner*Lweights*zweights*normsamp)
+
+        return tempnum,tempden
         
     def pGB_DH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
         """
@@ -218,7 +253,7 @@ class GalaxyCatalogLikelihood(object):
         below_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         
         above_zcut_integral = 0.
-        if self.zcut < zmax:
+        if zcut < zmax:
             above_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
         
         integral = below_zcut_integral + above_zcut_integral
@@ -1301,7 +1336,7 @@ class gwcosmoLikelihood(object):
         print('whole catalog apparent magnitude threshold: {}'.format(self.mth))
 
         tempsky = self.skymap.skyprob(self.allra, self.alldec)*self.skymap.npix
-        ind = np.argwhere(tempsky > 1.-self.area)
+        ind = np.argwhere(tempsky > 0.)
         tempsky = tempsky[ind].flatten()
         zs = self.allz[ind].flatten()
         ras = self.allra[ind].flatten()
