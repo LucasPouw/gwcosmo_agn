@@ -142,7 +142,7 @@ max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
 
 
-redshift_evolution = str(opts.redshift_evolution)
+redshift_evolution = str2bool(opts.redshift_evolution)
 Lambda = float(opts.Lambda)
 reweight_samples = str2bool(opts.reweight_posterior_samples)
 outputfile = str(opts.outputfile)
