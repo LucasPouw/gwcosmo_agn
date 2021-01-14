@@ -196,11 +196,16 @@ else:
     pdet.dl_array = dl_array
     pdet.m1 = m1
     pdet.m2 = m2
+    pdet.alpha = alpha
+    pdet.Mmin = Mmin
+    pdet.Mmax = Mmax
+    pdet.psd = asd
+    pdet.full_waveform = full_waveform
     pdet.Omega_m = Omega_m
     pdet.linear = linear
     pdet.seed = seed
     pdet.detectors = detectors
-    pdet.network_snr_threshold = network_snr_threshold
+    pdet.snr_threshold = network_snr_threshold
 
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
