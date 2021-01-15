@@ -245,8 +245,14 @@ if opts.method == 'statistical':
     nside = int(opts.nside)
     sky_area = float(opts.sky_area)
     complete_catalog = str2bool(opts.assume_complete_catalog)
-    zcut = opts.zcut
-    mth = opts.mth
+    if opts.mth is not None:
+        mth = float(opts.mth)
+    else:
+        mth = None
+    if opts.zcut is not None:
+        zcut = float(opts.zcut)
+    else:
+        zcut = None
     
     catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap_filename=skymap_path,band=band,thresh=sky_area,Kcorr=Kcorr,Nside=nside)
     sp = SchechterParams(catalog.band)

@@ -105,6 +105,7 @@ class GalaxyCatalogLikelihood(object):
         
         if mth is None:
             self.mth = galaxy_catalog.mth()
+        print('Catalogue apparent magnitude threshold: {}'.format(self.mth))
         
         #TODO make this changeable from command line?
         self.nfine = 10000
@@ -234,7 +235,7 @@ class GalaxyCatalogLikelihood(object):
                 
             Lweights = self.base.luminosity_weights(sampAbsM)
             normsamp = 1./count
-            
+
             tempnum[k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
             tempden[k] = np.sum(deninner*Lweights*zweights*normsamp)
 
