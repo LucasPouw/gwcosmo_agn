@@ -64,7 +64,7 @@ parser = OptionParser(
         Option("--outputfile", default=None,
             help="Name of output pdet file."),
         Option("--Omega_m", default='0.308', type=float,
-            help="Omega of matter.")
+            help="Omega of matter."),
         Option("--snr", default='12.0', type=float,
             help="Network SNR threshold.")
     ])
