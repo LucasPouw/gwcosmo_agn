@@ -63,6 +63,8 @@ parser = OptionParser(
             help="Directory of constant_H0 Pdets to combine into single Pdet pickle."),
         Option("--outputfile", default=None,
             help="Name of output pdet file."),
+        Option("--Omega_m", default='0.308', type=float,
+            help="Omega of matter.")
         Option("--snr", default='12.0', type=float,
             help="Network SNR threshold.")
     ])
@@ -95,6 +97,7 @@ Nsamps = int(opts.Nsamps)
 network_snr_threshold = float(opts.snr)
 constant_H0 = str2bool(opts.constant_H0)
 pdet_path = str(opts.combine)
+Omega_m=float(opts.Omega_m)
 
 if constant_H0 is True:
     H0 = float(opts.H0)
@@ -114,7 +117,7 @@ if opts.combine is None:
         print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
 
     pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic,
-                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax,
+                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax,Omega_m=Omega_m,
                                                               full_waveform=full_waveform, Nsamps=Nsamps, 
                                                               constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
 
@@ -178,7 +181,7 @@ else:
     linear = pdets.linear
     seed = pdets.seed
     detectors = pdets.detectors
-
+    
     if full_waveform is True:
        kind = 'full_waveform'
     else:
@@ -206,7 +209,7 @@ else:
     pdet.seed = seed
     pdet.detectors = detectors
     pdet.snr_threshold = network_snr_threshold
-
+    
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
         logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])   
