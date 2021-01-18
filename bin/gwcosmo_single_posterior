@@ -259,7 +259,7 @@ if opts.method == 'statistical':
     
     skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
     
-    p_M = SchechterMagFunctionNew(Mstar_obs=sp.Mstar,alpha=sp.alpha)
+    p_M = SchechterMagFunction(Mstar_obs=sp.Mstar,alpha=sp.alpha)
     ps_M = gwcosmo.gwcosmo.LuminosityWeighting(luminosity_weights=galaxy_weighting)
 
     base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,p_M,ps_M)

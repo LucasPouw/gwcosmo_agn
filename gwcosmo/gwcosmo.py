@@ -630,7 +630,7 @@ class BaseFunctions():
         The redshift prior, p(z)
     zrates : gwcosmo.gwcosmo.RedshiftEvolution object
         Merger rate evolution, p(s|z)
-    luminosity_prior : gwcosmo.utilities.schechter_function.SchechterMagFunctionNew
+    luminosity_prior : gwcosmo.utilities.schechter_function.SchechterMagFunction
         Absolute magnitude prior, p(M)
     luminosity_weights : gwcosmo.gwcosmo.LuminosityWeighting object
         Luminosity weighting, p(s|M)
