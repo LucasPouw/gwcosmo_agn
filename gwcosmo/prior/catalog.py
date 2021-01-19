@@ -198,7 +198,7 @@ class galaxyCatalog(object):
         """
         skymap_ind = self.above_percentile(skymap_prob, thresh)
         ind = np.in1d(skymap_ind, gal_ind)
-        fraction_of_sky = len(ind)/len(skymap_prob)
+        fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
         GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind][ind])
         return fraction_of_sky,GW_prob_in_fraction_of_sky
 
