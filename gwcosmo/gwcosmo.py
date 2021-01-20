@@ -476,7 +476,7 @@ class GalaxyCatalogLikelihood(object):
             print("{}% of this event's sky area appears to have galaxy catalogue support".format(self.px_OmegaG*100))
             if self.px_OmegaG < 0.999:
                 self.pO = self.pO_DH0()
-                #self.pDO = den * (1.-self.OmegaG) ### alternative to calculating pDO directly below, but requires both px_OH0 and px_OH0 to use dblquad (not quad) ###
+                #self.pDO = den * (1.-self.OmegaG) ### alternative to calculating pDO directly below, but requires both px_OH0 and pD_OH0 to use dblquad (not quad) ###
                 print('Computing the contribution outside the catalogue footprint')
                 for i,h in enumerate(H0):
                     self.pxO[i] = self.px_OH0(h,Lambda=Lambda,zmax=self.zmax)
