@@ -98,6 +98,7 @@ class galaxyCatalog(object):
                 skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
                 low_res_skymap = hp.pixelfunc.ud_grade(skymap.prob, self.nside, order_in='NEST', order_out='NEST')
                 skymap = low_res_skymap/np.sum(low_res_skymap) #renormalise
+                self.skymap = skymap
                 
             self.extract_galaxies(skymap=skymap, thresh=thresh, band=band, Kcorr=Kcorr)
             
@@ -199,6 +200,11 @@ class galaxyCatalog(object):
         skymap_ind = self.above_percentile(skymap_prob, thresh)
         ind = np.in1d(skymap_ind, gal_ind)
         fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
-        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind][ind])
+        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind[ind]])
+
+        mth_mask = np.zeros(len(skymap_prob))
+        mth_mask[skymap_ind[ind]] = 1.
+        self.mth_mask = mth_mask
+		
         return fraction_of_sky,GW_prob_in_fraction_of_sky
 
