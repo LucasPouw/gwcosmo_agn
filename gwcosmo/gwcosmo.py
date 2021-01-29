@@ -413,15 +413,15 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.OmegaO = 1. - self.OmegaG
         self.px_OmegaO = 1. - self.px_OmegaG
         
-        #self.pxG = None
-        #self.pDG = None
-        #self.pG = 1.
-        #self.pxB = 0.
-        #self.pDB = 1.
-        #self.pB = 0.
-        #self.pxO = 0.
-        #self.pDO = 1.
-        #self.pO = 0.
+        self.pxG = None
+        self.pDG = None
+        self.pG = 1.
+        self.pxB = 0.
+        self.pDB = 1.
+        self.pB = 0.
+        self.pxO = 0.
+        self.pDO = 1.
+        self.pO = 0.
 
 
     def pxD_GH0_multi(self,H0,Lambda=0.):
@@ -697,44 +697,6 @@ class RedshiftEvolution():
         else:
             return self.constant(z,Lambda=Lambda)
 
-    
-class BaseFunctions():
-    """
-    Parameters
-    ----------
-    px_zH0, pD_zH0 : function
-        p(x|z,H0) and p(D|z,H0)
-    zprior : gwcosmo.utilities.standard_cosmology.redshift_prior object
-        The redshift prior, p(z)
-    zrates : gwcosmo.gwcosmo.RedshiftEvolution object
-        Merger rate evolution, p(s|z)
-    luminosity_prior : gwcosmo.utilities.schechter_function.SchechterMagFunction
-        Absolute magnitude prior, p(M)
-    luminosity_weights : gwcosmo.gwcosmo.LuminosityWeighting object
-        Luminosity weighting, p(s|M)
-    """
-    def __init__(self, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights):
-        self.px_zH0 = px_zH0
-        self.pD_zH0 = pD_zH0
-        self.zprior=zprior
-        self.zrates=zrates
-        self.luminosity_prior=luminosity_prior
-        self.luminosity_weights=luminosity_weights
-        
-    def px_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
-        
-    def pD_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
-        
-    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-        
-    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-        
 
 ################################################################################
 ################################ INTERNAL FUNCTIONS ############################
@@ -791,7 +753,4 @@ def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     
     return sampz, sampm, sampra, sampdec, sampcolor, count
     
-
-
-
 
