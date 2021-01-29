@@ -221,13 +221,13 @@ if opts.method == 'counterpart':
 
     base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,None,None)
     me = gwcosmo.gwcosmo.DirectCounterpartLikelihood(base)
-    likelihood, pxG, pDG = me.likelihood(H0,counterpart_z,counterpart_sigmaz,Lambda=Lambda,zmax=zmax)
+    #likelihood, pxG, pDG = me.likelihood(H0,counterpart_z,counterpart_sigmaz,Lambda=Lambda,zmax=zmax)
     
 if opts.method == 'population':
 
     base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,None,None)
-    me = me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(base)
-    likelihood, pxO, pDO = me.likelihood(H0,Lambda=Lambda,zmax=zmax)
+    me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(base)
+    #likelihood, pxO, pDO = me.likelihood(H0,Lambda=Lambda,zmax=zmax)
 
 if opts.method == 'statistical':
     if (opts.galaxy_catalog is None):
@@ -264,8 +264,10 @@ if opts.method == 'statistical':
 
     base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,p_M,ps_M)
     me = gwcosmo.gwcosmo.GalaxyCatalogLikelihood(base, skymap, catalog, cosmo, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax, zuncert=zuncert)
-    likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.likelihood(H0,Lambda=Lambda,complete_catalog=complete_catalog)
-    
+    #likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.likelihood(H0,Lambda=Lambda,complete_catalog=complete_catalog)
+
+likelihood = me(H0)
+
 prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
 posterior_uniform = prior_uniform*likelihood
 prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')

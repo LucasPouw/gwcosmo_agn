@@ -41,8 +41,16 @@ import progressbar
 ################################# THE MAIN CLASSES #############################
 ################################################################################
 
+class gwcosmoLikelihood(object):
+    """
+    """
+    def __call__(self, H0, Lambda=0.):
+        raise NotImplementedError
+        
+    def save_components(self, filename):
+        pass
 
-class GalaxyCatalogLikelihood(object):
+class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the galaxy 
     catalogue method.
@@ -73,7 +81,7 @@ class GalaxyCatalogLikelihood(object):
         Should redshift uncertainties be marginalised over? (Default=True).
     
     """
-    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True):
+    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False):
         self.base = base_functions
         #self.galaxy_catalog = galaxy_catalog
         self.cosmo = fast_cosmology
@@ -82,6 +90,7 @@ class GalaxyCatalogLikelihood(object):
         self.zcut = zcut
         self.skymap = skymap
         self.Kcorr = Kcorr
+        self.complete_catalog = complete_catalog
         
         # read in Schechter function parameters corresponding to galaxy catalogue band
         self.band = galaxy_catalog.band
@@ -196,7 +205,7 @@ class GalaxyCatalogLikelihood(object):
 
         return num,den        
 
-    def likelihood(self,H0,Lambda=0.,complete_catalog=False):
+    def likelihood(self,H0,Lambda=0.):
         """
         Compute the full likelihood.
         
@@ -229,7 +238,7 @@ class GalaxyCatalogLikelihood(object):
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0,Lambda=Lambda)
 
-        if not complete_catalog:
+        if not self.complete_catalog:
             print('Computing the beyond catalogue part')   
             for i,h in enumerate(H0):
                 self.pG[i], self.pB[i], num[i], den[i] = pGB_DH0(h,self.mth,self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M, self.OmegaG, self.cosmo, self.Mmin_obs, self.Mmax_obs,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
@@ -248,12 +257,18 @@ class GalaxyCatalogLikelihood(object):
                 for i,h in enumerate(H0):
                     self.pxO[i] = pxorD_OH0(h,self.base.px_zH0_times_pz_times_ps_z,skyprob=self.px_OmegaO,Lambda=Lambda,zmax=self.zmax)
                     self.pDO[i] = pxorD_OH0(h,self.base.pD_zH0_times_pz_times_ps_z,skyprob=self.OmegaO,Lambda=Lambda,zmax=self.zmax)
+        self.H0 = H0
+        self.result = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
+        return self.result, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
         
-        likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
-        return likelihood, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)[0]
+        
+    def save_components(self, filename):
+        return np.savez(filename,[self.H0, self.result, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO])
 
 
-class DirectCounterpartLikelihood(object):
+class DirectCounterpartLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the counterpart 
     method.
@@ -267,10 +282,13 @@ class DirectCounterpartLikelihood(object):
         p(x|z,H0) and p(D|z,H0)*p(z)*p(s|z)
         
     """
-    def __init__(self, base_functions):
+    def __init__(self, base_functions,counterpart_z,counterpart_sigmaz,zmax=10.):
         self.base = base_functions
+        self.counterpart_z = counterpart_z
+        self.counterpart_sigmaz = counterpart_sigmaz
+        self.zmax = zmax
         
-    def px_H0(self,H0,counterpart_z,counterpart_sigmaz):
+    def px_H0(self,H0):
         """
         Returns p(x|H0,counterpart)
         The likelihood of the GW data given H0 and direct counterpart.
@@ -285,7 +303,7 @@ class DirectCounterpartLikelihood(object):
         float or array_like
             p(x|H0,counterpart)
         """
-        zsmear =  z_nsmear(counterpart_z, counterpart_sigmaz, 10000)
+        zsmear =  z_nsmear(self.counterpart_z, self.counterpart_sigmaz, 10000)
         num = np.zeros(len(H0))
         for k,H in enumerate(H0):
             num[k] = np.sum(self.base.px_zH0(zsmear,H)) 
@@ -293,16 +311,22 @@ class DirectCounterpartLikelihood(object):
             # for host galaxies with large redshift uncertainty.
         return num
         
-    def likelihood(self,H0,counterpart_z,counterpart_sigmaz,Lambda=0.,zmax=10.):
-        px = self.px_H0(H0,counterpart_z,counterpart_sigmaz)
+    def likelihood(self,H0,Lambda=0.):
+        px = self.px_H0(H0)
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
-            pD[i] = pxorD_OH0(h, self.base.pD_zH0_times_pz_times_ps_z, skyprob=1., Lambda=Lambda, zmax=zmax)
+            pD[i] = pxorD_OH0(h, self.base.pD_zH0_times_pz_times_ps_z, skyprob=1., Lambda=Lambda, zmax=self.zmax)
         likelihood = px/pD
         return likelihood, px, pD
         
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)[0]
         
-class EmptyCatalogLikelihood(object):
+    def save_components(self, filename):
+        return np.savez(filename,[self.H0, self.result, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO])
+        
+        
+class EmptyCatalogLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the empty catalogue 
     method.
@@ -319,10 +343,11 @@ class EmptyCatalogLikelihood(object):
     base_functions : gwcosmo.gwcosmo.BaseFunctions object
         p(x|z,H0)*p(z)*p(s|z) and p(D|z,H0)*p(z)*p(s|z)
     """
-    def __init__(self, base_functions):
+    def __init__(self, base_functions,zmax=10.):
         self.base = base_functions
+        self.zmax = zmax
         
-    def likelihood(self,H0,Lambda=0.,zmax=10.):
+    def likelihood(self,H0,Lambda=0.):
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
@@ -330,6 +355,11 @@ class EmptyCatalogLikelihood(object):
             pD[i] = pxorD_OH0(h, self.base.pD_zH0_times_pz_times_ps_z, skyprob=1., Lambda=Lambda, zmax=zmax)
         likelihood = px/pD
         return likelihood, px, pD
+        
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)[0]
+
+
 
 ################################################################################
 ################################ ADDITIONAL CLASSES ############################
