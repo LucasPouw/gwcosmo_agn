@@ -167,40 +167,5 @@ class galaxyCatalog(object):
         else:
             self.color = np.zeros(len(m))
         return ra, dec, z, m, sigmaz
-<<<<<<< HEAD
-    
-    def above_percentile(self, skymap, thresh):
-        """Returns indices of array within the given threshold
-        credible region."""
-        #  Sort indicies of sky map
-        ind_sorted = np.argsort(-skymap)
-        #  Cumulatively sum the sky map
-        cumsum = np.cumsum(skymap[ind_sorted])
-        #  Find indicies contained within threshold area
-        lim_ind = np.where(cumsum > thresh)[0][0]
-        return ind_sorted[:lim_ind]
 
-    def galaxies_within_region(self, skymap_prob, gal_ind, thresh):
-        """Returns boolean array of whether galaxies are within
-        the sky map's credible region above the given threshold"""
-        skymap_ind = self.above_percentile(skymap_prob, thresh)
-        return np.in1d(gal_ind, skymap_ind)
-        
-    def region_with_galaxies(self, skymap_prob, gal_ind, thresh):
-        """
-        Finds fraction of sky with catalogue support, and and corresponding
-        fraction of GW sky probability
-        """
-        skymap_ind = self.above_percentile(skymap_prob, thresh)
-        ind = np.in1d(skymap_ind, gal_ind)
-        fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
-        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind[ind]])
-
-        mth_mask = np.zeros(len(skymap_prob))
-        mth_mask[skymap_ind[ind]] = 1.
-        self.mth_mask = mth_mask
-		
-        return fraction_of_sky,GW_prob_in_fraction_of_sky
-=======
->>>>>>> refactoring_with_subclasses
 
