@@ -32,6 +32,7 @@ from .utilities.standard_cosmology import *
 from .utilities.schechter_function import *
 from .utilities.schechter_params import *
 from .utilities.calc_kcor import *
+from .prior.catalog import color_names
 
 import time
 import progressbar
@@ -355,6 +356,7 @@ class PixelatedGalaxyCatalogLikelihood(object):
         float
             p(x|O,H0)
         """
+
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
         
@@ -476,9 +478,76 @@ class PixelatedGalaxyCatalogLikelihood(object):
         likelihood = sum_pixels_G + sum_pixels_O
         return likelihood, sum_pixels_G, sum_pixels_O
 
+class gwcosmoLikelihood(object):
+    """
+    """
+    def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        self.px_zH0 = px_zH0
+        self.pD_zH0 = pD_zH0
+        self.zprior = zprior
+        self.zrates = zrates
+        self.zmax = zmax
+        
+    def px_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
+        
+    def pD_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
+
+    def px_OH0(self, H0, skyprob=1., Lambda=0.):
+        """
+        Evaluate p(x|O,H0).
+        
+        Defined as a single integral over z (instead of over z and M) as it is 
+        equivalent to the empty catalogue case.
+        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
+        
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        Lambda : float, optional
+            Redshift evolution parameter (default=0)
+        zmax : float, optional
+            The upper redshift limit for integrals (default=10.)
+
+        Returns
+        -------
+        float
+            p(x|O,H0)
+        """
+        
+        integral = quad(self.px_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        return integral * skyprob
+        
+    def pD_OH0(self, H0, skyprob=1., Lambda=0.):
+        """
+        Evaluate p(x|O,H0).
+        
+        Defined as a single integral over z (instead of over z and M) as it is 
+        equivalent to the empty catalogue case.
+        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
+        
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        Lambda : float, optional
+            Redshift evolution parameter (default=0)
+        zmax : float, optional
+            The upper redshift limit for integrals (default=10.)
+
+        Returns
+        -------
+        float
+            p(x|O,H0)
+        """
+        
+        integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        return integral * skyprob
 
 
-class GalaxyCatalogLikelihood(object):
+class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the galaxy 
     catalogue method.
@@ -509,35 +578,243 @@ class GalaxyCatalogLikelihood(object):
         Should redshift uncertainties be marginalised over? (Default=True).
     
     """
-    def __init__(self, base_functions, skymap, galaxy_catalog, fast_cosmology, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True):
-        self.base = base_functions
-        #self.galaxy_catalog = galaxy_catalog
-        self.cosmo = fast_cosmology
-        self.mth = mth
-        self.zmax = zmax
-        self.zcut = zcut
-        self.skymap = skymap
-        self.Kcorr = Kcorr
+    def __init__(self, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
+        super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
         
-        # read in Schechter function parameters corresponding to galaxy catalogue band
-        self.band = galaxy_catalog.band
+        self.skymap = skymap
+        self.cosmo = fast_cosmology
+        self.luminosity_prior = luminosity_prior
+        self.luminosity_weights = luminosity_weights
+        
+        self.Kcorr = Kcorr
+        self.band = observation_band
         sp = SchechterParams(self.band)
-        self.alpha = sp.alpha
-        self.Mstar_obs = sp.Mstar
         self.Mmin_obs = sp.Mmin
         self.Mmax_obs = sp.Mmax
+
+        
+    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
+                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        
+    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
+                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        
+    def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=0.):
+        """
+        Evaluate p(x|G,H0) and p(D|G,H0).
+
+        Parameters
+        ----------
+        H0 : array of floats
+            Hubble constant value(s) in kms-1Mpc-1
+        sampz, sampm, sampra, sampdec, sampcolor : arrays of floats
+            redshift, apparent magnitude, right ascension, declination and 
+            colour samples
+        count : the number of samples which belong to 1 galaxy
+        Lambda : float, optional
+            redshift evolution parameter (default=0)
+
+        Returns
+        -------
+        arrays
+            numerator and denominator
+        """      
+            
+        if self.Kcorr == True:
+            Kcorr = calc_kcor(self.band,sampz,color_names[self.band],colour_value=sampcolor)
+        else:
+            Kcorr = 0.
+            
+        tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
+        
+        zweights = self.zrates(sampz,Lambda=Lambda)
+        
+        tempnum = np.zeros([len(H0)])
+        tempden = np.zeros([len(H0)])
+        for k,h in enumerate(H0):
+            numinner = self.px_zH0(sampz,h)
+            deninner = self.pD_zH0(sampz,h)
+            if self.luminosity_weights.luminosity_weights == True:
+                sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
+            else:
+                sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
+                
+            Lweights = self.luminosity_weights(sampAbsM)
+            normsamp = 1./count
+
+            tempnum[k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
+            tempden[k] = np.sum(deninner*Lweights*zweights*normsamp)
+
+        return tempnum,tempden
+        
+    def pGB_DH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+        """
+        Evaluate p(G|D,H0) and p(B|D,H0).
+        
+        The probability that the host galaxy of a detected GW event is inside
+        or beyond the galaxy catalogue.
+        
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        Lambda : float, optional
+            Redshift evolution parameter (default=0)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+        zmax : float, optional
+            The upper redshift limit for integrals (default=10.)
+
+        Returns
+        -------
+        floats
+            p(G|D,H0), p(B|D,H0), num, den
+            where num/den = p(G|D,H0)
+        """
+        
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+
+        num = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+
+        den = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,self.zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+
+        integral = num/den
+        
+        pG = integral*skyprob
+        pB = (1.-integral)*skyprob
+        return pG, pB, num, den
+        
+    def px_BH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+        """
+        Evaluate p(x|B,H0).
+        
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed.
+        
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        Lambda : float, optional
+            Redshift evolution parameter (default=0)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+        zmax : float, optional
+            The upper redshift limit for integrals (default=10.)
+
+        Returns
+        -------
+        float
+            p(x|B,H0)
+        """
+        
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+            
+        below_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        above_zcut_integral = 0.
+        if zcut < self.zmax:
+            above_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * skyprob
+
+    def pD_BH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+        """
+        Evaluate p(D|B,H0).
+        
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed.
+        
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        Lambda : float, optional
+            Redshift evolution parameter (default=0)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+        zmax : float, optional
+            The upper redshift limit for integrals (default=10.)
+
+        Returns
+        -------
+        float
+            p(x|B,H0)
+        """
+        
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+            
+        below_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        above_zcut_integral = 0.
+        if zcut < self.zmax:
+            above_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * skyprob
+
+
+class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
+    """
+    Calculate the likelihood of H0 from one GW event, using the galaxy 
+    catalogue method.
+    
+    Parameters
+    ----------
+    base_functions : gwcosmo.gwcosmo.BaseFunctions object
+        p(x|z,H0)*p(z)*p(s|z)*p(M)*p(s|M) and p(D|z,H0)*p(z)*p(s|z)*p(M)*p(s|M)
+    skymap : gwcosmo.likelihood.skymap.skymap object
+        provides p(x|Omega) and skymap properties
+    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
+        The galaxy catalogue
+    fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
+        Cosmological model
+    Kcorr : bool, optional
+        Should K corrections be applied to the analysis? (default=False)
+        Will raise an error if used in conjunction with a galaxy catalogue 
+        without sufficient color information.
+    mth : float, optional
+        Specify an apparent magnitude threshold for the galaxy catalogue
+        (default=None). If none, mth is estimated from the galaxy catalogue.
+    zcut : float, optional
+        An artificial redshift cut to the galaxy catalogue (default=None)
+    zmax : float, optional
+        The upper redshift limit for integrals (default=10.). Should be well 
+        beyond the highest redshift reachable by GW data or selection effects.
+    zuncert : bool, optional
+        Should redshift uncertainties be marginalised over? (Default=True).
+    
+    """
+    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False):
+        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+
+        self.mth = mth
+        self.zcut = zcut
+        self.complete_catalog = complete_catalog
         
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
                 self.zcut = 0.5
-            self.color_name = galaxy_catalog.color_name
             self.color_limit = galaxy_catalog.color_limit
         else:
             if zcut is None:
                 self.zcut = self.zmax
             self.color_limit = [-np.inf,np.inf]
-        
         
         if mth is None:
             self.mth = galaxy_catalog.mth()
@@ -569,9 +846,21 @@ class GalaxyCatalogLikelihood(object):
 
         self.OmegaG = galaxy_catalog.OmegaG
         self.px_OmegaG = galaxy_catalog.px_OmegaG
+        self.OmegaO = 1. - self.OmegaG
+        self.px_OmegaO = 1. - self.px_OmegaG
         
+        self.pxG = None
+        self.pDG = None
+        self.pG = 1.
+        self.pxB = 0.
+        self.pDB = 1.
+        self.pB = 0.
+        self.pxO = 0.
+        self.pDO = 1.
+        self.pO = 0.
 
-    def pxD_GH0(self,H0,Lambda=0.):
+
+    def pxD_GH0_multi(self,H0,Lambda=0.):
         """
         Evaluate p(x|G,H0) and p(D|G,H0).
 
@@ -589,7 +878,7 @@ class GalaxyCatalogLikelihood(object):
         """
         
         galindex_sep = {}
-        if self.base.luminosity_weights.luminosity_weights == True:
+        if self.luminosity_weights.luminosity_weights == True:
             # TODO: find better selection criteria for sampling
             mlim = np.percentile(np.sort(self.galm),0.01) # more draws for galaxies in brightest 0.01 percent
             samp_res = {'fine': self.nfine, 'coarse': self.ncoarse}
@@ -622,250 +911,14 @@ class GalaxyCatalogLikelihood(object):
                 
                 sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=self.zcut)
                     
-                tempnum[key2,:],tempden[key2,:] = self.__pxD_GH0_internal(H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=Lambda)
+                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=Lambda)
                 
         num = np.sum(tempnum,axis=0)/self.nGal
         den = np.sum(tempden,axis=0)/self.nGal
 
         return num,den        
-        
-    def __pxD_GH0_internal(self,H0,sampz,sampm,sampra,sampdec,sampcolor,count,Lambda=0.):
-        """
-        Interal function
 
-        Parameters
-        ----------
-        H0 : array of floats
-            Hubble constant value(s) in kms-1Mpc-1
-        sampz, sampm, sampra, sampdec, sampcolor : arrays of floats
-            redshift, apparent magnitude, right ascension, declination and 
-            colour samples
-        count : the number of samples which belong to 1 galaxy
-        Lambda : float, optional
-            redshift evolution parameter (default=0)
-
-        Returns
-        -------
-        arrays
-            numerator and denominator
-        """      
-            
-        if self.Kcorr == True:
-            Kcorr = calc_kcor(self.band,sampz,self.color_name,colour_value=sampcolor)
-        else:
-            Kcorr = 0.
-            
-        tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
-        
-        zweights = self.base.zrates(sampz,Lambda=Lambda)
-        
-        tempnum = np.zeros([len(H0)])
-        tempden = np.zeros([len(H0)])
-        for k,h in enumerate(H0):
-            numinner = self.base.px_zH0(sampz,h)
-            deninner = self.base.pD_zH0(sampz,h)
-            if self.base.luminosity_weights.luminosity_weights == True:
-                sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
-            else:
-                sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
-                
-            Lweights = self.base.luminosity_weights(sampAbsM)
-            normsamp = 1./count
-
-            tempnum[k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
-            tempden[k] = np.sum(deninner*Lweights*zweights*normsamp)
-
-        return tempnum,tempden
-        
-    def pGB_DH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
-        """
-        Evaluate p(G|D,H0) and p(B|D,H0).
-        
-        The probability that the host galaxy of a detected GW event is inside
-        or beyond the galaxy catalogue.
-        
-        Parameters
-        ----------
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        mth : float
-            Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        zcut : float, optional
-            An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
-
-        Returns
-        -------
-        floats
-            p(G|D,H0), p(B|D,H0), num, den
-            where num/den = p(G|D,H0)
-        """
-        
-        Mmin = M_Mobs(H0,self.Mmin_obs)
-        Mmax = M_Mobs(H0,self.Mmax_obs)
-
-        num = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-
-        den = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-
-        integral = num/den
-        
-        pG = integral*self.OmegaG
-        pB = self.OmegaG*(1.-integral)
-        return pG, pB, num, den
-        
-    def px_BH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
-        """
-        Evaluate p(x|B,H0).
-        
-        If zcut >= zmax then a single integral is performed.
-        If zcut < zmax then an additional integral is performed.
-        
-        Parameters
-        ----------
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        mth : float
-            Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        zcut : float, optional
-            An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
-
-        Returns
-        -------
-        float
-            p(x|B,H0)
-        """
-        
-        Mmin = M_Mobs(H0,self.Mmin_obs)
-        Mmax = M_Mobs(H0,self.Mmax_obs)
-            
-        below_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
-        above_zcut_integral = 0.
-        if zcut < zmax:
-            above_zcut_integral = dblquad(self.base.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
-        integral = below_zcut_integral + above_zcut_integral
-
-        return integral * self.px_OmegaG
-        
-    def pD_BH0(self,H0,mth,Lambda=0.,zcut=10.,zmax=10.):
-        """
-        Evaluate p(D|B,H0).
-        
-        If zcut >= zmax then a single integral is performed.
-        If zcut < zmax then an additional integral is performed.
-        
-        Parameters
-        ----------
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        mth : float
-            Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        zcut : float, optional
-            An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.).
-
-        Returns
-        -------
-        float
-            p(D|B,H0)
-        """
-        
-        Mmin = M_Mobs(H0,self.Mmin_obs)
-        Mmax = M_Mobs(H0,self.Mmax_obs)
-            
-        below_zcut_integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
-        above_zcut_integral = 0.
-        if zcut < zmax:
-            above_zcut_integral = dblquad(self.base.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-
-        integral = below_zcut_integral + above_zcut_integral
-
-        return integral * self.OmegaG 
-        
-    def px_OH0(self,H0,Lambda=0.,zmax=10.):
-        """
-        Evaluate p(x|O,H0).
-        
-        Defined as a single integral over z (instead of over z and M) as it is 
-        equivalent to the empty catalogue case.
-        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
-        
-        Parameters
-        ----------
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
-
-        Returns
-        -------
-        float
-            p(x|O,H0)
-        """
-        Mmin = M_Mobs(H0,self.Mmin_obs)
-        Mmax = M_Mobs(H0,self.Mmax_obs)
-        
-        integral = quad(self.base.px_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        return integral * (1.-self.px_OmegaG)
-        
-    def pD_OH0(self,H0,Lambda=0.,zmax=10.):
-        """
-        Evaluate p(D|O,H0).
-        
-        Defined as a single integral over z (instead of over z and M) as it is 
-        equivalent to the empty catalogue case.
-        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
-        
-        Parameters
-        ----------
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
-
-        Returns
-        -------
-        float
-            p(D|O,H0)
-        """
-        Mmin = M_Mobs(H0,self.Mmin_obs)
-        Mmax = M_Mobs(H0,self.Mmax_obs)
-        
-        integral = quad(self.base.pD_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        return integral * (1.-self.OmegaG)
-        
-    def pO_DH0(self):
-        """
-        Evaluate p(O).
-        
-        The probability that the host galaxy of a detected GW event lies outside
-        the sky area of the galaxy catalogue.
-        
-        Returns
-        -------
-        float
-            p(O)
-        """
-        return 1.0 - self.OmegaG
-        
-    def likelihood(self,H0,Lambda=0.,complete_catalog=False):
+    def likelihood(self,H0,Lambda=0.):
         """
         Compute the full likelihood.
         
@@ -896,33 +949,40 @@ class GalaxyCatalogLikelihood(object):
         den = np.zeros(len(H0))
         
         print('Computing the in-catalogue part')
-        self.pxG, self.pDG = self.pxD_GH0(H0,Lambda=Lambda)
+        self.pxG, self.pDG = self.pxD_GH0_multi(H0,Lambda=Lambda)
 
-        if not complete_catalog:
+        if not self.complete_catalog:
             print('Computing the beyond catalogue part')   
             for i,h in enumerate(H0):
-                self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
-                self.pxB[i] = self.px_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
+                self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h, self.mth, self.OmegaG, Lambda=Lambda, zcut=self.zcut)
+                self.pxB[i] = self.px_BH0(h, self.mth, self.px_OmegaG, Lambda=Lambda, zcut=self.zcut)
             if self.zcut == self.zmax:
                 self.pDB = (den - num) * self.OmegaG
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
-                    self.pDB[i] = self.pD_BH0(h,self.mth,Lambda=Lambda,zcut=self.zcut,zmax=self.zmax)
+                    self.pDB[i] = self.pD_BH0(h, self.mth, self.OmegaG, Lambda=Lambda, zcut=self.zcut)
             print("{}% of this event's sky area appears to have galaxy catalogue support".format(self.px_OmegaG*100))
             if self.px_OmegaG < 0.999:
-                self.pO = self.pO_DH0()
-                #self.pDO = den * (1.-self.OmegaG) ### alternative to calculating pDO directly below, but requires both px_OH0 and pD_OH0 to use dblquad (not quad) ###
+                self.pO = self.OmegaO
+                #self.pDO = den * self.OmegaO ### alternative to calculating pDO directly below, but requires both px_OH0 and pD_OH0 to use dblquad (not quad) ###
                 print('Computing the contribution outside the catalogue footprint')
                 for i,h in enumerate(H0):
-                    self.pxO[i] = self.px_OH0(h,Lambda=Lambda,zmax=self.zmax)
-                    self.pDO[i] = self.pD_OH0(h,Lambda=Lambda,zmax=self.zmax)
-        
+                    self.pxO[i] = self.px_OH0(h, skyprob=self.px_OmegaO, Lambda=Lambda)
+                    self.pDO[i] = self.pD_OH0(h, skyprob=self.OmegaO, Lambda=Lambda)
+
         likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
-        return likelihood, self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
+        return likelihood
+
+    def return_components(self):
+        return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
+        
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)
+        
 
 
-class DirectCounterpartLikelihood(object):
+class DirectCounterpartLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the counterpart 
     method.
@@ -936,10 +996,15 @@ class DirectCounterpartLikelihood(object):
         p(x|z,H0) and p(D|z,H0)*p(z)*p(s|z)
         
     """
-    def __init__(self, base_functions):
-        self.base = base_functions
+    def __init__(self, counterpart_z,counterpart_sigmaz, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        self.counterpart_z = counterpart_z
+        self.counterpart_sigmaz = counterpart_sigmaz
+        super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
         
-    def px_H0(self,H0,counterpart_z,counterpart_sigmaz):
+        self.px = None
+        self.pD = None
+        
+    def px_H0(self,H0):
         """
         Returns p(x|H0,counterpart)
         The likelihood of the GW data given H0 and direct counterpart.
@@ -954,27 +1019,33 @@ class DirectCounterpartLikelihood(object):
         float or array_like
             p(x|H0,counterpart)
         """
-        zsmear =  z_nsmear(counterpart_z, counterpart_sigmaz, 10000)
+        zsmear =  z_nsmear(self.counterpart_z, self.counterpart_sigmaz, 10000)
         num = np.zeros(len(H0))
-        for k,H in enumerate(H0):
-            num[k] = np.sum(self.base.px_zH0(zsmear,H)) 
+        for k,h in enumerate(H0):
+            num[k] = np.sum(self.px_zH0(zsmear,h)) 
             # TODO should this include p(s|z)? Would come into play
             # for host galaxies with large redshift uncertainty.
         return num
         
-    def pD_H0(self,H0,Lambda=0.,zmax=10.):
-        return quad(self.base.pD_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
-    def likelihood(self,H0,counterpart_z,counterpart_sigmaz,Lambda=0.,zmax=10.):
-        px = self.px_H0(H0,counterpart_z,counterpart_sigmaz)
+    def likelihood(self,H0,Lambda=0.):
+        px = self.px_H0(H0)
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
-            pD[i] = self.pD_H0(h,Lambda=Lambda,zmax=zmax)
+            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
         likelihood = px/pD
-        return likelihood, px, pD
+        self.px = px
+        self.pD = pD
+        return likelihood
+        
+    def return_components(self):
+        return self.px, self.pD, 1., 0., 1., 0., 0., 1., 0.
+        
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)
+
         
         
-class EmptyCatalogLikelihood(object):
+class EmptyCatalogLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the empty catalogue 
     method.
@@ -991,23 +1062,30 @@ class EmptyCatalogLikelihood(object):
     base_functions : gwcosmo.gwcosmo.BaseFunctions object
         p(x|z,H0)*p(z)*p(s|z) and p(D|z,H0)*p(z)*p(s|z)
     """
-    def __init__(self, base_functions):
-        self.base = base_functions
+    def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
         
-    def px_H0(self,H0,Lambda=0.,zmax=10.):
-        return quad(self.base.px_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        self.px = None
+        self.pD = None
         
-    def pD_H0(self,H0,Lambda=0.,zmax=10.):
-        return quad(self.base.pD_zH0_times_pz_times_ps_z,0.,zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
-        
-    def likelihood(self,H0,Lambda=0.,zmax=10.):
+    def likelihood(self,H0,Lambda=0.):
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
-            px[i] = self.px_H0(h,Lambda=Lambda,zmax=zmax)
-            pD[i] = self.pD_H0(h,Lambda=Lambda,zmax=zmax)
+            px[i] = self.px_OH0(h, skyprob=1., Lambda=Lambda)
+            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
         likelihood = px/pD
-        return likelihood, px, pD
+        self.px = px
+        self.pD = pD
+        return likelihood
+        
+    def return_components(self):
+        return 0., 1., 0., 0., 1., 0., self.px, self.pD, 1.
+        
+    def __call__(self, H0, Lambda=0.):
+        return self.likelihood(H0, Lambda=Lambda)
+
+
 
 ################################################################################
 ################################ ADDITIONAL CLASSES ############################
@@ -1055,44 +1133,6 @@ class RedshiftEvolution():
         else:
             return self.constant(z,Lambda=Lambda)
 
-    
-class BaseFunctions():
-    """
-    Parameters
-    ----------
-    px_zH0, pD_zH0 : function
-        p(x|z,H0) and p(D|z,H0)
-    zprior : gwcosmo.utilities.standard_cosmology.redshift_prior object
-        The redshift prior, p(z)
-    zrates : gwcosmo.gwcosmo.RedshiftEvolution object
-        Merger rate evolution, p(s|z)
-    luminosity_prior : gwcosmo.utilities.schechter_function.SchechterMagFunction
-        Absolute magnitude prior, p(M)
-    luminosity_weights : gwcosmo.gwcosmo.LuminosityWeighting object
-        Luminosity weighting, p(s|M)
-    """
-    def __init__(self, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights):
-        self.px_zH0 = px_zH0
-        self.pD_zH0 = pD_zH0
-        self.zprior=zprior
-        self.zrates=zrates
-        self.luminosity_prior=luminosity_prior
-        self.luminosity_weights=luminosity_weights
-        
-    def px_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
-        
-    def pD_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
-        
-    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-        
-    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-        
 
 ################################################################################
 ################################ INTERNAL FUNCTIONS ############################

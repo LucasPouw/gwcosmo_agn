@@ -153,17 +153,6 @@ zmax = float(opts.zmax)
 H0 = np.linspace(min_H0, max_H0, bins_H0)
 dH0 = H0[1] - H0[0]
 
-# placeholders for likelihood breakdown
-pxG = np.zeros(len(H0))
-pDG = np.ones(len(H0))
-pG = np.ones(len(H0))
-pxB = np.zeros(len(H0))
-pDB = np.ones(len(H0))
-pB = np.ones(len(H0))
-pxO = np.zeros(len(H0))
-pDO = np.ones(len(H0))
-pO = np.ones(len(H0))
-
 pdet = pickle.load(open(pdet_path, 'rb'))
 mass_distribution = pdet.mass_distribution
 mass_slope = pdet.alpha
@@ -219,15 +208,11 @@ if opts.method == 'counterpart':
         counterpart_sigmav = float(opts.counterpart_sigmav)
         counterpart_sigmaz = counterpart_sigmav/speed_of_light
 
-    base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,None,None)
-    me = gwcosmo.gwcosmo.DirectCounterpartLikelihood(base)
-    likelihood, pxG, pDG = me.likelihood(H0,counterpart_z,counterpart_sigmaz,Lambda=Lambda,zmax=zmax)
+    me = gwcosmo.gwcosmo.DirectCounterpartLikelihood(counterpart_z,counterpart_sigmaz,px_zH0,pdet.pD_zH0_eval,zprior,ps_z,zmax=zmax)
     
 if opts.method == 'population':
 
-    base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,None,None)
-    me = me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(base)
-    likelihood, pxO, pDO = me.likelihood(H0,Lambda=Lambda,zmax=zmax)
+    me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,zmax=zmax)
 
 if opts.method == 'statistical':
     if (opts.galaxy_catalog is None):
@@ -254,18 +239,19 @@ if opts.method == 'statistical':
     else:
         zcut = None
     
-    catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap_filename=skymap_path,band=band,thresh=sky_area,Kcorr=Kcorr,Nside=nside)
-    sp = SchechterParams(catalog.band)
-    
     skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
+    
+    catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap=skymap,band=band,thresh=sky_area,Kcorr=Kcorr,nside=nside)
+    sp = SchechterParams(catalog.band)
     
     p_M = SchechterMagFunction(Mstar_obs=sp.Mstar,alpha=sp.alpha)
     ps_M = gwcosmo.gwcosmo.LuminosityWeighting(luminosity_weights=galaxy_weighting)
 
-    base = gwcosmo.gwcosmo.BaseFunctions(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,p_M,ps_M)
-    me = gwcosmo.gwcosmo.GalaxyCatalogLikelihood(base, skymap, catalog, cosmo, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax, zuncert=zuncert)
-    likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.likelihood(H0,Lambda=Lambda,complete_catalog=complete_catalog)
-    
+    me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
+
+likelihood = me(H0,Lambda=Lambda)
+pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.return_components()
+
 prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
 posterior_uniform = prior_uniform*likelihood
 prior_log = gwcosmo.prior.priors.pH0(H0,prior='log')

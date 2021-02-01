@@ -79,32 +79,26 @@ class galaxyCatalog(object):
     Parameters
     ----------
     catalog_file : Path to catalog.hdf5 file
-    skymap_filename : Path to skymap.fits(.gz) file
+    skymap : gwcosmo.likelihood.skymap.skymap object
     thresh : Probablity contained within sky map region
     band : key of band
     Kcorr : bool, should K corrections be applied?
-    Nside : resolution of skymap to use for calculating Omega_G and p(x|Omega_G)
+    nside : resolution of skymap to use for calculating Omega_G and p(x|Omega_G)
     """
-    def __init__(self, catalog_file=None, skymap_filename=None, thresh=.9999, band='B', Kcorr=False, Nside=64):
+    def __init__(self, catalog_file=None, skymap=None, thresh=.9999, band='B', Kcorr=False, nside=64):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
-            if skymap_filename is None:
-                skymap = None
+            self.skymap = skymap
+            self.nside = nside
+            
+            self.extract_galaxies(skymap=skymap, thresh=thresh, band=band, Kcorr=Kcorr)
+            
+            if skymap is None:
                 self.OmegaG = 1.0
                 self.px_OmegaG = 1.0
             else:
-                self.nside=Nside
-                skymap = gwcosmo.likelihood.skymap.skymap(skymap_filename)
-                low_res_skymap = hp.pixelfunc.ud_grade(skymap.prob, self.nside, order_in='NEST', order_out='NEST')
-                skymap = low_res_skymap/np.sum(low_res_skymap) #renormalise
-                self.skymap = skymap
-                
-            self.extract_galaxies(skymap=skymap, thresh=thresh, band=band, Kcorr=Kcorr)
-            
-            if skymap_filename is not None:
-                self.OmegaG,self.px_OmegaG = self.region_with_galaxies(skymap, self.gal_ind, thresh)
-            # TODO: deal better with case when skymap isn't passed
+                self.OmegaG,self.px_OmegaG = skymap.region_with_sample_support(self.ra, self.dec, thresh, nside=self.nside)
 
         if catalog_file is None:
             self.catalog_name = ""
@@ -150,8 +144,7 @@ class galaxyCatalog(object):
                 m_K = self.dictionary[band_Kcorr_key][:]
             radec_lim = self.dictionary['radec_lim'][:]
         else:
-            self.gal_ind = hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=True)
-            ind = self.galaxies_within_region(skymap, self.gal_ind, thresh)
+            ind = skymap.samples_within_region(self.dictionary['ra'][:],self.dictionary['dec'][:], thresh, nside=self.nside)
             ra = self.dictionary['ra'][ind]
             dec = self.dictionary['dec'][ind]
             z = self.dictionary['z'][ind]
@@ -174,6 +167,7 @@ class galaxyCatalog(object):
         else:
             self.color = np.zeros(len(m))
         return ra, dec, z, m, sigmaz
+<<<<<<< HEAD
     
     def above_percentile(self, skymap, thresh):
         """Returns indices of array within the given threshold
@@ -207,4 +201,6 @@ class galaxyCatalog(object):
         self.mth_mask = mth_mask
 		
         return fraction_of_sky,GW_prob_in_fraction_of_sky
+=======
+>>>>>>> refactoring_with_subclasses
 
