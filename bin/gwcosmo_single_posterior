@@ -239,10 +239,10 @@ if opts.method == 'statistical':
     else:
         zcut = None
     
-    catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap_filename=skymap_path,band=band,thresh=sky_area,Kcorr=Kcorr,Nside=nside)
-    sp = SchechterParams(catalog.band)
-    
     skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
+    
+    catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap=skymap,band=band,thresh=sky_area,Kcorr=Kcorr,nside=nside)
+    sp = SchechterParams(catalog.band)
     
     p_M = SchechterMagFunction(Mstar_obs=sp.Mstar,alpha=sp.alpha)
     ps_M = gwcosmo.gwcosmo.LuminosityWeighting(luminosity_weights=galaxy_weighting)

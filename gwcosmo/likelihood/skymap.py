@@ -133,3 +133,39 @@ class skymap(object):
         p_ra_dec = np.sum(weights * probvals * skyprob)
 
         return(p_ra_dec)
+
+    def above_percentile(self, thresh, nside=None):
+        """Returns indices of array within the given threshold
+        credible region."""
+        prob = self.prob
+        if nside != None:
+            new_prob = hp.pixelfunc.ud_grade(self.prob, nside, order_in='NESTED', order_out='NESTED')
+            prob = new_prob/np.sum(new_prob) #renormalise
+            
+        #  Sort indicies of sky map
+        ind_sorted = np.argsort(-prob)
+        #  Cumulatively sum the sky map
+        cumsum = np.cumsum(prob[ind_sorted])
+        #  Find indicies contained within threshold area
+        lim_ind = np.where(cumsum > thresh)[0][0]
+        return ind_sorted[:lim_ind], prob
+
+    def samples_within_region(self, ra, dec, thresh, nside=None):
+        """Returns boolean array of whether galaxies are within
+        the sky map's credible region above the given threshold"""
+        skymap_ind = self.above_percentile(thresh, nside=nside)[0]
+        samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=True)
+        return np.in1d(samples_ind, skymap_ind)
+        
+    def region_with_sample_support(self, ra, dec, thresh, nside=None):
+        """
+        Finds fraction of sky with catalogue support, and corresponding
+        fraction of GW sky probability
+        """
+        skymap_ind, skymap_prob = self.above_percentile(thresh,nside=nside)
+        samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=True)
+        ind = np.in1d(skymap_ind, samples_ind)
+        fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
+        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind[ind]])
+        return fraction_of_sky,GW_prob_in_fraction_of_sky
+        
