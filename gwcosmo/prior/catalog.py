@@ -85,7 +85,7 @@ class galaxyCatalog(object):
     Kcorr : bool, should K corrections be applied?
     nside : resolution of skymap to use for calculating Omega_G and p(x|Omega_G)
     """
-    def __init__(self, catalog_file=None, skymap=None, thresh=.9999, band='B', Kcorr=False, nside=64):
+    def __init__(self, catalog_file=None, skymap=None, thresh=.9999, band='B', Kcorr=False, nside=64, pixelate_catalog=False):
         if catalog_file is not None:
             self.catalog_file = catalog_file
             self.dictionary = self.__load_catalog()
@@ -99,6 +99,10 @@ class galaxyCatalog(object):
                 self.px_OmegaG = 1.0
             else:
                 self.OmegaG,self.px_OmegaG = skymap.region_with_sample_support(self.ra, self.dec, thresh, nside=self.nside)
+                if pixelate_catalog:
+                    # divide selected galaxies up into pixels
+                    self.gal_indices_per_pixel,self.skymap_idx_per_pixel = skymap.pixel_split(self.ra, self.dec, nside=self.nside)
+                    print(self.OmegaG,len(self.skymap_idx_per_pixel)/hp.nside2npix(self.nside))
 
         if catalog_file is None:
             self.catalog_name = ""

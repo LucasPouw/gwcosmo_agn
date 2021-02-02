@@ -154,7 +154,7 @@ class skymap(object):
         """Returns boolean array of whether galaxies are within
         the sky map's credible region above the given threshold"""
         skymap_ind = self.above_percentile(thresh, nside=nside)[0]
-        samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=True)
+        samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=self.nested)
         return np.in1d(samples_ind, skymap_ind)
         
     def region_with_sample_support(self, ra, dec, thresh, nside=None):
@@ -168,4 +168,53 @@ class skymap(object):
         fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
         GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind[ind]])
         return fraction_of_sky,GW_prob_in_fraction_of_sky
+
+    def pixel_split(self, ra, dec, nside):
+        """
+        Convert a catalogue to a HEALPix map of mth per resolution
+        element (by taking the faintest object in each pixel).
+
+        Parameters
+        ----------
+        ra, dec : (ndarray, ndarray)
+            Coordinates of the sources in radians.
+
+        nside : int
+            HEALPix nside of the target map
+
+        Return
+        ------
+        res : ndarray
+            arrays of galaxy indices corresponding to each pixel
+        idx : array
+            healpy index of each pixel containing at least one galaxy
+            
+        ra[res[i]] returns the ra values of each galaxy in skymap pixel
+        idx[i].
+
+        """
+
+        # The number of pixels based on the chosen value of nside
+        npix = hp.nside2npix(nside)
+
+        # conver to theta, phi
+        theta = np.pi/2.0 - dec
+        phi = ra
+        
+        # convert to HEALPix indices (each galaxy is assigned to a single healpy pixel)
+        indices = hp.ang2pix(nside, theta, phi, nest=self.nested)
+        
+        # sort the indices into ascending order
+        idx_sort = np.argsort(indices)
+        sorted_indices = indices[idx_sort]
+        
+        # idx: the healpy index of each pixel containing a galaxy (arranged in ascending order)
+        # idx_start: the index of 'sorted_indices' corresponding to each new pixel
+        # count: the number of galaxies in each pixel
+        idx, idx_start,count = np.unique(sorted_indices,return_counts=True,return_index=True)
+        
+        # splits indices into arrays - 1 per pixel
+        res = np.split(idx_sort, idx_start[1:])
+
+        return res, idx
         
