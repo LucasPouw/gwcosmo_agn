@@ -365,7 +365,7 @@ class SimplePixelatedGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         Should redshift uncertainties be marginalised over? (Default=True).
     
     """
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False):
+    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=None):
         super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         
         self.mth = mth
@@ -429,7 +429,10 @@ class SimplePixelatedGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         #self.mth_map = galaxy_catalog.mth_mask
         #self.npix = hp.nside2npix(self.catalog.nside)
         
-        self.nside = 64
+        if nside is None:
+            self.nside = galaxy_catalog.nside
+        else:
+            self.nside = nside
         self.npix = hp.nside2npix(self.nside)
         self.sky_indices,self.sky_prob = skymap.above_percentile(0.9999,self.nside)
         
@@ -469,7 +472,7 @@ class SimplePixelatedGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h, self.mth, 1., Lambda=Lambda, zcut=self.zcut)
                 self.pxB[i] = self.px_BH0(h, self.mth, 1., Lambda=Lambda, zcut=self.zcut)
             if self.zcut == self.zmax:
-                self.pDB = (den - num) * 1./self.npix
+                self.pDB = (den - num) #* 1./self.npix
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
