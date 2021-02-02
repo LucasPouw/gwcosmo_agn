@@ -425,10 +425,6 @@ class SimplePixelatedGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pDO = 1.
         self.pO = 0.
         
-        # TODO: replace with genuine mth_map
-        #self.mth_map = galaxy_catalog.mth_mask
-        #self.npix = hp.nside2npix(self.catalog.nside)
-        
         if nside is None:
             self.nside = galaxy_catalog.nside
         else:
@@ -486,7 +482,7 @@ class SimplePixelatedGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                     self.pxO[i] = self.px_OH0(h, skyprob=1., Lambda=Lambda)
                     self.pDO[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
         
-        res,index_G = pixel_split(self.galra,self.galdec,self.nside) 
+        res,index_G = self.skymap.pixel_split(self.galra,self.galdec,self.nside) 
         
         pixels_G = np.zeros([len(H0),len(index_G)])
         print('Computing the in catalogue part')
@@ -932,55 +928,4 @@ def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     
     return sampz, sampm, sampra, sampdec, sampcolor, count
     
-
-def pixel_split(ra, dec, nside):
-    """
-    Convert a catalogue to a HEALPix map of mth per resolution
-    element (by taking the faintest object in each pixel).
-
-    Parameters
-    ----------
-    ra, dec : (ndarray, ndarray)
-        Coordinates of the sources in radians.
-
-    nside : int
-        HEALPix nside of the target map
-
-    Return
-    ------
-    hpx_map : ndarray
-        HEALPix map of the catalogue mths.
-
-    """
-
-    # The number of pixels based on the chosen value of nside
-    npix = hp.nside2npix(nside)
-
-    # conver to theta, phi
-    theta = np.pi/2.0 - dec
-    phi = ra
-    
-    # convert to HEALPix indices (each galaxy is assigned to a single healpy pixel)
-    indices = hp.ang2pix(nside, theta, phi, nest=True)
-    
-    # sort the indices into ascending order
-    idx_sort = np.argsort(indices)
-    sorted_indices = indices[idx_sort]
-    
-    # idx: the healpy index of each pixel containing a galaxy (arranged in ascending order)
-    # idx_start: the index of 'sorted_indices' corresponding to each new pixel
-    # count: the number of galaxies in each pixel
-    idx, idx_start,count = np.unique(sorted_indices,return_counts=True,return_index=True)
-    
-    # splits indices into arrays - 1 per pixel
-    res = np.split(idx_sort, idx_start[1:])
-
-    #count=0
-    #for i in range(npix):
-    #    if i in idx:
-    #        # select all the apparent magnitudes of galaxies in the ith pixel
-    #        ms = marray[res[count]]
-    #        count += 1
-
-    return res, idx
 
