@@ -169,7 +169,11 @@ Omega_m = pdet.Omega_m
 linear_cosmo = pdet.linear
 zprior = redshift_prior(Omega_m=Omega_m, linear=linear_cosmo)
 cosmo = fast_cosmology(Omega_m=Omega_m, linear=linear_cosmo)
-ps_z = gwcosmo.gwcosmo.RedshiftEvolution(redshift_evolution=redshift_evolution)
+if redshift_evolution:
+    ps_z = gwcosmo.gwcosmo.RedshiftEvolution()
+else:
+    ps_z = gwcosmo.gwcosmo.RedshiftNonEvolution()
+
 print('Setting up a cosmology with Omega_m={}'.format(Omega_m))
 
 # Once different methods can run with just skymap (instead of samples) this will need moving
@@ -245,7 +249,10 @@ if opts.method == 'statistical':
     sp = SchechterParams(catalog.band)
     
     p_M = SchechterMagFunction(Mstar_obs=sp.Mstar,alpha=sp.alpha)
-    ps_M = gwcosmo.gwcosmo.LuminosityWeighting(luminosity_weights=galaxy_weighting)
+    if galaxy_weighting:
+        ps_M = gwcosmo.gwcosmo.LuminosityWeighting()
+    else:
+        ps_M = gwcosmo.gwcosmo.UniformWeighting()
 
     me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
 
