@@ -456,7 +456,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         else:
             samp_res = {'coarse': self.ncoarse}
             galindex = {'coarse': np.arange(self.nGal)}
-            galindex_sep = {0 : {'coarse': np.arange(self.nGal)}}
+            galindex_sep['coarse'] = {0 : galindex['coarse']}
         
         K = sum(len(v) for v in galindex.values()) # total number of sub arrays
         tempnum = np.zeros([K,len(H0)])
