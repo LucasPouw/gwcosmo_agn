@@ -631,7 +631,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         else:
             samp_res = {'coarse': self.ncoarse}
             galindex = {'coarse': np.arange(self.nGal)}
-            galindex_sep = {0 : {'coarse': np.arange(self.nGal)}}
+            galindex_sep['coarse'] = {0 : galindex['coarse']}
         
         K = sum(len(v) for v in galindex.values()) # total number of sub arrays
         tempnum = np.zeros([K,len(H0)])
@@ -830,25 +830,33 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
 ################################ ADDITIONAL CLASSES ############################
 ################################################################################
 
-
-class LuminosityWeighting():
+class LuminosityWeighting(object):
     """
     Host galaxy probability relation to luminosity
     """
-    def __init__(self, luminosity_weights=False):
-        self.luminosity_weights = luminosity_weights
+    
+    def __init__(self):
+        self.luminosity_weights = True
         
     def weighted_call(self, M):
         return L_M(M)
+        
+    def __call__(self, M):
+        return self.weighted_call(M)
+        
+class UniformWeighting(object):
+    """
+    Host galaxy probability relation to luminosity
+    """
+    
+    def __init__(self):
+        self.luminosity_weights = False
         
     def unweighted_call(self, M):
         return 1.
         
     def __call__(self, M):
-        if self.luminosity_weights:
-            return self.weighted_call(M)
-        else:
-            return self.unweighted_call(M)
+        return self.unweighted_call(M)
         
 
 class RedshiftEvolution():
@@ -857,20 +865,29 @@ class RedshiftEvolution():
     
     TODO: consider how Lambda might need to be marginalised over in future
     """
-    def __init__(self, redshift_evolution=False):
-        self.redshift_evolution = redshift_evolution
+    
+    def __init__(self):
+        self.redshift_evolution = True
         
     def evolving(self, z, Lambda=0.):
         return (1+z)**Lambda
+
+    def __call__(self, z, Lambda=0.):
+            return self.evolving(z,Lambda=Lambda)
+            
+class RedshiftNonEvolution():
+    """
+    Merger rate relation to redshift
+    """
+    
+    def __init__(self):
+        self.redshift_evolution = False
         
     def constant(self, z, Lambda=0.):
         return 1.
         
     def __call__(self, z, Lambda=0.):
-        if self.redshift_evolution:
-            return self.evolving(z,Lambda=Lambda)
-        else:
-            return self.constant(z,Lambda=Lambda)
+        return self.constant(z,Lambda=Lambda)
 
 
 ################################################################################
