@@ -139,7 +139,7 @@ if opts.posterior_samples is not None:
 # Set command line arguments
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
-bins_H0 = float(opts.bins_H0)
+bins_H0 = int(opts.bins_H0)
 
 
 redshift_evolution = str2bool(opts.redshift_evolution)
