@@ -210,7 +210,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             if self.luminosity_weights.luminosity_weights == False:
                 Lweights = np.ones(len(sampAbsM))*Lweights
             Lweights[sel] = 0 # set faint sample contribution to zero
-            print('{} out of {} samples being discarded'.format(len(sel),len(Lweights)))
             
             normsamp = 1./count
 
