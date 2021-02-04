@@ -134,11 +134,11 @@ class skymap(object):
 
         return(p_ra_dec)
 
-    def above_percentile(self, thresh, nside=None):
+    def above_percentile(self, thresh, nside):
         """Returns indices of array within the given threshold
         credible region."""
         prob = self.prob
-        if nside != None:
+        if nside != self.nside:
             new_prob = hp.pixelfunc.ud_grade(self.prob, nside, order_in='NESTED', order_out='NESTED')
             prob = new_prob/np.sum(new_prob) #renormalise
             
@@ -148,11 +148,13 @@ class skymap(object):
         cumsum = np.cumsum(prob[ind_sorted])
         #  Find indicies contained within threshold area
         lim_ind = np.where(cumsum > thresh)[0][0]
-        return ind_sorted[:lim_ind], prob
+        return ind_sorted[:lim_ind], prob[ind_sorted[:lim_ind]]
 
     def samples_within_region(self, ra, dec, thresh, nside=None):
         """Returns boolean array of whether galaxies are within
         the sky map's credible region above the given threshold"""
+        if nside == None:
+            nside = self.nside
         skymap_ind = self.above_percentile(thresh, nside=nside)[0]
         samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=self.nested)
         return np.in1d(samples_ind, skymap_ind)
@@ -162,11 +164,13 @@ class skymap(object):
         Finds fraction of sky with catalogue support, and corresponding
         fraction of GW sky probability
         """
+        if nside == None:
+            nside = self.nside
         skymap_ind, skymap_prob = self.above_percentile(thresh,nside=nside)
         samples_ind = hp.ang2pix(nside, np.pi/2.0-dec, ra, nest=True)
         ind = np.in1d(skymap_ind, samples_ind)
-        fraction_of_sky = np.count_nonzero(ind)/len(skymap_prob)
-        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[skymap_ind[ind]])
+        fraction_of_sky = np.count_nonzero(ind)/hp.nside2npix(nside)
+        GW_prob_in_fraction_of_sky = np.sum(skymap_prob[ind])
         return fraction_of_sky,GW_prob_in_fraction_of_sky
 
     def pixel_split(self, ra, dec, nside):
