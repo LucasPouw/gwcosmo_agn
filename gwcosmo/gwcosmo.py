@@ -200,12 +200,18 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         for k,h in enumerate(H0):
             numinner = self.px_zH0(sampz,h)
             deninner = self.pD_zH0(sampz,h)
-            if self.luminosity_weights.luminosity_weights == True:
-                sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
-            else:
-                sampAbsM = 1.0 # value is irrelevant as weights will evaluate to 1 for all samples
-                
+            sampAbsM = M_mdl(sampm, self.cosmo.dl_zH0(sampz, h), Kcorr=Kcorr)
+            
+            # for samples which are fainter than the faint end of the Schechter function
+            # set contribution to zero.
+            Mmax = M_Mobs(h,self.Mmax_obs)
+            sel = np.where(sampAbsM > Mmax)[0] # identify samples fainter than model allows
             Lweights = self.luminosity_weights(sampAbsM)
+            if self.luminosity_weights.luminosity_weights == False:
+                Lweights = np.ones(len(sampAbsM))*Lweights
+            Lweights[sel] = 0 # set faint sample contribution to zero
+            print('{} out of {} samples being discarded'.format(len(sel),len(Lweights)))
+            
             normsamp = 1./count
 
             tempnum[k] = np.sum(numinner*tempsky*Lweights*zweights*normsamp)
@@ -456,7 +462,11 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         else:
             samp_res = {'coarse': self.ncoarse}
             galindex = {'coarse': np.arange(self.nGal)}
-            galindex_sep['coarse'] = {0 : galindex['coarse']}
+            
+            # for arrays with more than 1million entries, break into sub arrays
+            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
+            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
+            galindex_sep['coarse'] = {i : chunks_coarse[i] for i in range(no_chunks_coarse)} 
         
         K = sum(len(v) for v in galindex.values()) # total number of sub arrays
         tempnum = np.zeros([K,len(H0)])
