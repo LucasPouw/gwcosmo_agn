@@ -101,8 +101,8 @@ class galaxyCatalog(object):
                 self.OmegaG,self.px_OmegaG = skymap.region_with_sample_support(self.ra, self.dec, thresh, nside=self.nside)
                 if pixelate_catalog:
                     # divide selected galaxies up into pixels
-                    self.gal_indices_per_pixel,self.skymap_idx_per_pixel = skymap.pixel_split(self.ra, self.dec, nside=self.nside)
-                    print(self.OmegaG,len(self.skymap_idx_per_pixel)/hp.nside2npix(self.nside))
+                    self.gal_indices_per_pixel_idx = skymap.pixel_split(self.ra, self.dec, nside=self.nside)
+                    #print(self.OmegaG,len(self.skymap_idx_per_pixel)/hp.nside2npix(self.nside))
 
         if catalog_file is None:
             self.catalog_name = ""

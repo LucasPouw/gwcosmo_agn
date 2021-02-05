@@ -219,6 +219,12 @@ class skymap(object):
         
         # splits indices into arrays - 1 per pixel
         res = np.split(idx_sort, idx_start[1:])
+    
+        keys = idx
+        values = res
+        dicts = {}
+        for i,key in enumerate(keys):
+            dicts[key] = values[i]
 
-        return res, idx
+        return dicts
         

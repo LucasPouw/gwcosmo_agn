@@ -266,8 +266,11 @@ class make_pixel_px_function(object):
         self.nside = nside
         print('{} pixels to cover the {}% sky area (nside={})'.format(len(indices),thresh*100,nside))
         
+        dicts = {}
+        for i,idx in enumerate(indices):
+            dicts[idx] = prob[i]
         self.indices = indices
-        self.prob = prob
+        self.prob = dicts # dictionary - given a pixel index, returns skymap prob
         
     def px_zH0(self,z,H0):
         print('Has not been initialised yet')
