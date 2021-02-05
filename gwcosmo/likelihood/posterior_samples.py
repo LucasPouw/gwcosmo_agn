@@ -14,11 +14,14 @@ from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
 from bilby import gw
 from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
 from ..prior.priors import *
+from .skymap import ra_dec_from_ipix
 
 from astropy.cosmology import FlatLambdaCDM, z_at_value
 import astropy.units as u
 import astropy.constants as constants
 from scipy.interpolate import interp1d, interp2d
+
+import copy
 
 Om0 = 0.308
 zmin = 0.0001
@@ -175,7 +178,7 @@ class posterior_samples(object):
 
         # Re-weight
         weights = new_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift,H0)
-        norm = np.sum(weights)
+        norm = np.sum(weights)/len(weights)
         return gaussian_kde(redshift,weights=weights), norm
 
     def marginalized_redshift(self, H0):
@@ -187,7 +190,7 @@ class posterior_samples(object):
 
         # remove dl^2 prior and include dz/ddL jacobian
         weights = 1/(self.dL_by_z_H0(redshift,H0,Om0)*cosmo.dl_zH0(redshift,H0)**2)
-        norm = np.sum(weights)
+        norm = np.sum(weights)/len(weights)
         return gaussian_kde(redshift,weights=weights), norm
 
     def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
@@ -247,4 +250,86 @@ class make_px_function(object):
         return self.px_zH0(z,H0)
 
 
+class make_pixel_px_function(object):
+    """
+    """
+    def __init__(self, samples, skymap, npixels=30, thresh=0.999):
+        self.skymap = skymap
+        self.samples = samples
+        nside=4
+        indices,prob = skymap.above_percentile(thresh, nside=nside)
+    
+        while len(indices) < npixels:
+            nside = nside*2
+            indices,prob = skymap.above_percentile(thresh, nside=nside)
+        
+        self.nside = nside
+        print('{} pixels to cover the {}% sky area (nside={})'.format(len(indices),thresh*100,nside))
+        
+        self.indices = indices
+        self.prob = prob
+        
+    def px_zH0(self,z,H0):
+        print('Has not been initialised yet')
+        pass
+
+        
+    def identify_samples(self, idx, minsamps=100):
+        """
+        Find the samples required 
+        
+        Parameters
+        ----------
+        idx : int
+            The pixel index
+        minsamps : int, optional
+            The threshold number of samples to reach per pixel
+            
+        Return
+        ------
+        sel : array of ints
+            The indices of posterior samples for pixel idx
+        """
+    
+        racent,deccent = ra_dec_from_ipix(self.nside, idx, nest=self.skymap.nested)
+    
+        separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
+        sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
+        step = sep/2. # choose step size for increasing radius
+        
+        sel = np.where(separations<sep)[0] # find all the samples within the angular radius sep from the pixel centre
+        nsamps = len(sel)
+        while nsamps < minsamps:
+            sep += step
+            sel = np.where(separations<sep)[0]
+            nsamps = len(sel)
+        print('angular radius: {}, No. samples: {}'.format(sep,len(sel)))
+            
+        return sel
+        
+    def make_los_px_function(self, idx,H0,reweight_samples=True,mass_distribution='BBH-powerlaw',alpha=1.6,mmin=5.0,mmax=100.):
+        """Make line of sight z,H0 function of GW data, using samples
+        selected with idx"""
+        
+        samples = copy.deepcopy(self.samples)
+        samples.distance = samples.distance[idx]
+        samples.mass_1 = samples.mass_1[idx]
+        samples.mass_2 = samples.mass_2[idx]
+        
+        self.px_zH0 = make_px_function(samples,H0,reweight_samples=reweight_samples,mass_distribution=mass_distribution,alpha=alpha,mmin=mmin,mmax=mmax)
+        
+        return self.px_zH0
+        
+    def __call__(self,z,H0):
+        return self.px_zH0(z,H0)
+        
+        
+        
+    
+def angular_sep(ra1,dec1,ra2,dec2):
+    """Find the angular separation between two points, (ra1,dec1)
+    and (ra2,dec2), in radians."""
+    cos_angle = np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)
+    angle = np.arccos(cos_angle)
+    return angle
 
