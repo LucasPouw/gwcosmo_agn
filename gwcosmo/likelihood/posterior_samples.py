@@ -102,6 +102,8 @@ class posterior_samples(object):
 
         if self.posterior_samples[-2:] == 'h5':
             file = h5py.File(self.posterior_samples, 'r')
+            data = file['PublicationSamples']
+            '''
             approximants = ['C01:PhenomPNRT-HS', 'C01:NRSur7dq4',
                             'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
                             'C01:IMRPhenomD']
@@ -112,7 +114,7 @@ class posterior_samples(object):
                     break
                 except KeyError:
                     continue
-
+            '''
             self.distance = data['posterior_samples']['luminosity_distance']
             self.ra = data['posterior_samples']['ra']
             self.dec = data['posterior_samples']['dec']
