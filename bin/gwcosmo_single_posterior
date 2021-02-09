@@ -58,6 +58,8 @@ parser = OptionParser(
             help="Set number of H0 Posterior bins"),
         Option("--posterior_samples", default=None,
             help="LALinference posterior samples file in format (.dat or hdf5) or use GW170817, GW170814, GW170818"),
+        Option("--posterior_samples_field", default=None,
+            help="Internal field of the posterior samples file, e.g. h5 or json field"),
         Option("--mass_distribution", default=None,
             help="Choose between BNS, NSBH or BBH mass distributions for Pdet calculation."),
         Option("--powerlaw_slope", default='1.6', type=float,
@@ -156,6 +158,9 @@ else:
 
     if opts.posterior_samples is not None:
         posterior_samples = str(opts.posterior_samples)
+        
+    if opts.posterior_samples_field is not None:
+        posterior_samples_field = str(opts.posterior_samples_field)
 
     if opts.skymap is not None:
         skymap = str(opts.skymap)
@@ -217,7 +222,7 @@ else:
 
     if opts.posterior_samples is not None:
         print("Loading posterior samples.")
-        samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples)
+        samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,path=posterior_samples_field)
 
         if opts.skymap is not None:
             print("Loading 2D skymap.")
