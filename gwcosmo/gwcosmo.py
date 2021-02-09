@@ -371,10 +371,9 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         Should redshift uncertainties be marginalised over? (Default=True).
     
     """
-    def __init__(self, pixel_index, pixel_skyprob, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False):
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32):
         super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         
-        self.mth = mth
         self.zcut = zcut
         self.complete_catalog = complete_catalog
         
@@ -392,33 +391,38 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.nfine = 10000
         self.ncoarse = 10
 
-        # pick out galaxies in this pixel
-        ind = galaxy_catalog.gal_indices_per_pixel_idx[pixel_index]
-        self.galz = galaxy_catalog.z[ind]
-        self.galra = galaxy_catalog.ra[ind]
-        self.galdec = galaxy_catalog.dec[ind]
-        self.galm = galaxy_catalog.m[ind]
-        self.galsigmaz = galaxy_catalog.sigmaz[ind]
-        self.galcolor = galaxy_catalog.color[ind]
-        
-        self.hi_res_nside = 32
+        self.hi_res_nside = nside
         pixra, pixdec = ra_dec_from_ipix(self.hi_res_nside, np.arange(hp.pixelfunc.nside2npix(self.hi_res_nside)), nest=skymap.nested)
         ipix = ipix_from_ra_dec(galaxy_catalog.nside, pixra, pixdec, nest=skymap.nested)
         self.sub_pixel_indices = np.arange(hp.pixelfunc.nside2npix(self.hi_res_nside))[np.where(ipix == pixel_index)[0]]
-        #print(self.sub_pixel_indices)
-        self.sub_galaxy_indices = skymap.pixel_split(self.galra, self.galdec, self.hi_res_nside)
-        #print(self.sub_galaxy_indices.keys())
+        print('Dividing this pixel into {} equal pieces'.format(len(self.sub_pixel_indices)))
+        
+        # pick out galaxies in the big pixel and divide into smaller pixels
+        if pixel_index in galaxy_catalog.gal_indices_per_pixel_idx:
+            ind = galaxy_catalog.gal_indices_per_pixel_idx[pixel_index]
+            self.galz = galaxy_catalog.z[ind]
+            self.galra = galaxy_catalog.ra[ind]
+            self.galdec = galaxy_catalog.dec[ind]
+            self.galm = galaxy_catalog.m[ind]
+            self.galsigmaz = galaxy_catalog.sigmaz[ind]
+            self.galcolor = galaxy_catalog.color[ind]
 
-        self.mth_map = np.ones(len(self.sub_pixel_indices))*np.inf
-        for i, index in enumerate(self.sub_pixel_indices):
-            if index in self.sub_galaxy_indices.keys():
-                m = self.galm[self.sub_galaxy_indices[index]]               
-                mth = np.median(m)
-                # if less than 10 galaxies, consider pixel empty
-                if len(m) < 10: 
-                    mth = np.inf
-                self.mth_map[i] = mth
-        print('mth range: {} to {}'.format(np.amin(self.mth_map),np.amax(self.mth_map)))
+            self.sub_galaxy_indices = skymap.pixel_split(self.galra, self.galdec, self.hi_res_nside)
+
+            self.mth_map = np.ones(len(self.sub_pixel_indices))*(np.inf)
+            for i, index in enumerate(self.sub_pixel_indices):
+                if index in self.sub_galaxy_indices.keys():
+                    m = self.galm[self.sub_galaxy_indices[index]]               
+                    temp_mth = np.median(m)
+                    # if less than 10 galaxies, consider pixel empty
+                    if len(m) < 10: 
+                        temp_mth = np.inf
+                    self.mth_map[i] = temp_mth
+            if mth != None:
+                self.mth_map = np.ones(len(self.sub_pixel_indices))*mth
+        else:
+            print('There are no galaxies in this pixel')
+            self.mth_map = np.ones(len(self.sub_pixel_indices))*mth
 
         if zuncert == False:
             self.nfine = 1
@@ -435,14 +439,12 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pDO = 1.
         self.pO = 0.
         
-        self.skyprob = pixel_skyprob
         self.pixel_area_low_res = 1./hp.nside2npix(galaxy_catalog.nside)
         self.pixel_area_hi_res = 1./hp.nside2npix(self.hi_res_nside)
         
         hi_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, self.hi_res_nside, order_in='NESTED', order_out='NESTED')
         self.hi_res_skyprob = hi_res_skyprob/np.sum(hi_res_skyprob) #renormalise
-        
-        print(self.skyprob, np.sum(self.hi_res_skyprob[self.sub_pixel_indices]))
+
 
     def pxD_GH0_multi(self,H0, z, sigmaz, m, ra, dec, color, Lambda=0.):
         """
@@ -506,43 +508,6 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.sum(tempden,axis=0)/nGal
 
         return num,den  
-
-    def empty_pixel(self,H0,Lambda=0.):
-        """
-        Compute the full likelihood.
-        
-        Parameters
-        ----------
-        H0 : array of floats
-            Hubble constant values in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
-        complete_catalog : bool, optional
-            Assume that the galaxy catalogue is complete? (default=False)
-
-        Returns
-        -------
-        float
-            Returns likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
-            where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
-        """
-
-        self.pxG = np.zeros(len(H0))
-        self.pDG = np.ones(len(H0))
-        self.pG = np.zeros(len(H0))
-        self.pxB = np.zeros(len(H0))
-        self.pDB = np.ones(len(H0))
-        self.pB = np.zeros(len(H0))
-        self.pxO = np.zeros(len(H0))
-        self.pDO = np.ones(len(H0))
-        self.pO = 1.
-
-        for i,h in enumerate(H0):
-            self.pxO[i] = self.px_OH0(h, skyprob=self.skyprob, Lambda=Lambda)
-            self.pDO[i] = self.pD_OH0(h, skyprob=self.pixel_area_low_res, Lambda=Lambda)
-
-        likelihood = self.pxO/self.pDO
-        return likelihood
         
     def full_pixel(self, H0, z, sigmaz, m, ra, dec, color, mth, px_Omega=1., pOmega=1., Lambda=0.):
         """
@@ -606,6 +571,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         if np.inf in self.mth_map:
             temp_pxO = np.zeros(len(H0))
             temp_pDO = np.zeros(len(H0))
+            print('Not all of this pixel has catalogue support. Computing the out of catalogue contribution')
             for i,h in enumerate(H0):
                 temp_pxO[i] = self.px_OH0(h, skyprob=1., Lambda=Lambda)
                 temp_pDO[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
@@ -647,14 +613,12 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.pxO[:,i] = np.zeros(len(H0))
                 self.pDO[:,i] = np.ones(len(H0))
                 self.pO[i] = 0.
-                
 
         sub_likelihood = np.zeros([len(H0),len(self.sub_pixel_indices)])
         for i in range(len(self.sub_pixel_indices)):
             sub_likelihood[:,i] = (self.pxG[:,i] / self.pDG[:,i]) * self.pG[:,i] + (self.pxB[:,i] / self.pDB[:,i]) * self.pB[:,i] + (self.pxO[:,i] / self.pDO[:,i]) * self.pO[i]
         likelihood = np.sum(sub_likelihood,axis=1)
         return likelihood
-            
         
     def return_components(self):
         return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
