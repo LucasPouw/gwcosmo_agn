@@ -40,11 +40,11 @@ class posterior_samples(object):
     Parameters
     ----------
     posterior_samples : Path to posterior samples file to be loaded.
-    path : Internal field of the json or the h5 file
+    field : Internal field of the json or the h5 file
     """
-    def __init__(self, posterior_samples=None,path=None):
+    def __init__(self, posterior_samples=None,field=None):
         self.posterior_samples = posterior_samples
-        self.path=path
+        self.field=field
         
         self.load_posterior_samples()
 
@@ -105,7 +105,7 @@ class posterior_samples(object):
             with open(self.posterior_samples) as f:
                 data = json.load(f)
 
-            PE_struct=data['posterior_samples'][self.path]
+            PE_struct=data['posterior_samples'][self.field]
 
             m1_ind=PE_struct['parameter_names'].index('mass_1')
             m2_ind=PE_struct['parameter_names'].index('mass_2')
@@ -114,19 +114,19 @@ class posterior_samples(object):
             dec_ind=PE_struct['parameter_names'].index('dec')
                         
             nsamp=len(PE_struct['samples'])
-
-            self.distance = np.array([PE_struct['samples'][i][dl_ind] for i in range(nsamp)])
-            self.ra = np.array([PE_struct['samples'][i][ra_ind] for i in range(nsamp)])
-            self.dec = np.array([PE_struct['samples'][i][dec_ind] for i in range(nsamp)])
-            self.mass_1 = np.array([PE_struct['samples'][i][m1_ind] for i in range(nsamp)])
-            self.mass_2 = np.array([PE_struct['samples'][i][m2_ind] for i in range(nsamp)])
+            
+            self.distance = np.array(PE_struct['samples'])[:,dl_ind].reshape(-1)
+            self.ra = np.array(PE_struct['samples'])[:,ra_ind].reshape(-1)
+            self.dec = np.array(PE_struct['samples'])[:,dec_ind].reshape(-1)
+            self.mass_1 = np.array(PE_struct['samples'])[:,m1_ind].reshape(-1)
+            self.mass_2 = np.array(PE_struct['samples'])[:,m2_ind].reshape(-1)
             self.nsamples = len(self.distance)
 
 
         if self.posterior_samples[-2:] == 'h5':
             file = h5py.File(self.posterior_samples, 'r')
 
-            if self.path is None:
+            if self.field is None:
                 approximants = ['C01:PhenomPNRT-HS', 'C01:NRSur7dq4',
                                 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
                                 'C01:IMRPhenomD']
@@ -138,7 +138,7 @@ class posterior_samples(object):
                     except KeyError:
                         continue
             else:
-                data=file[path]
+                data=file[field]
 
             self.distance = data['posterior_samples']['luminosity_distance']
             self.ra = data['posterior_samples']['ra']
