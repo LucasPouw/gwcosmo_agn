@@ -422,7 +422,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.mth_map = np.ones(len(self.sub_pixel_indices))*mth
         else:
             print('There are no galaxies in this pixel')
-            self.mth_map = np.ones(len(self.sub_pixel_indices))*mth
+            self.mth_map = np.ones(len(self.sub_pixel_indices))*np.inf
 
         if zuncert == False:
             self.nfine = 1
