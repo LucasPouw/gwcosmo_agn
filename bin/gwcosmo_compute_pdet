@@ -63,8 +63,12 @@ parser = OptionParser(
             help="Directory of constant_H0 Pdets to combine into single Pdet pickle."),
         Option("--outputfile", default=None,
             help="Name of output pdet file."),
+         Option("--Omega_m", default='0.308', type=float,
+            help="Omega of matter."),
         Option("--snr", default='12.0', type=float,
-            help="Network SNR threshold.")
+            help="Network SNR threshold."),
+        Option("--detected_masses", default='False',
+            help="Set to True if you want to keep track of the detected masses.")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -78,7 +82,10 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
     
 mass_distribution = str(opts.mass_distribution)
-psd = str(opts.psd)
+if opts.psd == None:
+    psd = None
+else:
+    psd = str(opts.psd)
  
 alpha = float(opts.powerlaw_slope)
 Mmin = float(opts.minimum_mass)
@@ -95,6 +102,8 @@ Nsamps = int(opts.Nsamps)
 network_snr_threshold = float(opts.snr)
 constant_H0 = str2bool(opts.constant_H0)
 pdet_path = str(opts.combine)
+Omega_m=float(opts.Omega_m)
+detected_masses = str2bool(opts.detected_masses)
 
 if constant_H0 is True:
     H0 = float(opts.H0)
@@ -107,113 +116,116 @@ else:
     kind = 'inspiral'
 
 if opts.combine is None:
-    if mass_distribution == 'BBH-powerlaw':
-        print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) 
+    if psd != None:
+        if mass_distribution == 'BBH-powerlaw':
+            print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha) 
               + " at "+ psd + " sensitivity using the " + kind)
+        else:
+            print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
     else:
-        print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + psd + " sensitivity using the " + kind)
+        if mass_distribution == 'BBH-powerlaw':
+            print("Calculating Pdet with a " + mass_distribution + " mass distribution with alpha = " + str(alpha)
+              + " marginalizing over the psd using the " + kind)
+        else:
+            print("Calculating Pdet with a " + mass_distribution + " mass distribution at " + "  marginalizing over the psd using the " + kind)
 
-    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, basic=basic,
-                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax,
+
+    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic,
+                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax,Omega_m=Omega_m,
                                                               full_waveform=full_waveform, Nsamps=Nsamps, 
                                                               constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
 
     if opts.outputfile is None:
-        if mass_distribution == 'BBH-powerlaw':
-            pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
+        if psd != None:
+            if mass_distribution == 'BBH-powerlaw':
+                pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
+            else:
+                pdet_path = '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
         else:
-            pdet_path = '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
+            if mass_distribution == 'BBH-powerlaw':
+                pdet_path = '{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
+            else:
+                pdet_path = '{}_Nsamps{}_{}.p'.format(mass_distribution, Nsamps, kind)
     else:
         pdet_path = str(opts.outputfile)
 
     pickle.dump( pdet, open( pdet_path, "wb" ) )
-
+    
 else:
     probs = {}
+    detected = {}
     for file in os.listdir(pdet_path):
         if file.endswith(".p"):
             pdets = pickle.load(open(os.path.join(pdet_path,str(file)), 'rb'))
-            psd = pdets.asd
-            alpha = pdets.alpha
-            Mmin = pdets.Mmin
-            Mmax = pdets.Mmax
-            mass_distribution = pdets.mass_distribution
+            detected_masses = pdets.detected_masses
             break
 
-    for h0 in H0:
-        try:
-            pdets = pickle.load(open(pdet_path+'/pdet_'+psd+'_'+str(alpha)+'_'+str(int(h0))+'.p', 'rb'))
-            probs[h0] = pdets.prob
-        except:
-            print("Could not load "+'pdet_'+psd+'_'+str(alpha)+'_'+str(int(h0))+'.p')
+    for file in os.listdir(pdet_path):
+        if file.endswith(".p"):
+             pdets = pickle.load(open(os.path.join(pdet_path,str(file)), 'rb'))
+             h0 = pdets.H0vec
+             probs[h0] = pdets.prob
+             if detected_masses==True:
+                 detected[h0] = pdets.detected==1
 
     H0vec = np.array(list(probs.keys()))
-    prob = np.array(list(probs.values()))
+    H0vec = sorted(H0vec)
+    values = []
+    for h0 in H0vec:
+        values.append(probs[h0])
+    prob = np.array(values)
+    print('Total number of H0 bins: '+str(len(H0vec)))
     print(H0vec)
     print(prob)
     pdet = gwcosmo.likelihood.detection_probability.DetectionProbability(
-                    mass_distribution=mass_distribution, alpha=alpha,
-                    asd=psd, detectors=['H1', 'L1'], Nsamps=2,
-                    network_snr_threshold=12.0, Omega_m=0.308,
-                    linear=False, basic=False, M1=50., M2=50.,
-                    constant_H0=False, H0=H0vec, full_waveform=True)
-    
-    Nsamps = pdets.Nsamps
-    RAs = pdets.RAs
-    Decs = pdets.Decs
-    incs = pdets.incs
-    psis = pdets.psis
-    phis = pdets.phis
-    mass_distribution = pdets.mass_distribution
-    dl_array = pdets.dl_array
-    m1 = pdets.m1/1.988e30
-    m2 = pdets.m2/1.988e30
-    alpha = pdets.alpha
-    Mmin = pdets.Mmin
-    Mmax = pdets.Mmax
-    psd = pdets.asd
-    full_waveform = pdets.full_waveform
-    network_snr_threshold = pdets.snr_threshold
-    Omega_m = pdets.Omega_m
-    linear = pdets.linear
-    seed = pdets.seed
-    detectors = pdets.detectors
+                    mass_distribution=pdets.mass_distribution, alpha=pdets.alpha,Mmin=pdets.Mmin, Mmax=pdets.Mmax,
+                    asd=pdets.asd, detectors=pdets.detectors, detected_masses=detected_masses,
+                    Nsamps=2, network_snr_threshold=pdets.snr_threshold,seed=pdets.seed, 
+                    Omega_m=pdets.Omega_m,linear=pdets.linear, basic=False, M1=pdets.M1, M2=pdets.M2,
+                    constant_H0=False, H0=H0vec, full_waveform=pdets.full_waveform)   
 
-    if full_waveform is True:
+    if pdets.full_waveform is True:
        kind = 'full_waveform'
     else:
        kind = 'inspiral'
 
+    pdet.Nsamps = pdets.Nsamps 
     pdet.H0vec = H0vec
-    pdet.Nsamps = Nsamps
     pdet.prob = prob
-    pdet.RAs = RAs
-    pdet.Decs = Decs
-    pdet.incs = incs
-    pdet.psis = psis
-    pdet.phis = phis
-    pdet.mass_distribution = mass_distribution
-    pdet.dl_array = dl_array
-    pdet.m1 = m1
-    pdet.m2 = m2
-    pdet.Omega_m = Omega_m
-    pdet.linear = linear
-    pdet.seed = seed
-    pdet.detectors = detectors
-    pdet.network_snr_threshold = network_snr_threshold
-
+    pdet.RAs = pdets.RAs
+    pdet.Decs = pdets.Decs
+    pdet.incs = pdets.incs
+    pdet.psis = pdets.psis
+    pdet.phis = pdets.phis
+    pdet.dl_array = pdets.dl_array
+    pdet.m1 = pdets.m1/1.988e30
+    pdet.m2 = pdets.m2/1.988e30
+    pdet.dets = pdets.dets
+    pdet.psds = pdets.psds 
+   
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
-        logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])   
-    interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
+        logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])  
+        logit_prob[i]=np.where(logit_prob[i]==float('-inf'), -33, logit_prob[i]) 
+    interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='linear')
     pdet.interp_average = interp_average
     
-    if mass_distribution == 'BBH-powerlaw':
-        pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution,
-                                                                             str(alpha), str(Mmin), str(Mmax), 
-                                                                             str(Nsamps), kind,network_snr_threshold)
+    if psd != None:
+        if pdets.mass_distribution == 'BBH-powerlaw':
+            pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, pdets.mass_distribution,
+                                                                             str(pdets.alpha), str(pdets.Mmin), str(pdets.Mmax), 
+                                                                             str(pdets.Nsamps), kind,str(pdets.snr_threshold))
+        else:
+            pdet_path = '{}PSD_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets.snr_threshold))
     else:
-        pdet_path = '{}PSD_{}_Nsamps{}_{}_snr_{}.p'.format(psd, mass_distribution, str(Nsamps), kind,network_snr_threshold)
-    
-    pickle.dump( pdet, open( pdet_path, "wb" ) )
+        if pdets.mass_distribution == 'BBH-powerlaw':
+            pdet_path = '{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution,
+                                                                             str(pdets.alpha), str(pdets.Mmin), str(pdets.Mmax),
+                                                                             str(pdets.Nsamps), kind,str(pdets.snr_threshold))
+        else:
+            pdet_path = '{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets._snr_threshold))
+
+    if detected_masses==True:
+        np.savez(pdet_path+'_detected.npz',[detected,m1,m2])
+    pickle.dump( pdet, open( pdet_path+'.p', "wb" ) )
 

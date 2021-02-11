@@ -63,6 +63,8 @@ parser = OptionParser(
             help="Number of H0 bins"),
         Option("--posterior_samples", default=None,
             help="Path to LALinference posterior samples file in format (.dat or hdf5)"),
+        Option("--posterior_samples_field", default=None,
+            help="Internal field of the posterior samples file, e.g. h5 or json field"),
         Option("--skymap", default=None,
             help="Path to LALinference 3D skymap file in format (.fits or fits.gz)"),
         Option("--Pdet", default=None,
@@ -133,7 +135,8 @@ if opts.Pdet is None:
 if opts.posterior_samples is not None:
     posterior_samples = str(opts.posterior_samples)
 
-
+if opts.posterior_samples_field is not None:
+    posterior_samples_field = str(opts.posterior_samples_field)
 
 
 # Set command line arguments
@@ -179,7 +182,7 @@ print('Setting up a cosmology with Omega_m={}'.format(Omega_m))
 # Once different methods can run with just skymap (instead of samples) this will need moving
 if opts.posterior_samples is not None:
     print("Loading posterior samples.")
-    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples)
+    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,path=posterior_samples_field)
     
     px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, reweight_samples=reweight_samples, mass_distribution=mass_distribution, alpha=mass_slope, mmin=Mmin, mmax=Mmax)
 
