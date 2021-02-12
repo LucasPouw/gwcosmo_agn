@@ -137,13 +137,15 @@ if opts.posterior_samples is not None:
 
 if opts.posterior_samples_field is not None:
     posterior_samples_field = str(opts.posterior_samples_field)
+else:
+    posterior_samples_field = None
+    
 
 
 # Set command line arguments
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = int(opts.bins_H0)
-
 
 redshift_evolution = str2bool(opts.redshift_evolution)
 Lambda = float(opts.Lambda)
@@ -182,7 +184,7 @@ print('Setting up a cosmology with Omega_m={}'.format(Omega_m))
 # Once different methods can run with just skymap (instead of samples) this will need moving
 if opts.posterior_samples is not None:
     print("Loading posterior samples.")
-    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,path=posterior_samples_field)
+    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,field=posterior_samples_field)
     
     px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, reweight_samples=reweight_samples, mass_distribution=mass_distribution, alpha=mass_slope, mmin=Mmin, mmax=Mmax)
 
