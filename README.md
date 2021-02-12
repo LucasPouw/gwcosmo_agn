@@ -37,23 +37,21 @@ Once the conda distribution is installed and activated on your machine, please f
 ```
 conda create -n gwcosmo python=3.6
 ```
-* When the virtual environment is ready, activate it with 
+* When the virtual environment is ready, activate it with (your python distribution will change to `gwcosmo`)
 ```
 conda activate gwcosmo
 ```
-    your python distribution will change to `gwcosmo`
 * Run the following line to install all the python packages required by `gwcosmo`
 ```
 pip install -r requirements
 ```
 * Install `gwcosmo` by running 
 ```
-Python setup.py install
+python setup.py install
 ```
-
 * You are ready to use `gwcosmo`. Note that, if you modify the code, you can easily reinstall it by using
 ```
-Python setup.py install --force
+python setup.py install --force
 ```
 
 
