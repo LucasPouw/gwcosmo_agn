@@ -414,15 +414,19 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 if index in self.sub_galaxy_indices.keys():
                     m = self.galm[self.sub_galaxy_indices[index]]               
                     temp_mth = np.median(m)
+                    # if mth is provided, override calculation
+                    if mth != None:
+                        temp_mth = mth
                     # if less than 10 galaxies, consider pixel empty
                     if len(m) < 10: 
                         temp_mth = np.inf
                     self.mth_map[i] = temp_mth
-            if mth != None:
-                self.mth_map = np.ones(len(self.sub_pixel_indices))*mth
+
         else:
             print('There are no galaxies in this pixel')
             self.mth_map = np.ones(len(self.sub_pixel_indices))*np.inf
+            
+        print(self.mth_map)
 
         if zuncert == False:
             self.nfine = 1
