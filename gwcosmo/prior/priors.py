@@ -122,8 +122,8 @@ class mass_distribution(object):
 
         if self.name == 'BNS':
             # We assume p(m1,m2)=p(m1)p(m2)
-            dist['mass_1'] = lambda m1s: 1/(3-1)
-            dist['mass_2'] = lambda m2s: 1/(3-1)
+            dist['mass_1'] = lambda m1s: np.ones_like(m1s)/(3-1)
+            dist['mass_2'] = lambda m2s: np.ones_like(m2s)/(3-1)
 
         if self.name == 'NSBH':
             if self.alpha != 1:
@@ -131,7 +131,7 @@ class mass_distribution(object):
             else:
                 dist['mass_1'] = lambda m1s: np.power(m1s,-self.alpha)/(np.log(self.mmax)-np.log(self.mmin))
 
-            dist['mass_2'] = lambda m2s: 1/(3-1)
+            dist['mass_2'] = lambda m2s: np.ones_like(m2s)/(3-1)
 
         if self.name == 'BBH-constant':
             dist['mass_1'] = DeltaFunction(self.m1)
@@ -145,16 +145,16 @@ class mass_distribution(object):
             # ms1 is not a bug in mass_2. That depends only on that var
 
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms1)
-            arr_result[(ms1>self.mmax) | (ms2<self.mmin)]=0
+            arr_result[(ms1>self.mmax) | (ms2<self.mmin) | (ms1<ms2)]=0
 
         if self.name == 'BNS':
             # We assume p(m1,m2)=p(m1)p(m2)
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
-            arr_result[(ms1>3) | (ms2<1)]=0
+            arr_result[(ms1>3) | (ms2<1) | (ms1<ms2)]=0
 
         if self.name == 'NSBH':
             arr_result = self.dist['mass_1'](ms1)*self.dist['mass_2'](ms2)
-            arr_result[(ms1>self.mmax) | (ms1<self.mmin) | (ms2<1) | (ms2>3)]=0
+            arr_result[(ms1>self.mmax) | (ms1<self.mmin) | (ms2<1) | (ms2>3) | (ms1<ms2)]=0
 
         if self.name == 'BBH-constant':
             arr_result = self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
