@@ -135,7 +135,7 @@ class posterior_samples(object):
                     except KeyError:
                         continue
             else:
-                data=file[field]
+                data=file[self.field]
 
             self.distance = data['posterior_samples']['luminosity_distance']
             self.ra = data['posterior_samples']['ra']
