@@ -9,15 +9,18 @@ import sys
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
-from scipy.interpolate import splev, splrep
+from scipy.interpolate import splev, splrep,interp1d
 from astropy import constants as const
 from astropy import units as u
 from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint, DeltaFunction
 from bilby import gw
 
+import numpy as _np
+import copy as _copy
+import sys as _sys
+from . import custom_math_priors as _cmp
+
 import gwcosmo
-
-
 
 def pH0(H0, prior='log'):
     """
@@ -114,7 +117,7 @@ class mass_distribution(object):
         if self.name == 'BBH-powerlaw':
 
             if self.alpha != 1:
-                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)*(1-self.alpha))/(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
             else:
                 dist['mass_1'] = lambda m1s: np.power(m1s,-self.alpha)/(np.log(self.mmax)-np.log(self.mmin))
 
@@ -127,7 +130,7 @@ class mass_distribution(object):
 
         if self.name == 'NSBH':
             if self.alpha != 1:
-                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)/(1-self.alpha))*(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
+                dist['mass_1'] = lambda m1s: (np.power(m1s,-self.alpha)*(1-self.alpha))/(np.power(self.mmax,1-self.alpha)-np.power(self.mmin,1-self.alpha))
             else:
                 dist['mass_1'] = lambda m1s: np.power(m1s,-self.alpha)/(np.log(self.mmax)-np.log(self.mmin))
 
@@ -190,3 +193,130 @@ class distance_distribution(object):
 
     def prob(self, samples):
         return self.dist['luminosity_distance'].prob(samples)
+    
+
+class mass_prior(object):
+    """
+    Wrapper for for managing the priors on source frame masses.
+    The prior is factorized as :math:`p(m_1,m_2) \\propto p(m_1)p(m_2|m_1)`
+
+    Parameters
+    ----------
+    name: str
+        Name of the model that you want. Available 'BBH-powerlaw', 'BBH-powerlaw-gaussian'
+        'BBH-broken-powerlaw'.
+    hyper_params_dict: dict
+        Dictionary of hyperparameters for the prior model you want to use. See code lines for more details
+    """
+
+    def __init__(self, name, hyper_params_dict):
+
+        self.name = name
+        self.hyper_params_dict=_copy.deepcopy(hyper_params_dict)
+        dist = {}
+
+        if self.name == 'BBH-powerlaw':
+            alpha = hyper_params_dict['alpha']
+            beta = hyper_params_dict['beta']
+            mmin = hyper_params_dict['mmin']
+            mmax = hyper_params_dict['mmax']
+
+            dist={'mass_1':_cmp.PowerLaw_math(alpha=-alpha,min_pl=mmin,max_pl=mmax),
+                'mass_2':_cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)}
+
+            self.mmin = mmin
+            self.mmax = mmax
+
+        elif self.name == 'BBH-powerlaw-gaussian':
+            alpha = hyper_params_dict['alpha']
+            beta = hyper_params_dict['beta']
+            mmin = hyper_params_dict['mmin']
+            mmax = hyper_params_dict['mmax']
+
+            mu_g = hyper_params_dict['mu_g']
+            sigma_g = hyper_params_dict['sigma_g']
+            lambda_peak = hyper_params_dict['lambda_peak']
+
+            delta_m = hyper_params_dict['delta_m']
+
+
+            m1pr = _cmp.PowerLawGaussian_math(alpha=-alpha,min_pl=mmin,max_pl=mmax,lambda_g=lambda_peak
+                ,mean_g=mu_g,sigma_g=sigma_g,min_g=mmin,max_g=mu_g+5*sigma_g)
+            m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=_np.max([mu_g+5*sigma_g,mmax]))
+
+            dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+            'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
+
+
+            # TODO Assume that the gaussian peak does not overlap too much with the mmin
+            self.mmin = mmin
+            self.mmax = dist['mass_1'].maximum
+
+        elif self.name == 'BBH-broken-powerlaw':
+            alpha_1 = hyper_params_dict['alpha_1']
+            alpha_2 = hyper_params_dict['alpha_2']
+            beta = hyper_params_dict['beta']
+            mmin = hyper_params_dict['mmin']
+            mmax = hyper_params_dict['mmax']
+            b =  hyper_params_dict['b']
+
+            delta_m = hyper_params_dict['delta_m']
+
+            m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
+            m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)
+
+            dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+            'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
+
+
+            self.mmin = mmin
+            self.mmax = mmax
+
+        else:
+            print('Name not known, aborting')
+            _sys.exit()
+
+        self.dist = dist
+
+    def joint_prob(self, ms1, ms2):
+        """
+        This method returns the joint probability :math:`p(m_1,m_2)`
+
+        Parameters
+        ----------
+        ms1: np.array(matrix)
+            mass one in solar masses
+        ms2: dict
+            mass two in solar masses
+        """
+        
+        to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].conditioned_prob(ms2,self.mmin*_np.ones_like(ms1),ms1)
+
+        return to_ret
+
+    def sample(self, Nsample):
+        """
+        This method samples from the joint probability :math:`p(m_1,m_2)`
+
+        Parameters
+        ----------
+        Nsample: int
+            Number of samples you want
+        """
+
+        vals_m1 = np.random.rand(Nsample)
+        vals_m2 = np.random.rand(Nsample)
+        
+        m1_trials = np.linspace(self.dist['mass_1'].minimum,self.dist['mass_1'].maximum,10000)
+        m2_trials = np.linspace(self.dist['mass_2'].minimum,self.dist['mass_2'].maximum,10000)
+        
+        cdf_m1_trials = self.dist['mass_1'].cdf(m1_trials)
+        cdf_m2_trials = self.dist['mass_2'].cdf(m2_trials)
+        
+        interpo_icdf_m1 = interp1d(cdf_m1_trials,m1_trials)
+        interpo_icdf_m2 = interp1d(cdf_m2_trials,m2_trials)
+        
+        mass_1_samples = interpo_icdf_m1(vals_m1)
+        mass_2_samples = interpo_icdf_m2(vals_m2*self.dist['mass_2'].cdf(mass_1_samples))
+         
+        return mass_1_samples, mass_2_samples
