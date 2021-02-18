@@ -472,6 +472,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         if self.luminosity_weights.luminosity_weights == True:
             # TODO: find better selection criteria for sampling
             mlim = np.percentile(np.sort(m),0.01) # more draws for galaxies in brightest 0.01 percent
+            mlim = np.ceil(mlim * 10) / 10.0 # round up to nearst dp to avoid rounding error where no galaxies are selected
             samp_res = {'fine': self.nfine, 'coarse': self.ncoarse}
             galindex = {'fine': np.where(m <= mlim)[0], 'coarse': np.where(mlim < m)[0]}
             
