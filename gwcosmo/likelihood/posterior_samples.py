@@ -190,12 +190,12 @@ class posterior_samples(object):
         return dl, weights
 
 
-    def marginalized_redshift_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100):
+    def marginalized_redshift_reweight(self, H0, hyper_params_dict, name):
         """
         Computes the marginalized distance posterior KDE.
         """
         # Prior distribution used in this work
-        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
+        new_prior = mass_prior(name=name, hyper_params_dict=hyper_params_dict)
 
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
@@ -247,7 +247,7 @@ class make_px_function(object):
         Should the samples be reweighted to the same source-frame mass prior
         as used in the selection effects? (Default=True)
     """
-    def __init__(self, samples,H0,reweight_samples=True,mass_distribution='BBH-powerlaw',alpha=1.6,mmin=5.0,mmax=100.):
+    def __init__(self, samples,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
         redshift_bins = 500
         vals = np.zeros((len(H0),redshift_bins))
         zmin = z_dlH0(np.amin(samples.distance),H0[0])*0.5
@@ -255,7 +255,7 @@ class make_px_function(object):
         for i,H in enumerate(H0):
             if reweight_samples == True:
                 # TODO fix this for BNS
-                zkernel, norm = samples.marginalized_redshift_reweight(H, mass_distribution, alpha, mmin, mmax)
+                zkernel, norm = samples.marginalized_redshift_reweight(H, hyper_params_dict,name=name)
             else:
                 zkernel, norm = samples.marginalized_redshift(H)
             z_array = np.linspace(zmin, zmax, redshift_bins)

@@ -45,7 +45,7 @@ def pH0(H0, prior='log'):
         return np.ones(len(H0))
     if prior == 'log':
         return 1./H0
-
+'''
 class mass_sampling(object):
      def __init__(self, name, alpha=1.6, mmin=5, mmax=50, m1=50, m2=50):
         self.name = name
@@ -163,7 +163,7 @@ class mass_distribution(object):
             arr_result = self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
 
         return arr_result
-
+'''
 
 class distance_distribution(object):
     def __init__(self, name):
@@ -215,19 +215,22 @@ class mass_prior(object):
         self.hyper_params_dict=_copy.deepcopy(hyper_params_dict)
         dist = {}
 
-        if self.name == 'BBH-powerlaw':
+        if self.name == 'BBH-powerlaw' or self.name == 'NSBH-powerlaw':
             alpha = hyper_params_dict['alpha']
             beta = hyper_params_dict['beta']
             mmin = hyper_params_dict['mmin']
             mmax = hyper_params_dict['mmax']
-
-            dist={'mass_1':_cmp.PowerLaw_math(alpha=-alpha,min_pl=mmin,max_pl=mmax),
-                'mass_2':_cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)}
+            if self.name == 'BBH-powerlaw':
+                dist={'mass_1':_cmp.PowerLaw_math(alpha=-alpha,min_pl=mmin,max_pl=mmax),
+                     'mass_2':_cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)}
+            else:
+                dist={'mass_1':_cmp.PowerLaw_math(alpha=-alpha,min_pl=mmin,max_pl=mmax),
+                     'mass_2':_cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0)}
 
             self.mmin = mmin
             self.mmax = mmax
 
-        elif self.name == 'BBH-powerlaw-gaussian':
+        elif self.name == 'BBH-powerlaw-gaussian' or self.name == 'NSBH-powerlaw-gaussian':
             alpha = hyper_params_dict['alpha']
             beta = hyper_params_dict['beta']
             mmin = hyper_params_dict['mmin']
@@ -239,21 +242,27 @@ class mass_prior(object):
 
             delta_m = hyper_params_dict['delta_m']
 
+            if self.name == 'BBH-powerlaw-gaussian':
+                m1pr = _cmp.PowerLawGaussian_math(alpha=-alpha,min_pl=mmin,max_pl=mmax,lambda_g=lambda_peak
+                    ,mean_g=mu_g,sigma_g=sigma_g,min_g=mmin,max_g=mu_g+5*sigma_g)
+                m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=_np.max([mu_g+5*sigma_g,mmax]))
+                dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+                      'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
 
-            m1pr = _cmp.PowerLawGaussian_math(alpha=-alpha,min_pl=mmin,max_pl=mmax,lambda_g=lambda_peak
-                ,mean_g=mu_g,sigma_g=sigma_g,min_g=mmin,max_g=mu_g+5*sigma_g)
-            m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=_np.max([mu_g+5*sigma_g,mmax]))
-
-            dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
-            'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
+            else:
+                m1pr = _cmp.PowerLawGaussian_math(alpha=-alpha,min_pl=mmin,max_pl=mmax,lambda_g=lambda_peak
+                    ,mean_g=mu_g,sigma_g=sigma_g,min_g=mmin,max_g=mu_g+5*sigma_g)
+                m2pr = _cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0)
+                dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+                      'mass_2':m2pr}
 
 
             # TODO Assume that the gaussian peak does not overlap too much with the mmin
             self.mmin = mmin
             self.mmax = dist['mass_1'].maximum
 
-        elif self.name == 'BBH-broken-powerlaw':
-            alpha_1 = hyper_params_dict['alpha_1']
+        elif self.name == 'BBH-broken-powerlaw' or self.name == 'NSBH-broken-powerlaw':
+            alpha_1 = hyper_params_dict['alpha']
             alpha_2 = hyper_params_dict['alpha_2']
             beta = hyper_params_dict['beta']
             mmin = hyper_params_dict['mmin']
@@ -261,17 +270,30 @@ class mass_prior(object):
             b =  hyper_params_dict['b']
 
             delta_m = hyper_params_dict['delta_m']
+            if self.name == 'BBH-broken-powerlaw':
+                m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
+                m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)
 
-            m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
-            m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)
+                dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+                      'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
+            else:
+                m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
+                m2pr = _cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0)
 
-            dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
-            'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
-
+                dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
+                      'mass_2':m2pr}
 
             self.mmin = mmin
             self.mmax = mmax
+            
+        elif self.name == 'BNS':
+            
+            dist={'mass_1':_cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0),
+                  'mass_2':_cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0)}
 
+            self.mmin = 1.0
+            self.mmax = 3.0
+            
         else:
             print('Name not known, aborting')
             _sys.exit()

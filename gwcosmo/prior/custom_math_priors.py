@@ -261,7 +261,7 @@ class PowerLawGaussian_math(object):
     def __init__(self,alpha,min_pl,max_pl,lambda_g,mean_g,sigma_g,min_g,max_g):
 
         self.minimum = _np.min([min_pl,min_g])
-        self.maximum = _np.min([max_pl,max_g])
+        self.maximum = _np.max([max_pl,max_g])
 
         self.min_pl = min_pl
         self.max_pl = max_pl

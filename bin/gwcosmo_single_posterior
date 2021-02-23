@@ -160,15 +160,23 @@ dH0 = H0[1] - H0[0]
 
 pdet = pickle.load(open(pdet_path, 'rb'))
 mass_distribution = pdet.mass_distribution
-mass_slope = pdet.alpha
-psd = pdet.asd
-Mmin = pdet.Mmin
-Mmax = pdet.Mmax
-network_snr_threshold = pdet.snr_threshold
+mass_slope, psd, Mmin, Mmax, network_snr_threshold = pdet.alpha, pdet.asd, pdet.Mmin, pdet.Mmax, pdet.snr_threshold
+mass_slope_2, beta, sigma_g, lambda_peak, mu_g, delta_m, b = pdet.alpha_2, pdet.beta, pdet.sigma_g, pdet.lambda_peak, pdet.mu_g, pdet.delta_m, pdet.b
+
+hyper_params_dict = {'alpha':mass_slope,'alpha_2':mass_slope_2,'mmin':Mmin,'mmax':Mmax,'beta':beta,'sigma_g':sigma_g,'lambda_peak':lambda_peak,
+                     'mu_g':mu_g,'delta_m':delta_m,'b':b}
+        
 
 print('Loading precomputed pdet with a {} mass distribution at {} sensitivity assuming an SNR threshold of {}.'.format(mass_distribution, psd, network_snr_threshold))
-if mass_distribution == 'BBH-powerlaw':
-    print('Mass distribution parameters: alpha=-{}, Mmin={}, Mmax={}'.format(mass_slope, Mmin, Mmax))
+if mass_distribution == 'BBH-powerlaw' or mass_distribution == 'NSBH-powerlaw':
+    print('{:s} mass distribution with parameters: alpha=-{}, beta=-{}, Mmin={}, Mmax={}'.format(mass_distribution,mass_slope, beta, Mmin, Mmax))
+elif mass_distribution == 'BBH-powerlaw-gaussian' or mass_distribution == 'NSBH-powerlaw-gaussian':
+    print('{:s} mass distribution with parameters: alpha=-{}, beta=-{}, Mmin={}, Mmax={}, lambda_peak={}, mu={}, sigma={}, delta={}'.format(mass_distribution,
+                                                   mass_slope, beta, Mmin, Mmax, lambda_peak, mu_g, sigma_g, delta_m))
+elif mass_distribution == 'BBH-broken-powerlaw' or mass_distribution == 'NSBH-broken-powerlaw':
+    print('{:s} mass distribution with parameters: alpha_1=-{}, alpha_2=-{}, beta=-{}, Mmin={}, Mmax={}, b={}, delta={}'.format(mass_distribution,
+                                                   mass_slope, mass_slope_2, beta, Mmin, Mmax, b, delta_m))
+                         
 
 Omega_m = pdet.Omega_m
 linear_cosmo = pdet.linear
@@ -186,7 +194,7 @@ if opts.posterior_samples is not None:
     print("Loading posterior samples.")
     samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,field=posterior_samples_field)
     
-    px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, reweight_samples=reweight_samples, mass_distribution=mass_distribution, alpha=mass_slope, mmin=Mmin, mmax=Mmax)
+    px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, hyper_params_dict, name=mass_distribution, reweight_samples=reweight_samples)
 
 if opts.method == 'counterpart':
     ### This method currently only works with posterior samples which are already 
@@ -259,7 +267,8 @@ if opts.method == 'statistical':
     else:
         ps_M = gwcosmo.gwcosmo.UniformWeighting()
 
-    me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
+    me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, 
+                                                         mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
 
 likelihood = me(H0,Lambda=Lambda)
 pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.return_components()

@@ -12,7 +12,7 @@ from scipy.stats import ncx2
 from scipy.special import logit, expit
 import healpy as hp
 from gwcosmo.utilities.standard_cosmology import *
-from gwcosmo.prior.priors import mass_sampling as mass_prior
+from gwcosmo.prior.priors import mass_prior
 from numpy import random
 import pickle
 import time
@@ -62,10 +62,10 @@ class DetectionProbability(object):
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
     """
-    def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], 
-                 detected_masses=False, Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308,
-                 linear=False, basic=False, alpha=1.6, Mmin=5., Mmax=50., M1=50., M2=50.,
-                 constant_H0=False, full_waveform=True, seed=1000):
+    def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], detected_masses=False, 
+                 Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308, linear=False, basic=False, 
+                 alpha=1.6, Mmin=5., Mmax=50., beta=0., alpha_2=0., mu_g=35., sigma_g=5., lambda_peak=0.2,
+                 delta_m=0., b=0.5, M1=50., M2=50., constant_H0=False, full_waveform=True, seed=1000):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -78,8 +78,15 @@ class DetectionProbability(object):
         self.alpha = alpha
         self.Mmin = Mmin
         self.Mmax = Mmax
-        self.M1=M1
-        self.M2=M2
+        self.alpha_2 = alpha_2
+        self.beta = beta
+        self.mu_g = mu_g
+        self.sigma_g = sigma_g
+        self.lambda_peak = lambda_peak
+        self.delta_m = delta_m
+        self.b = b
+        self.M1 = M1
+        self.M2 = M2
         self.full_waveform = full_waveform
         self.constant_H0 = constant_H0
         self.seed = seed
@@ -105,19 +112,19 @@ class DetectionProbability(object):
         self.incs = np.arccos(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         self.phis = np.random.rand(N)*2.0*np.pi
-        if self.mass_distribution == 'BNS':
-            mass_priors = mass_prior(self.mass_distribution)
+        
+        self.hyper_params_dict = {'alpha':self.alpha,'alpha_2':self.alpha_2,'mmin':self.Mmin,'mmax':self.Mmax,
+                                  'beta':self.beta,'sigma_g':self.sigma_g,'lambda_peak':self.lambda_peak,
+                                  'mu_g':self.mu_g,'delta_m':self.delta_m,'b':self.b}
+        
+        sampling = mass_prior(name=self.mass_distribution, hyper_params_dict=self.hyper_params_dict)
+        m1, m2 = sampling.sample(N)
+        
+        if self.mass_distribution == 'BNS' or self.mass_distribution == 'NSBH':
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
-        if self.mass_distribution == 'NSBH':
-            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
-            self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
-        if self.mass_distribution == 'BBH-powerlaw':
-            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
+        else:
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
-        if self.mass_distribution == 'BBH-constant':
-            mass_priors = mass_prior(self.mass_distribution, self.M1, self.M2)
-            self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
-        m1, m2 = mass_priors.sample(N)
+        
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
