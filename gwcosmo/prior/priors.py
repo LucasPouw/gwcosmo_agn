@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import numpy as np
 import sys
+import copy
 
 from scipy.integrate import quad, dblquad
 from scipy.stats import ncx2, norm
@@ -258,6 +259,7 @@ class mass_prior(object):
 
 
             # TODO Assume that the gaussian peak does not overlap too much with the mmin
+            
             self.mmin = mmin
             self.mmax = dist['mass_1'].maximum
 
@@ -270,6 +272,7 @@ class mass_prior(object):
             b =  hyper_params_dict['b']
 
             delta_m = hyper_params_dict['delta_m']
+            
             if self.name == 'BBH-broken-powerlaw':
                 m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
                 m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)
@@ -299,6 +302,9 @@ class mass_prior(object):
             _sys.exit()
 
         self.dist = dist
+        
+        if self.name.startswith('NSBH'):
+            self.mmin=1.0
 
     def joint_prob(self, ms1, ms2):
         """
@@ -312,7 +318,10 @@ class mass_prior(object):
             mass two in solar masses
         """
         
-        to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].conditioned_prob(ms2,self.mmin*_np.ones_like(ms1),ms1)
+        if self.name == 'BNS':
+            to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
+        else:
+            to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].conditioned_prob(ms2,self.mmin*_np.ones_like(ms1),ms1)
 
         return to_ret
 
@@ -339,6 +348,16 @@ class mass_prior(object):
         interpo_icdf_m2 = interp1d(cdf_m2_trials,m2_trials)
         
         mass_1_samples = interpo_icdf_m1(vals_m1)
-        mass_2_samples = interpo_icdf_m2(vals_m2*self.dist['mass_2'].cdf(mass_1_samples))
+        
+        if self.name == 'BNS':
+            mass_2_samples = interpo_icdf_m2(vals_m2)
+            indx = np.where(mass_2_samples>mass_1_samples)[0]
+            
+            for indx_sw in indx:
+                support = mass_1_samples[indx_sw]
+                mass_1_samples[indx_sw] = mass_2_samples[indx_sw]
+                mass_2_samples[indx_sw] = support
+        else:
+            mass_2_samples = interpo_icdf_m2(vals_m2*self.dist['mass_2'].cdf(mass_1_samples))
          
         return mass_1_samples, mass_2_samples
