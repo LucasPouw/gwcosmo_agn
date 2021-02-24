@@ -5,7 +5,6 @@ Rachel Gray
 """
 from numpy import *
 from scipy.integrate import quad
-import numpy as np
 
 class SchechterMagFunction(object):
     def __init__(self, Mstar_obs=-19.70, alpha=-1.07, phistar=1.):
@@ -35,4 +34,4 @@ def M_Mobs(H0, M_obs):
     """
     Given an observed absolute magnitude, returns absolute magnitude
     """
-    return M_obs + 5.*np.log10(H0/100.)
+    return M_obs + 5.*log10(H0/100.)

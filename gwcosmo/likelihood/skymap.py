@@ -4,12 +4,8 @@ Rachel Gray, Ignacio Magana, Archisman Ghosh, Ankan Sur
 """
 import numpy as np
 import scipy.stats
-from astropy.io import fits
 import healpy as hp
-from scipy import interpolate
 from scipy.stats import norm
-import sys
-
 
 # RA and dec from HEALPix index
 def ra_dec_from_ipix(nside, ipix, nest=False):
@@ -97,7 +93,7 @@ class skymap(object):
         distmax = 2*max(mu)
         dl = np.linspace(distmin, distmax, 200)
         dp_dr = [np.sum(self.prob * r**2 * self.distnorm *
-                        norm(self.distmu, self.distsigma).pdf(r)) for r in dl]
+                        scipy.stats.norm(self.distmu, self.distsigma).pdf(r)) for r in dl]
         return dl, dp_dr
 
     def lineofsight_distance(self, ra, dec):
@@ -106,7 +102,7 @@ class skymap(object):
         distmin = 0.5*min(mu)
         distmax = 2*max(mu)
         r = np.linspace(distmin, distmax, 200)
-        dp_dr = r**2 * self.distnorm[ipix] * norm(self.distmu[ipix],
+        dp_dr = r**2 * self.distnorm[ipix] * scipy.stats.norm(self.distmu[ipix],
                                                   self.distsigma[ipix]).pdf(r)
         return r, dp_dr
 
@@ -123,7 +119,7 @@ class skymap(object):
                                                    theta, ra, nest=self.nested,
                                                    lonlat=False)
 
-        dist_pdfs = [norm(loc=self.distmu[i], scale=self.distsigma[i])
+        dist_pdfs = [scipy.stats.norm(loc=self.distmu[i], scale=self.distsigma[i])
                      for i in pixnums]
         # Step 2: compute p(ra,dec)
         # p(ra, dec) = sum_i weight_i p(pixel_i)

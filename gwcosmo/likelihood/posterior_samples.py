@@ -3,35 +3,16 @@ LALinference posterior samples class and methods
 Ignacio Magana, Ankan Sur
 """
 import numpy as np
-import healpy as hp
 from scipy.stats import gaussian_kde
-from scipy import integrate, interpolate, random
 from astropy import units as u
-from astropy import constants as const
-from astropy.table import Table
 import h5py
-from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint
-from bilby import gw
 from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
-from ..prior.priors import *
+from ..prior.priors import distance_distribution, mass_prior
 import json
 
-from astropy.cosmology import FlatLambdaCDM, z_at_value
-import astropy.units as u
+from astropy.cosmology import FlatLambdaCDM
 import astropy.constants as constants
 from scipy.interpolate import interp1d, interp2d
-
-Om0 = 0.308
-zmin = 0.0001
-zmax = 10
-zs = np.linspace(zmin, zmax, 10000)
-cosmo = fast_cosmology(Omega_m=Om0)
-speed_of_light = constants.c.to('km/s').value
-
-def constrain_m1m2(parameters):
-    converted_parameters = parameters.copy()
-    converted_parameters['m1m2'] = parameters['mass_1'] - parameters['mass_2']
-    return converted_parameters
 
 
 class posterior_samples(object):
@@ -53,10 +34,13 @@ class posterior_samples(object):
     def E(self,z,Om):
         return np.sqrt(Om*(1+z)**3 + (1.0-Om))
 
-    def dL_by_z_H0(self,z,H0,Om0):
+    def dL_by_z_H0(self,z,H0,Om0=0.308):
+        speed_of_light = constants.c.to('km/s').value
+        cosmo = fast_cosmology(Omega_m=Om0)
         return cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
 
     def jacobian_times_prior(self,z,H0,Om0=0.308):
+        cosmo = fast_cosmology(Omega_m=Om0)
         jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
         dl = cosmo.dl_zH0(z, H0)
         return jacobian*(dl**2)
@@ -161,7 +145,10 @@ class posterior_samples(object):
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
-    def compute_source_frame_samples(self, H0):
+    def compute_source_frame_samples(self, H0,Om0=0.308):
+        zmin = 0.0001
+        zmax = 10
+        zs = np.linspace(zmin, zmax, 10000)
         cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
         dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value
         z_at_dL = interp1d(dLs,zs)
@@ -205,10 +192,11 @@ class posterior_samples(object):
         norm = np.sum(weights)
         return gaussian_kde(redshift,weights=weights), norm
 
-    def marginalized_redshift(self, H0):
+    def marginalized_redshift(self, H0,Om0=0.308):
         """
         Computes the marginalized distance posterior KDE.
         """
+        cosmo = fast_cosmology(Omega_m=Om0)
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
 

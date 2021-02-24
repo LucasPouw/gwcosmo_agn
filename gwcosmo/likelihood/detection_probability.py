@@ -3,22 +3,16 @@ Detection probability
 Rachel Gray, John Veitch, Ignacio Magana, Dominika Zieba
 """
 import lal
-from lal import ComputeDetAMResponse
 import lalsimulation as lalsim
 import numpy as np
 from scipy.interpolate import interp1d, splev, splrep, interp2d
 from scipy.integrate import quad
 from scipy.stats import ncx2
 from scipy.special import logit, expit
-import healpy as hp
-from gwcosmo.utilities.standard_cosmology import *
+from gwcosmo.utilities.standard_cosmology import fast_cosmology,z_dlH0,dl_zH0 
 from gwcosmo.prior.priors import mass_prior
-from numpy import random
-import pickle
-import time
 import progressbar
 import pkg_resources
-import os
 
 
 class DetectionProbability(object):
@@ -144,7 +138,7 @@ class DetectionProbability(object):
             self.prob_of_run[key] = self.days_of_runs[key]/total_days
         self.psds = []
         self.dets = []
-        p = random.rand(N)
+        p = np.random.rand(N)
         
         if self.asd == 'MDC':
             self.detectors = ['H1', 'L1']
@@ -179,9 +173,9 @@ class DetectionProbability(object):
             for i in range(N):
                d = []
                while len(d)==0:
-                   h = random.rand()
-                   l = random.rand()
-                   v = random.rand()
+                   h = np.random.rand()
+                   l = np.random.rand()
+                   v = np.random.rand()
                    if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
                        d.append('H1')
                    if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):

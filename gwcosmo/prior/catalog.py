@@ -2,18 +2,13 @@
 Module containing functionality for creation and management of galaxy catalogs.
 Ignacio Magana
 """
-import gwcosmo
 import numpy as np
-import healpy as hp
-import pandas as pd
 
 import h5py
 import pkg_resources
-import time
 import progressbar
 
-from ..utilities.standard_cosmology import *
-from ..utilities.schechter_function import *
+from ..utilities.standard_cosmology import L_M, M_mdl,dl_zH0
 
 # Global
 catalog_data_path = pkg_resources.resource_filename('gwcosmo',
@@ -70,8 +65,8 @@ class galaxy(object):
             for band in self.M:
                 L[band] = L_M(self.M[band])
             return L
- 
 
+        
 class galaxyCatalog(object):
     """
     Galaxy catalog class stores a dictionary of galaxy objects.

@@ -4,34 +4,20 @@ Rachel Gray, Archisman Ghosh, Ignacio Magana, John Veitch, Ankan Sur
 
 """
 from __future__ import absolute_import
-import lal
 import numpy as np
-import sys
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-import healpy as hp
 import warnings
 warnings.filterwarnings("ignore")
 
 from scipy.integrate import quad, dblquad
-from scipy.stats import ncx2, norm, truncnorm
-from scipy.interpolate import splev, splrep, interp1d
-from astropy import constants as const
-from astropy import units as u
-from ligo.skymap.moc import rasterize
-from ligo.skymap.core import uniq2ang
+from scipy.stats import ncx2, truncnorm
 
-import astropy.constants as constants
-
-
-
-import gwcosmo
-
-from .utilities.standard_cosmology import *
-from .utilities.schechter_function import *
-from .utilities.schechter_params import *
-from .utilities.calc_kcor import *
+from .utilities.standard_cosmology import dl_zH0,M_mdl,L_M
+from .utilities.schechter_function import M_Mobs
+from .utilities.schechter_params import SchechterParams
+from .utilities.calc_kcor import calc_kcor
 from .prior.catalog import color_names
 
 import time

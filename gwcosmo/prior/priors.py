@@ -5,23 +5,13 @@ Ignacio Magana, Rachel Gray
 from __future__ import absolute_import
 
 import numpy as np
-import sys
-import copy
 
-from scipy.integrate import quad, dblquad
-from scipy.stats import ncx2, norm
-from scipy.interpolate import splev, splrep,interp1d
-from astropy import constants as const
-from astropy import units as u
-from bilby.core.prior import Uniform, PowerLaw, PriorDict, Constraint, DeltaFunction
-from bilby import gw
+from scipy.interpolate import interp1d
 
 import numpy as _np
 import copy as _copy
 import sys as _sys
 from . import custom_math_priors as _cmp
-
-import gwcosmo
 
 def pH0(H0, prior='log'):
     """
