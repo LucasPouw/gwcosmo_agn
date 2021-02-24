@@ -82,7 +82,11 @@ parser = OptionParser(
         Option("--snr", default='12.0', type=float,
             help="Network SNR threshold."),
         Option("--detected_masses", default='False',
-            help="Set to True if you want to keep track of the detected masses.")
+            help="Set to True if you want to keep track of the detected masses."),
+        Option("--detectors", default='HLV',
+            help="Set the detectors to use for the pickle (default=HLV)."),
+        Option("--det_combination", default='True',
+            help="Set whether or not to consider all possible detectors combinations (default=True).")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -115,7 +119,7 @@ b = float(opts.b)
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = float(opts.bins_H0)
-
+det_combination = str2bool(opts.det_combination)
 linear = str2bool(opts.linear_cosmology)
 basic = str2bool(opts.basic_pdet)
 full_waveform = str2bool(opts.full_waveform)
@@ -125,6 +129,14 @@ constant_H0 = str2bool(opts.constant_H0)
 pdet_path = str(opts.combine)
 Omega_m=float(opts.Omega_m)
 detected_masses = str2bool(opts.detected_masses)
+detector = str(opts.detectors)
+dets = []
+if 'H' in detector:
+    dets.append('H1') 
+if 'L' in detector:
+    dets.append('L1')
+if 'V' in detector:
+    dets.append('V1')
 
 if constant_H0 is True:
     H0 = float(opts.H0)
@@ -138,9 +150,9 @@ else:
 
 if opts.combine is None:
     
-    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic,
-                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g,
-                                                              sigma_g=sigma_g, lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, 
+    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic, detectors=dets,
+                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g, 
+                                                              lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, det_combination = det_combination,
                                                               b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
 
     if opts.outputfile is None:

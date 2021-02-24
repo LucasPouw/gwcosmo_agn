@@ -56,7 +56,7 @@ class DetectionProbability(object):
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
     """
-    def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], detected_masses=False, 
+    def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], detected_masses=False, det_combination=True,
                  Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308, linear=False, basic=False, 
                  alpha=1.6, Mmin=5., Mmax=50., beta=0., alpha_2=0., mu_g=35., sigma_g=5., lambda_peak=0.2,
                  delta_m=0., b=0.5, M1=50., M2=50., constant_H0=False, full_waveform=True, seed=1000):
@@ -85,7 +85,7 @@ class DetectionProbability(object):
         self.constant_H0 = constant_H0
         self.seed = seed
         self.detected_masses = detected_masses
-
+        self.det_combination = det_combination
         np.random.seed(seed)
         
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
@@ -171,19 +171,22 @@ class DetectionProbability(object):
                for i in range(N):
                    self.psds.append(self.asd)
             for i in range(N):
-               d = []
-               while len(d)==0:
-                   h = np.random.rand()
-                   l = np.random.rand()
-                   v = np.random.rand()
-                   if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
-                       d.append('H1')
-                   if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):
-                       d.append('L1')
-                   if (v<=self.duty_factor[self.psds[i]]['V1']) and ('V1' in self.detectors):
-                       d.append('V1')
+               if self.det_combination == True:
+                   d = []
+                   while len(d)==0:
+                       h = np.random.rand()
+                       l = np.random.rand()
+                       v = np.random.rand()
+                       if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
+                           d.append('H1')
+                       if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):
+                           d.append('L1')
+                       if (v<=self.duty_factor[self.psds[i]]['V1']) and ('V1' in self.detectors):
+                           d.append('V1')
+               else:
+                   d = self.detectors
                self.dets.append(d)
-          
+            
             for run in self.asds:
                 for det in self.duty_factor[run]:
                     if self.duty_factor[run][det]>0:
