@@ -72,6 +72,7 @@ class skymap(object):
         p_ra_dec = np.sum(weights * probvals * skyprob)
 
         return(p_ra_dec)
+    
 
     def skyprob(self, ra, dec):
         """
@@ -106,29 +107,7 @@ class skymap(object):
                                                   self.distsigma[ipix]).pdf(r)
         return r, dp_dr
 
-    def probability(self, ra, dec, dist):
-        """
-        returns probability density at given ra, dec, dist
-        p(ra,dec) * p(dist | ra,dec )
-        RA, dec : radians
-        dist : Mpc
-        """
-        theta = np.pi/2.0 - dec
-        # Step 1: find 4 nearest pixels
-        (pixnums, weights) = hp.get_interp_weights(self.nside,
-                                                   theta, ra, nest=self.nested,
-                                                   lonlat=False)
-
-        dist_pdfs = [scipy.stats.norm(loc=self.distmu[i], scale=self.distsigma[i])
-                     for i in pixnums]
-        # Step 2: compute p(ra,dec)
-        # p(ra, dec) = sum_i weight_i p(pixel_i)
-        probvals = np.array([self.distnorm[i] * dist_pdfs[i].pdf(dist)
-                            for i, pixel in enumerate(pixnums)])
-        skyprob = self.prob[pixnums]
-        p_ra_dec = np.sum(weights * probvals * skyprob)
-
-        return(p_ra_dec)
+    
 
     def above_percentile(self, thresh, nside):
         """Returns indices of array within the given threshold

@@ -157,25 +157,6 @@ class posterior_samples(object):
         mass_2_source = self.mass_2/(1+redshift)
         return redshift, mass_1_source, mass_2_source
 
-    def reweight_samples(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
-        # Prior distribution used in the LVC analysis
-        prior = distance_distribution(name=name)
-        # Prior distribution used in this work
-        new_prior = mass_distribution(name=name, alpha=alpha, mmin=mmin, mmax=mmax)
-
-        # Get source frame masses
-        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
-
-        # Re-weight
-        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/ prior.prob(self.distance)
-        np.random.seed(seed)
-        draws = np.random.uniform(0, max(weights), weights.shape)
-        keep = weights > draws
-        m1det = self.mass_1[keep]
-        m2det = self.mass_2[keep]
-        dl = self.distance[keep]
-        return dl, weights
-
 
     def marginalized_redshift_reweight(self, H0, hyper_params_dict, name):
         """
@@ -205,20 +186,6 @@ class posterior_samples(object):
         norm = np.sum(weights)
         return gaussian_kde(redshift,weights=weights), norm
 
-    def marginalized_distance_reweight(self, H0, name, alpha=1.6, mmin=5, mmax=100, seed=1):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        dl, weights = self.reweight_samples(H0, name, alpha=alpha, mmin=mmin, mmax=mmax, seed=seed)
-        norm = np.sum(weights)/len(weights)
-        return gaussian_kde(dl), norm
-
-    def marginalized_distance(self, H0):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        norm = 1
-        return gaussian_kde(self.distance), norm
 
 
 class make_px_function(object):
