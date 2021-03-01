@@ -231,17 +231,17 @@ else:
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='linear')
     pdet.interp_average = interp_average
     
-    if psd != None:
+    if pdets.asd != None:
         if pdets.mass_distribution == 'BBH-powerlaw' or pdets.mass_distribution == 'NSBH-powerlaw':
-            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, pdets.mass_distribution,
+            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, pdets.mass_distribution,
                                                                              str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), str(pdets.Mmax), 
                                                                              str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-powerlaw-gaussian' or pdets.mass_distribution == 'NSBH-powerlaw-gaussian':
-            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, 
+            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, 
                                                                              pdets.mass_distribution, str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), 
                                                                              str(pdets.Mmax), str(pdets.mu_g), str(pdets.lambda_peak), str(pdets.sigma_g),                                                                                              str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-broken-powerlaw' or pdets.mass_distribution == 'NSBH-broken-powerlaw':
-            pdet_path = '{}PSD_{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, pdets.mass_distribution, 
+            pdet_path = '{}PSD_{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, pdets.mass_distribution, 
                                                                              str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin), 
                                                                              str(pdets.Mmax), str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         else:

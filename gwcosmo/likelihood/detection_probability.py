@@ -87,7 +87,7 @@ class DetectionProbability(object):
         self.detected_masses = detected_masses
         self.det_combination = det_combination
         np.random.seed(seed)
-        
+                
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         
         if self.full_waveform is True:
@@ -114,7 +114,7 @@ class DetectionProbability(object):
         sampling = mass_prior(name=self.mass_distribution, hyper_params_dict=self.hyper_params_dict)
         m1, m2 = sampling.sample(N)
         
-        if self.mass_distribution == 'BNS' or self.mass_distribution == 'NSBH':
+        if self.mass_distribution == 'BNS' or self.mass_distribution.startswith('NSBH'):
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
         else:
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
@@ -128,8 +128,39 @@ class DetectionProbability(object):
         self.f_min = 10      #10 Hz minimum frequency
         self.f_max = 4999    #5000 Hz maximum frequency
         
-        self.duty_factor = {'O3':{'H1':0.75,'L1':0.75,'V1':0.75},'O2':{'H1':0.60,'L1':0.60,'V1':-1},'O1':{'H1':0.60,'L1':0.50,'V1':-1}}
-        self.days_of_runs = {'O3':361,'O2':268,'O1':129 } # data taken from https://www.gw-openscience.org/timeline for O1,O2 
+        if self.asd == 'MDC' or self.asd == 'O1':
+            self.detectors.remove('V1')
+        
+        duty_factors = {'O3':{'H1':0.75,'L1':0.75,'V1':0.75},'O2':{'H1':0.60,'L1':0.60,'V1':-1},'O1':{'H1':0.60,'L1':0.50,'V1':-1},'MDC':{'H1':1.,'L1':1.,'V1':-1.}}
+        days_of_run = {'O3':361,'O2':268,'O1':129 ,'MDC':100} # data taken from https://www.gw-openscience.org/timeline for O1,O2 
+        
+        if self.asd == None:
+            self.duty_factor = {'O3':{},'O2':{},'O1':{}} 
+        else:
+            self.duty_factor={asd:{}}
+        
+        self.days_of_runs ={}
+        for psd in self.duty_factor:
+            self.days_of_runs[psd] = days_of_run[psd]
+ 
+        if self.det_combination==True:
+            for p in self.duty_factor:
+                for d in duty_factors[p]:
+                    if d in self.detectors:
+                        self.duty_factor[p][d] = duty_factors[p][d]
+                    else:
+                        self.duty_factor[p][d] = -1.0
+        
+        else:
+            for p in self.duty_factor:
+                for d in duty_factors[p]:
+                    if d in self.detectors:
+                        self.duty_factor[p][d] = 1.0
+                    else:
+                        self.duty_factor[p][d] = -1.0
+                    if p=='O1' and d=='V1':
+                        self.duty_factor[p][d] = -1.0
+        
         total_days = 0
         for key in self.days_of_runs:
             total_days+=self.days_of_runs[key]
@@ -140,60 +171,49 @@ class DetectionProbability(object):
         self.dets = []
         p = np.random.rand(N)
         
-        if self.asd == 'MDC':
-            self.detectors = ['H1', 'L1']
-            self.asds = {'MDC':{}}
-            self.__interpolnum = {'MDC':{}}
-            for det in self.detectors:
-                 ASD = np.genfromtxt(self.data_path + 'PSD_L1_H1_mid.txt')
-                 self.asds['MDC'][det] = interp1d(ASD[:, 0], ASD[:, 1])
-                 self.__interpolnum['MDC'][det] = self.__numfmax_fmax(self.M_min, det, 'MDC')
+        if self.asd == None:
+            self.asds = {'O3':{},'O2':{},'O1':{}}    #this is now a dictionary of functions
+            ASD_data = {'O3':{},'O2':{},'O1':{}}
+            self.__interpolnum = {'O3':{},'O2':{},'O1':{}}
             for i in range(N):
-               self.psds.append(self.asd)
-               self.dets.append(self.detectors)
+                if 0<=p[i]<=self.prob_of_run['O1']:
+                    psd = 'O1'
+                elif self.prob_of_run['O1']<p[i]<=self.prob_of_run['O1']+self.prob_of_run['O2']:
+                    psd = 'O2'
+                else:
+                    psd = 'O3'
+                self.psds.append(psd)
         else:
-            if self.asd == None:
-               self.asds = {'O3':{},'O2':{},'O1':{}}    #this is now a dictionary of functions
-               ASD_data = {'O3':{},'O2':{},'O1':{}}
-               self.__interpolnum = {'O3':{},'O2':{},'O1':{}}
-               for i in range(N):
-                   if 0<=p[i]<=self.prob_of_run['O1']:
-                       psd = 'O1'
-                   elif self.prob_of_run['O1']<p[i]<=self.prob_of_run['O1']+self.prob_of_run['O2']:
-                       psd = 'O2'
-                   else:
-                       psd = 'O3'
-                   self.psds.append(psd)
-            else:
-               self.asds = {self.asd:{}}
-               ASD_data = {self.asd:{}}
-               self.__interpolnum = {self.asd:{}}
-               for i in range(N):
-                   self.psds.append(self.asd)
+            self.asds = {self.asd:{}}
+            ASD_data = {self.asd:{}}
+            self.__interpolnum = {self.asd:{}}
             for i in range(N):
-               if self.det_combination == True:
-                   d = []
-                   while len(d)==0:
-                       h = np.random.rand()
-                       l = np.random.rand()
-                       v = np.random.rand()
-                       if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
-                           d.append('H1')
-                       if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):
-                           d.append('L1')
-                       if (v<=self.duty_factor[self.psds[i]]['V1']) and ('V1' in self.detectors):
-                           d.append('V1')
-               else:
-                   d = self.detectors
-               self.dets.append(d)
-            
-            for run in self.asds:
-                for det in self.duty_factor[run]:
-                    if self.duty_factor[run][det]>0:
+                self.psds.append(self.asd)
+                    
+        for i in range(N):
+            d = []
+            while len(d)==0:
+                h = np.random.rand()
+                l = np.random.rand()
+                v = np.random.rand()
+                if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
+                    d.append('H1')
+                if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):
+                    d.append('L1')
+                if (v<=self.duty_factor[self.psds[i]]['V1']) and ('V1' in self.detectors):
+                    d.append('V1')
+            self.dets.append(d)
+          
+        for run in self.asds:
+            for det in self.duty_factor[run]:
+                if self.duty_factor[run][det]>0:
+                    if run == 'MDC':
+                        ASD_data[run][det] = np.genfromtxt(self.data_path + 'PSD_L1_H1_mid.txt')
+                    else:
                         ASD_data[run][det] = np.genfromtxt(self.data_path +str(det)+ '_'+ str(run) + '_strain.txt')
-                        self.asds[run][det] = interp1d(ASD_data[run][det][:, 0], ASD_data[run][det][:, 1])
-                        if basic==True or full_waveform==False:
-                            self.__interpolnum[run][det] = self.__numfmax_fmax(self.M_min, det, run)
+                    self.asds[run][det] = interp1d(ASD_data[run][det][:, 0], ASD_data[run][det][:, 1])
+                    if basic==True or full_waveform==False:
+                        self.__interpolnum[run][det] = self.__numfmax_fmax(self.M_min, det, run)
                              
         if self.asd != None:
             print("Calculating pdet with " + self.asd + " sensitivity and " +
