@@ -91,10 +91,14 @@ parser = OptionParser(
             help="Recessional velocity of counterpart in km/sec (in CMB frame)"),
         Option("--counterpart_sigmav", default=None,
             help="Uncertainty of counterpart in km/sec"),
-        Option("--redshift_evolution", default='False',
-            help="Allow GW host probability to evolve with redshift? (Default=False)"),
+        Option("--redshift_evolution", default='None',
+            help="Allow GW host probability to evolve with redshift. Select between None, PowerLaw or Madau (Default=None)"),
         Option("--Lambda", default='3.0', type=float,
-            help="Set rate evolution parameter Lambda"),
+            help="Set rate evolution parameter Lambda for redshift evolution (For Madau model this is equal to alpha)"),
+        Option("--Madau_beta", default='3.0', type=float,
+            help="Set Beta for Madau model. (Not used if redshift_evolution=None or PowerLaw)"),
+        Option("--Madau_zp", default='0.0', type=float,
+            help="Set zp for Madau model. (Not used if redshift_evolution=None or PowerLaw)"),
         Option("--Kcorrections", default='False',
             help="Apply K-corrections."),
         Option("--reweight_posterior_samples", default='False',
@@ -147,8 +151,10 @@ min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
 bins_H0 = int(opts.bins_H0)
 
-redshift_evolution = str2bool(opts.redshift_evolution)
+redshift_evolution = str(opts.redshift_evolution)
 Lambda = float(opts.Lambda)
+madau_beta = float(opts.Madau_beta)
+madau_zp = float(opts.Madau_zp)
 reweight_samples = str2bool(opts.reweight_posterior_samples)
 outputfile = str(opts.outputfile)
 pdet_path = str(opts.Pdet)
@@ -182,7 +188,8 @@ Omega_m = pdet.Omega_m
 linear_cosmo = pdet.linear
 zprior = redshift_prior(Omega_m=Omega_m, linear=linear_cosmo)
 cosmo = fast_cosmology(Omega_m=Omega_m, linear=linear_cosmo)
-if redshift_evolution:
+
+if redshift_evolution!='None':
     ps_z = gwcosmo.gwcosmo.RedshiftEvolution()
 else:
     ps_z = gwcosmo.gwcosmo.RedshiftNonEvolution()
@@ -270,7 +277,7 @@ if opts.method == 'statistical':
     me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, 
                                                          mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
 
-likelihood = me(H0,Lambda=Lambda)
+likelihood = me(H0, Lambda=Lambda, model=redshift_evolution, beta=madau_beta, zp=madau_zp)
 pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.return_components()
 
 prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')

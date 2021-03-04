@@ -38,13 +38,13 @@ class gwcosmoLikelihood(object):
         self.zrates = zrates
         self.zmax = zmax
         
-    def px_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
+    def px_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda,model=model, beta=beta, zp=zp)
         
-    def pD_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda)
+    def pD_zH0_times_pz_times_ps_z(self, z, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda,model=model, beta=beta, zp=zp)
 
-    def px_OH0(self, H0, skyprob=1., Lambda=0.):
+    def px_OH0(self, H0, skyprob=1., Lambda=0.,model='PowerLaw', beta=0., zp=0.):
         """
         Evaluate p(x|O,H0).
         
@@ -67,10 +67,10 @@ class gwcosmoLikelihood(object):
             p(x|O,H0)
         """
         
-        integral = quad(self.px_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        integral = quad(self.px_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0, Lambda, model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         return integral * skyprob
         
-    def pD_OH0(self, H0, skyprob=1., Lambda=0.):
+    def pD_OH0(self, H0, skyprob=1., Lambda=0.,model='PowerLaw', beta=0., zp=0.):
         """
         Evaluate p(x|O,H0).
         
@@ -93,7 +93,7 @@ class gwcosmoLikelihood(object):
             p(x|O,H0)
         """
         
-        integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=(H0, Lambda, model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         return integral * skyprob
 
 
@@ -143,15 +143,15 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         self.Mmax_obs = sp.Mmax
 
         
-    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
+    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda,model=model, beta=beta, zp=zp) \
                 *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
-    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda) \
+    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,Lambda=Lambda,model=model, beta=beta, zp=zp) \
                 *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
-    def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=0.):
+    def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
         """
         Evaluate p(x|G,H0) and p(D|G,H0).
 
@@ -179,7 +179,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             
         tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
         
-        zweights = self.zrates(sampz,Lambda=Lambda)
+        zweights = self.zrates(sampz,Lambda=Lambda,model=model, beta=beta, zp=zp)
         
         tempnum = np.zeros([len(H0)])
         tempden = np.zeros([len(H0)])
@@ -204,7 +204,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         return tempnum,tempden
         
-    def pGB_DH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+    def pGB_DH0(self, H0, mth, skyprob, Lambda=0.,model='PowerLaw', beta=0., zp=0., zcut=10.):
         """
         Evaluate p(G|D,H0) and p(B|D,H0).
         
@@ -234,9 +234,11 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        num = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        num = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=
+                      (H0,Lambda, model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
 
-        den = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,self.zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        den = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,self.zmax,lambda x: Mmin,lambda x: Mmax,args=(H0,Lambda, model, beta,           
+                                                                                                                           zp),epsabs=0,epsrel=1.49e-4)[0]
 
         integral = num/den
         
@@ -244,7 +246,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         pB = (1.-integral)*skyprob
         return pG, pB, num, den
         
-    def px_BH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+    def px_BH0(self, H0, mth, skyprob, Lambda=0., model='PowerLaw', beta=0., zp=0.,zcut=10.):
         """
         Evaluate p(x|B,H0).
         
@@ -273,17 +275,19 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
             
-        below_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        below_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), 
+                                      lambda x: Mmax,args=(H0,Lambda, model,beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         
         above_zcut_integral = 0.
         if zcut < self.zmax:
-            above_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+            above_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda, 
+                                           model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         
         integral = below_zcut_integral + above_zcut_integral
 
         return integral * skyprob
 
-    def pD_BH0(self, H0, mth, skyprob, Lambda=0., zcut=10.):
+    def pD_BH0(self, H0, mth, skyprob, Lambda=0., model='PowerLaw', beta=0., zp=0 ,zcut=10.):
         """
         Evaluate p(D|B,H0).
         
@@ -312,11 +316,13 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
             
-        below_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+        below_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax), 
+                                      lambda x: Mmax,args=(H0,Lambda,model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         
         above_zcut_integral = 0.
         if zcut < self.zmax:
-            above_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda),epsabs=0,epsrel=1.49e-4)[0]
+            above_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=(H0,Lambda,
+                                          model, beta, zp),epsabs=0,epsrel=1.49e-4)[0]
         
         integral = below_zcut_integral + above_zcut_integral
 
@@ -415,7 +421,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pO = 0.
 
 
-    def pxD_GH0_multi(self,H0,Lambda=0.):
+    def pxD_GH0_multi(self,H0,Lambda=0., model='PowerLaw', beta=0., zp=0):
         """
         Evaluate p(x|G,H0) and p(D|G,H0).
 
@@ -470,14 +476,15 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 
                 sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=self.zcut)
                     
-                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=Lambda)
+                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count, Lambda=Lambda,
+                                                               model=model, beta=beta, zp=zp)
                 
         num = np.sum(tempnum,axis=0)/self.nGal
         den = np.sum(tempden,axis=0)/self.nGal
 
         return num,den        
 
-    def likelihood(self,H0,Lambda=0.):
+    def likelihood(self,H0,Lambda=0.,model='PowerLaw', beta=0., zp=0):
         """
         Compute the full likelihood.
         
@@ -508,27 +515,28 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.zeros(len(H0))
         
         print('Computing the in-catalogue part')
-        self.pxG, self.pDG = self.pxD_GH0_multi(H0,Lambda=Lambda)
+        self.pxG, self.pDG = self.pxD_GH0_multi(H0,Lambda=Lambda,model=model, beta=beta, zp=zp)
 
         if not self.complete_catalog:
             print('Computing the beyond catalogue part')   
             for i,h in enumerate(H0):
-                self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h, self.mth, self.OmegaG, Lambda=Lambda, zcut=self.zcut)
-                self.pxB[i] = self.px_BH0(h, self.mth, self.px_OmegaG, Lambda=Lambda, zcut=self.zcut)
+                self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h, self.mth, self.OmegaG, Lambda=Lambda, model=model, beta=beta, zp=zp,
+                                                                      zcut=self.zcut)
+                self.pxB[i] = self.px_BH0(h, self.mth, self.px_OmegaG, Lambda=Lambda, model=model, beta=beta, zp=zp, zcut=self.zcut)
             if self.zcut == self.zmax:
                 self.pDB = (den - num) * self.OmegaG
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
-                    self.pDB[i] = self.pD_BH0(h, self.mth, self.OmegaG, Lambda=Lambda, zcut=self.zcut)
+                    self.pDB[i] = self.pD_BH0(h, self.mth, self.OmegaG, Lambda=Lambda, model=model, beta=beta, zp=zp,zcut=self.zcut)
             print("{}% of this event's sky area appears to have galaxy catalogue support".format(self.px_OmegaG*100))
             if self.px_OmegaG < 0.999:
                 self.pO = self.OmegaO
                 #self.pDO = den * self.OmegaO ### alternative to calculating pDO directly below, but requires both px_OH0 and pD_OH0 to use dblquad (not quad) ###
                 print('Computing the contribution outside the catalogue footprint')
                 for i,h in enumerate(H0):
-                    self.pxO[i] = self.px_OH0(h, skyprob=self.px_OmegaO, Lambda=Lambda)
-                    self.pDO[i] = self.pD_OH0(h, skyprob=self.OmegaO, Lambda=Lambda)
+                    self.pxO[i] = self.px_OH0(h, skyprob=self.px_OmegaO, Lambda=Lambda,model=model, beta=beta, zp=zp)
+                    self.pDO[i] = self.pD_OH0(h, skyprob=self.OmegaO, Lambda=Lambda,model=model, beta=beta, zp=zp)
 
         likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
         return likelihood
@@ -536,8 +544,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     def return_components(self):
         return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
         
-    def __call__(self, H0, Lambda=0.):
-        return self.likelihood(H0, Lambda=Lambda)
+    def __call__(self, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0):
+        return self.likelihood(H0, Lambda=Lambda,model=model, beta=beta, zp=zp)
         
 
 
@@ -586,11 +594,11 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
             # for host galaxies with large redshift uncertainty.
         return num
         
-    def likelihood(self,H0,Lambda=0.):
+    def likelihood(self,H0,Lambda=0.,model='PowerLaw', beta=0., zp=0):
         px = self.px_H0(H0)
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
-            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
+            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda,model=model, beta=beta, zp=zp)
         likelihood = px/pD
         self.px = px
         self.pD = pD
@@ -599,8 +607,8 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
     def return_components(self):
         return self.px, self.pD, 1., 0., 1., 0., 0., 1., 0.
         
-    def __call__(self, H0, Lambda=0.):
-        return self.likelihood(H0, Lambda=Lambda)
+    def __call__(self, H0, Lambda=0.,model='PowerLaw',  beta=0., zp=0):
+        return self.likelihood(H0, Lambda=Lambda,model=model, beta=beta, zp=zp)
 
         
         
@@ -627,12 +635,12 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
         self.px = None
         self.pD = None
         
-    def likelihood(self,H0,Lambda=0.):
+    def likelihood(self,H0,Lambda=0.,model='PowerLaw', beta=0., zp=0):
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
-            px[i] = self.px_OH0(h, skyprob=1., Lambda=Lambda)
-            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda)
+            px[i] = self.px_OH0(h, skyprob=1., Lambda=Lambda,model=model, beta=beta, zp=zp)
+            pD[i] = self.pD_OH0(h, skyprob=1., Lambda=Lambda,model=model, beta=beta, zp=zp)
         likelihood = px/pD
         self.px = px
         self.pD = pD
@@ -641,8 +649,8 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
     def return_components(self):
         return 0., 1., 0., 0., 1., 0., self.px, self.pD, 1.
         
-    def __call__(self, H0, Lambda=0.):
-        return self.likelihood(H0, Lambda=Lambda)
+    def __call__(self, H0, Lambda=0.,model='PowerLaw', beta=0., zp=0):
+        return self.likelihood(H0, Lambda=Lambda,model=model, beta=beta, zp=zp)
 
 
 
@@ -679,6 +687,7 @@ class UniformWeighting(object):
         return self.unweighted_call(M)
         
 
+        
 class RedshiftEvolution():
     """
     Merger rate relation to redshift
@@ -689,11 +698,15 @@ class RedshiftEvolution():
     def __init__(self):
         self.redshift_evolution = True
         
-    def evolving(self, z, Lambda=0.):
-        return (1+z)**Lambda
+    def evolving(self, z, model,Lambda=0.,beta=0.,zp=0.):
+        if model=='PowerLaw':
+            beta = -Lambda
+        C = 1+(1+zp)**(-Lambda-beta)
+        return C*((1+z)**Lambda)/(1+((1+z)/(1+zp))**(Lambda+beta)) #Equation 2 in https://arxiv.org/pdf/2003.12152.pdf
+        
 
-    def __call__(self, z, Lambda=0.):
-            return self.evolving(z,Lambda=Lambda)
+    def __call__(self, z, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.evolving(z,Lambda=Lambda,model=model, beta=beta, zp=zp)
             
 class RedshiftNonEvolution():
     """
@@ -703,11 +716,11 @@ class RedshiftNonEvolution():
     def __init__(self):
         self.redshift_evolution = False
         
-    def constant(self, z, Lambda=0.):
+    def constant(self, z, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
         return 1.
         
-    def __call__(self, z, Lambda=0.):
-        return self.constant(z,Lambda=Lambda)
+    def __call__(self, z, Lambda=0.,model='PowerLaw', beta=0., zp=0.):
+        return self.constant(z,Lambda=Lambda,model=model, beta=beta, zp=zp)
 
 
 ################################################################################
