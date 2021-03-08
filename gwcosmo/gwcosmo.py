@@ -39,10 +39,10 @@ class gwcosmoLikelihood(object):
         self.zmax = zmax
         
     def px_zH0_times_pz_times_ps_z(self, z, H0):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z, self.hyper_params_evolution)
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)
         
     def pD_zH0_times_pz_times_ps_z(self, z, H0):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z, self.hyper_params_evolution)
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)
 
     def px_OH0(self, H0, skyprob=1.):
         """
@@ -56,8 +56,6 @@ class gwcosmoLikelihood(object):
         ----------
         H0 : float
             Hubble constant value in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         zmax : float, optional
             The upper redshift limit for integrals (default=10.)
 
@@ -82,8 +80,6 @@ class gwcosmoLikelihood(object):
         ----------
         H0 : float
             Hubble constant value in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         zmax : float, optional
             The upper redshift limit for integrals (default=10.)
 
@@ -144,12 +140,10 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         
     def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z, self.hyper_params_evolution) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
     def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z,self.hyper_params_evolution) \
-                *self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
         """
@@ -163,8 +157,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             redshift, apparent magnitude, right ascension, declination and 
             colour samples
         count : the number of samples which belong to 1 galaxy
-        Lambda : float, optional
-            redshift evolution parameter (default=0)
 
         Returns
         -------
@@ -179,7 +171,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             
         tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
         
-        zweights = self.zrates(sampz, self.hyper_params_evolution)
+        zweights = self.zrates(sampz)
         
         tempnum = np.zeros([len(H0)])
         tempden = np.zeros([len(H0)])
@@ -217,8 +209,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
         zmax : float, optional
@@ -244,7 +234,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         pB = (1.-integral)*skyprob
         return pG, pB, num, den
         
-    def px_BH0(self, H0, mth, skyprob, Lambda=0. ,zcut=10.):
+    def px_BH0(self, H0, mth, skyprob ,zcut=10.):
         """
         Evaluate p(x|B,H0).
         
@@ -257,8 +247,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
         zmax : float, optional
@@ -298,8 +286,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
         zmax : float, optional
@@ -427,8 +413,6 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         ----------
         H0 : array of floats
             Hubble constant value(s) in kms-1Mpc-1
-        Lambda : float, optional
-            redshift evolution parameter (default=0)
 
         Returns
         -------
@@ -481,7 +465,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         return num,den        
 
-    def likelihood(self,H0,hyper_params_evolution):
+    def likelihood(self,H0):
         """
         Compute the full likelihood.
         
@@ -489,8 +473,6 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         ----------
         H0 : array of floats
             Hubble constant values in kms-1Mpc-1
-        Lambda : float, optional
-            Redshift evolution parameter (default=0)
         complete_catalog : bool, optional
             Assume that the galaxy catalogue is complete? (default=False)
 
@@ -507,7 +489,6 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pxO = np.zeros(len(H0))
         self.pDO = np.ones(len(H0))
         self.pO = 0.
-        self.hyper_params_evolution = hyper_params_evolution
         
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
@@ -541,8 +522,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     def return_components(self):
         return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
         
-    def __call__(self, H0, hyper_params_evolution):
-        return self.likelihood(H0, hyper_params_evolution)
+    def __call__(self, H0):
+        return self.likelihood(H0)
         
 
 
@@ -591,8 +572,8 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
             # for host galaxies with large redshift uncertainty.
         return num
         
-    def likelihood(self,H0,hyper_params_evolution):
-        self.hyper_params_evolution = hyper_params_evolution
+    def likelihood(self,H0):
+        
         px = self.px_H0(H0)
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
@@ -605,8 +586,8 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
     def return_components(self):
         return self.px, self.pD, 1., 0., 1., 0., 0., 1., 0.
         
-    def __call__(self, H0, hyper_params_evolution):
-        return self.likelihood(H0, hyper_params_evolution)
+    def __call__(self, H0):
+        return self.likelihood(H0)
 
         
         
@@ -633,8 +614,8 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
         self.px = None
         self.pD = None
         
-    def likelihood(self,H0, hyper_params_evolution):
-        self.hyper_params_evolution = hyper_params_evolution
+    def likelihood(self,H0):
+        
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
         for i,h in enumerate(H0):
@@ -648,8 +629,8 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
     def return_components(self):
         return 0., 1., 0., 0., 1., 0., self.px, self.pD, 1.
         
-    def __call__(self, H0, hyper_params_evolution):
-        return self.likelihood(H0, hyper_params_evolution)
+    def __call__(self, H0):
+        return self.likelihood(H0)
 
 
 
@@ -676,7 +657,7 @@ class UniformWeighting(object):
     Host galaxy probability relation to luminosity
     """
     
-    def __init__(self):
+    def __init__(sel):
         self.luminosity_weights = False
         
     def unweighted_call(self, M):
@@ -690,20 +671,20 @@ class RedshiftEvolutionMadau():
     """
     Merger rate relation to redshift
     
-    TODO: consider how Lambda might need to be marginalised over in future
+    TODO: consider how evolution paramters might need to be marginalised over in future
     """
     
     
-    def __init__(self):
+    def __init__(self,hyper_params_evolution):
         self.redshift_evolution = True
-            
-    def evolving(self, z, hyper_params_evolution):
-        Lambda, beta, zp = hyper_params_evolution['Lambda'], hyper_params_evolution['madau_beta'], hyper_params_evolution['madau_zp']
-        C = 1+(1+zp)**(-Lambda-beta)
-        return C*((1+z)**Lambda)/(1+((1+z)/(1+zp))**(Lambda+beta)) #Equation 2 in https://arxiv.org/pdf/2003.12152.pdf
+        self.Lambda, self.beta, self.zp = hyper_params_evolution['Lambda'], hyper_params_evolution['madau_beta'], hyper_params_evolution['madau_zp']
+        
+    def evolving(self, z):
+        C = 1+(1+self.zp)**(-self.Lambda-self.beta)
+        return C*((1+z)**self.Lambda)/(1+((1+z)/(1+self.zp))**(self.Lambda+self.beta)) #Equation 2 in https://arxiv.org/pdf/2003.12152.pdf
 
-    def __call__(self, z, hyper_params_evolution):
-        return self.evolving(z,hyper_params_evolution)
+    def __call__(self, z):
+        return self.evolving(z)
         
         
         
@@ -711,32 +692,32 @@ class RedshiftEvolutionPowerLaw():
     """
     Merger rate relation to redshift
     
-    TODO: consider how Lambda might need to be marginalised over in future
+    TODO: consider how evolution parameters might need to be marginalised over in future
     """
     
-    def __init__(self):
+    def __init__(self,hyper_params_evolution):
         self.redshift_evolution = True
-            
-    def evolving(self, z, hyper_params_evolution):
-        Lambda = hyper_params_evolution['Lambda']
-        return (1+z)**Lambda
+        self.Lambda = hyper_params_evolution['Lambda']
+        
+    def evolving(self, z):
+        return (1+z)**self.Lambda
     
-    def __call__(self, z, hyper_params_evolution):
-        return self.evolving(z,hyper_params_evolution)
+    def __call__(self, z):
+        return self.evolving(z)
             
 class RedshiftNonEvolution():
     """
     Merger rate relation to redshift
     """
     
-    def __init__(self):
+    def __init__(self,hyper_params_evolution):
         self.redshift_evolution = False
         
-    def constant(self, z, hyper_params_evolution):
+    def constant(self, z):
         return 1.
         
-    def __call__(self, z, hyper_params_evolution):
-        return self.constant(z, hyper_params_evolution)
+    def __call__(self, z):
+        return self.constant(z)
 
 
 ################################################################################
