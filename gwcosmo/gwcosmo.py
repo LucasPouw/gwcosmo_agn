@@ -657,7 +657,7 @@ class UniformWeighting(object):
     Host galaxy probability relation to luminosity
     """
     
-    def __init__(sel):
+    def __init__(self):
         self.luminosity_weights = False
         
     def unweighted_call(self, M):
