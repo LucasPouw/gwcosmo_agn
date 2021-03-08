@@ -189,9 +189,13 @@ linear_cosmo = pdet.linear
 zprior = redshift_prior(Omega_m=Omega_m, linear=linear_cosmo)
 cosmo = fast_cosmology(Omega_m=Omega_m, linear=linear_cosmo)
 
-if redshift_evolution!='None':
-    ps_z = gwcosmo.gwcosmo.RedshiftEvolution()
-else:
+hyper_params_evolution = {'model':redshift_evolution,'Lambda':Lambda,'madau_beta':madau_beta,'madau_zp':madau_zp}
+
+if redshift_evolution=='PowerLaw':
+    ps_z = gwcosmo.gwcosmo.RedshiftEvolutionPowerLaw()
+elif redshift_evolution=='Madau':
+    ps_z = gwcosmo.gwcosmo.RedshiftEvolutionMadau()
+elif redshift_evolution=='None':
     ps_z = gwcosmo.gwcosmo.RedshiftNonEvolution()
 
 print('Setting up a cosmology with Omega_m={}'.format(Omega_m))
@@ -277,7 +281,7 @@ if opts.method == 'statistical':
     me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, 
                                                          mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog)
 
-likelihood = me(H0, Lambda=Lambda, model=redshift_evolution, beta=madau_beta, zp=madau_zp)
+likelihood = me(H0, hyper_params_evolution)
 pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.return_components()
 
 prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
