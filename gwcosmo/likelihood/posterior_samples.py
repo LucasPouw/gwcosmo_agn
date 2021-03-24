@@ -10,8 +10,6 @@ from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
 from ..prior.priors import distance_distribution, mass_prior
 import json
 
-from astropy.cosmology import FlatLambdaCDM
-import astropy.constants as constants
 from scipy.interpolate import interp1d, interp2d
 
 
@@ -21,28 +19,22 @@ class posterior_samples(object):
 
     Parameters
     ----------
+    cosmo : Fast cosmology class
     posterior_samples : Path to posterior samples file to be loaded.
     field : Internal field of the json or the h5 file
     """
-    def __init__(self, posterior_samples=None,field=None):
+    
+    def __init__(self,cosmo, posterior_samples,field=None):
         self.posterior_samples = posterior_samples
-        self.field=field
         
+        self.cosmo=cosmo
+        self.field=field
         self.load_posterior_samples()
 
-
-    def E(self,z,Om):
-        return np.sqrt(Om*(1+z)**3 + (1.0-Om))
-
-    def dL_by_z_H0(self,z,H0,Om0=0.308):
-        speed_of_light = constants.c.to('km/s').value
-        cosmo = fast_cosmology(Omega_m=Om0)
-        return cosmo.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z,Om0))
-
-    def jacobian_times_prior(self,z,H0,Om0=0.308):
-        cosmo = fast_cosmology(Omega_m=Om0)
-        jacobian = np.power(1+z,2)*self.dL_by_z_H0(z,H0,Om0)
-        dl = cosmo.dl_zH0(z, H0)
+    def jacobian_times_prior(self,z,H0):
+        
+        jacobian = np.power(1+z,2)*self.cosmo.dL_by_z_H0(z,H0)
+        dl = self.cosmo.dl_zH0(z, H0)
         return jacobian*(dl**2)
 
     def load_posterior_samples(self):
@@ -52,18 +44,13 @@ class posterior_samples(object):
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
         if self.posterior_samples[-3:] == 'dat':
-            samples = np.genfromtxt(self.posterior_samples, names=True)
-            try:
-                self.distance = samples['dist']
-            except KeyError:
-                try:
-                    self.distance = samples['distance']
-                except KeyError:
-                    print("No distance samples found.")
-            self.ra = samples['ra']
-            self.dec = samples['dec']
-            self.mass_1 = samples['mass_1']
-            self.mass_2 = samples['mass_2']
+            samples = np.genfromtxt(self.posterior_samples, names = True)
+           
+            self.distance = np.array([var for var in samples['luminosity_distance']])
+            self.ra =  np.array([var for var in samples['ra']])
+            self.dec =  np.array([var for var in samples['dec']])
+            self.mass_1 =  np.array([var for var in samples['mass_1']])
+            self.mass_2 =  np.array([var for var in samples['mass_2']])
             self.nsamples = len(self.distance)
 
         if self.posterior_samples[-4:] == 'hdf5':
@@ -145,12 +132,12 @@ class posterior_samples(object):
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
-    def compute_source_frame_samples(self, H0,Om0=0.308):
+    def compute_source_frame_samples(self, H0):
+        
         zmin = 0.0001
         zmax = 10
         zs = np.linspace(zmin, zmax, 10000)
-        cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
-        dLs = cosmo.luminosity_distance(zs).to(u.Mpc).value
+        dLs = self.cosmo.dl_zH0(zs,H0)
         z_at_dL = interp1d(dLs,zs)
         redshift = z_at_dL(self.distance)
         mass_1_source = self.mass_1/(1+redshift)
@@ -178,16 +165,16 @@ class posterior_samples(object):
 
         return gaussian_kde(redshift,weights=weights), norm
 
-    def marginalized_redshift(self, H0,Om0=0.308):
+    def marginalized_redshift(self, H0):
         """
         Computes the marginalized distance posterior KDE.
         """
-        cosmo = fast_cosmology(Omega_m=Om0)
+        
         # Get source frame masses
         redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
 
         # remove dl^2 prior and include dz/ddL jacobian
-        weights = 1/(self.dL_by_z_H0(redshift,H0,Om0)*cosmo.dl_zH0(redshift,H0)**2)
+        weights = 1/(self.cosmo.dL_by_z_H0(redshift,H0)*self.cosmo.dl_zH0(redshift,H0)**2)
         norm = np.sum(weights)
         return gaussian_kde(redshift,weights=weights), norm
 

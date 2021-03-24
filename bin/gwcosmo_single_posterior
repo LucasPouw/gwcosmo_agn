@@ -203,7 +203,7 @@ print('Setting up a cosmology with Omega_m={}'.format(Omega_m))
 # Once different methods can run with just skymap (instead of samples) this will need moving
 if opts.posterior_samples is not None:
     print("Loading posterior samples.")
-    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(posterior_samples,field=posterior_samples_field)
+    samples = gwcosmo.likelihood.posterior_samples.posterior_samples(cosmo,posterior_samples,field=posterior_samples_field)
     
     px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, hyper_params_dict, name=mass_distribution, reweight_samples=reweight_samples)
 

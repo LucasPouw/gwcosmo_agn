@@ -384,3 +384,26 @@ class fast_cosmology(object):
         else:
             # Standard cosmology     
             return splev(z, self.interp, ext=3)*c/H0
+        
+    def E(self,z):
+        """
+        Returns the E(z) factor
+        
+        Parameters
+        ----------
+        z : redshift
+        """
+        
+        return np.sqrt(self.Omega_m*(1+z)**3 + (1.0-self.Omega_m))
+
+    def dL_by_z_H0(self,z,H0):
+        """
+        Returns the derivative of the luminosity distance w.r.t. redshift
+        
+        Parameters
+        ----------
+        z : redshift
+        H0 : Hubble constant in km Mpc-1 s-1
+        """
+        speed_of_light = c
+        return self.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z))
