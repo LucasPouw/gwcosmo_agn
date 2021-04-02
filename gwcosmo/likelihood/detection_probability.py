@@ -128,7 +128,7 @@ class DetectionProbability(object):
         self.f_min = 10      #10 Hz minimum frequency
         self.f_max = 4999    #5000 Hz maximum frequency
         
-        if self.asd == 'MDC' or self.asd == 'O1':
+        if (self.asd == 'MDC' or self.asd == 'O1') and ('V1' in self.detectors):
             self.detectors.remove('V1')
         
         duty_factors = {'O3':{'H1':0.75,'L1':0.75,'V1':0.75},'O2':{'H1':0.60,'L1':0.60,'V1':-1},'O1':{'H1':0.60,'L1':0.50,'V1':-1},'MDC':{'H1':1.,'L1':1.,'V1':-1.}}

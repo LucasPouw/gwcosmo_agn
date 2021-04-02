@@ -175,12 +175,12 @@ hyper_params_dict = {'alpha':mass_slope,'alpha_2':mass_slope_2,'mmin':Mmin,'mmax
 
 print('Loading precomputed pdet with a {} mass distribution at {} sensitivity assuming an SNR threshold of {}.'.format(mass_distribution, psd, network_snr_threshold))
 if mass_distribution == 'BBH-powerlaw' or mass_distribution == 'NSBH-powerlaw':
-    print('{:s} mass distribution with parameters: alpha=-{}, beta=-{}, Mmin={}, Mmax={}'.format(mass_distribution,mass_slope, beta, Mmin, Mmax))
+    print('{:s} mass distribution with parameters: alpha=-{}, beta={}, Mmin={}, Mmax={}'.format(mass_distribution,mass_slope, beta, Mmin, Mmax))
 elif mass_distribution == 'BBH-powerlaw-gaussian' or mass_distribution == 'NSBH-powerlaw-gaussian':
-    print('{:s} mass distribution with parameters: alpha=-{}, beta=-{}, Mmin={}, Mmax={}, lambda_peak={}, mu={}, sigma={}, delta={}'.format(mass_distribution,
+    print('{:s} mass distribution with parameters: alpha=-{}, beta={}, Mmin={}, Mmax={}, lambda_peak={}, mu={}, sigma={}, delta={}'.format(mass_distribution,
                                                    mass_slope, beta, Mmin, Mmax, lambda_peak, mu_g, sigma_g, delta_m))
 elif mass_distribution == 'BBH-broken-powerlaw' or mass_distribution == 'NSBH-broken-powerlaw':
-    print('{:s} mass distribution with parameters: alpha_1=-{}, alpha_2=-{}, beta=-{}, Mmin={}, Mmax={}, b={}, delta={}'.format(mass_distribution,
+    print('{:s} mass distribution with parameters: alpha_1=-{}, alpha_2=-{}, beta={}, Mmin={}, Mmax={}, b={}, delta={}'.format(mass_distribution,
                                                    mass_slope, mass_slope_2, beta, Mmin, Mmax, b, delta_m))
                          
 

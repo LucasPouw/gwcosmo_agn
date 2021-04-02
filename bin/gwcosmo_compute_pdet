@@ -260,7 +260,7 @@ else:
                                                                              str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin), 
                                                                              str(pdets.Mmax), str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         else:
-            pdet_path = '{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets._snr_threshold))
+            pdet_path = '{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets.snr_threshold))
     
     if detected_masses==True:
         np.savez(pdet_path+'_detected.npz',[detected,m1,m2])
