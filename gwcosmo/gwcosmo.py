@@ -684,7 +684,7 @@ class RedshiftEvolutionMadau():
         return C*((1+z)**self.Lambda)/(1+((1+z)/(1+self.zp))**(self.Lambda+self.beta)) #Equation 2 in https://arxiv.org/pdf/2003.12152.pdf
 
     def __call__(self, z):
-        return self.evolving(z)
+        return self.evolving(z)/(1.+z)
         
         
         
@@ -703,7 +703,7 @@ class RedshiftEvolutionPowerLaw():
         return (1+z)**self.Lambda
     
     def __call__(self, z):
-        return self.evolving(z)
+        return self.evolving(z)/(1.+z)
             
 class RedshiftNonEvolution():
     """
@@ -717,7 +717,7 @@ class RedshiftNonEvolution():
         return 1.
         
     def __call__(self, z):
-        return self.constant(z)
+        return self.constant(z)/(1.+z)
 
 
 ################################################################################

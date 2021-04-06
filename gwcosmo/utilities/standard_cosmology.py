@@ -329,7 +329,7 @@ class redshift_prior(object):
         self.linear = linear
         self.zmax = zmax
         z_array = np.linspace(0.0, self.zmax, 5000)
-        lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m)
+        lookup = np.array([volume_z(z, Omega_m=self.Omega_m)
                           for z in z_array])
         self.interp = splrep(z_array, lookup)
 
