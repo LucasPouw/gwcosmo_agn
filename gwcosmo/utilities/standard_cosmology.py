@@ -322,7 +322,14 @@ def z_dlH0(dl, H0=70., Omega_m=0.308, linear=False):
 
 class redshift_prior(object):
     """
-    p(z|Omega_m)
+    p(z|Omega_m): Uniform in comoving volume distribution of galaxies
+    
+    Parameters
+    ----------
+    Omega_m : matter fraction (default=0.308)
+    zmax : upper limit for redshift (default=10.0)
+    linear : assumes local cosmology and suppresses
+    non-linear effects (default=False)
     """
     def __init__(self, Omega_m=0.308, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
@@ -351,7 +358,7 @@ class fast_cosmology(object):
     Parameters
     ----------
     Omega_m : matter fraction (default=0.308)
-    zmax : upper limit for redshift (default=4.0)
+    zmax : upper limit for redshift (default=10.0)
     linear : assumes local cosmology and suppresses
     non-linear effects (default=False)
 
