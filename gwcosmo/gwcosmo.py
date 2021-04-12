@@ -30,8 +30,25 @@ import progressbar
 
 class gwcosmoLikelihood(object):
     """
+    Class for holding basic GW info for calculating the likelihood on H0
     """
+    
     def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        """
+        Parameters
+        ----------
+        px_zH0 : object
+            GW data, p(x|z,H0)
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        zmax : float
+            The upper redshift limit for the universe (default=10.)
+        """
+        
         self.px_zH0 = px_zH0
         self.pD_zH0 = pD_zH0
         self.zprior = zprior
@@ -39,25 +56,43 @@ class gwcosmoLikelihood(object):
         self.zmax = zmax
         
     def px_zH0_times_pz_times_ps_z(self, z, H0):
+        """
+        p(x|z,H0)*p(z)*p(s|z)
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+        
         return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)
         
     def pD_zH0_times_pz_times_ps_z(self, z, H0):
+        """
+        p(D|z,H0)*p(z)*p(s|z)
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+        
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)
 
     def px_OH0(self, H0, skyprob=1.):
         """
         Evaluate p(x|O,H0).
         
-        Defined as a single integral over z (instead of over z and M) as it is 
-        equivalent to the empty catalogue case.
-        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
-        
         Parameters
         ----------
         H0 : float
             Hubble constant value in kms-1Mpc-1
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
+        skyprob : float, optional
+            GW sky probability covered by area O (default=1.)
 
         Returns
         -------
@@ -70,23 +105,19 @@ class gwcosmoLikelihood(object):
         
     def pD_OH0(self, H0, skyprob=1.):
         """
-        Evaluate p(x|O,H0).
-        
-        Defined as a single integral over z (instead of over z and M) as it is 
-        equivalent to the empty catalogue case.
-        NOTE: this is only possible as the ratio px_OH0/pD_OH0 is taken later.
+        Evaluate p(D|O,H0).
         
         Parameters
         ----------
         H0 : float
             Hubble constant value in kms-1Mpc-1
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
+        skyprob : float, optional
+            pdet probability covered by area O (default=1.)
 
         Returns
         -------
         float
-            p(x|O,H0)
+            p(D|O,H0)
         """
         
         integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
@@ -96,35 +127,37 @@ class gwcosmoLikelihood(object):
 class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the galaxy 
-    catalogue method.
-    
-    Parameters
-    ----------
-    base_functions : gwcosmo.gwcosmo.BaseFunctions object
-        p(x|z,H0)*p(z)*p(s|z)*p(M)*p(s|M) and p(D|z,H0)*p(z)*p(s|z)*p(M)*p(s|M)
-    skymap : gwcosmo.likelihood.skymap.skymap object
-        provides p(x|Omega) and skymap properties
-    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
-        The galaxy catalogue
-    fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
-        Cosmological model
-    Kcorr : bool, optional
-        Should K corrections be applied to the analysis? (default=False)
-        Will raise an error if used in conjunction with a galaxy catalogue 
-        without sufficient color information.
-    mth : float, optional
-        Specify an apparent magnitude threshold for the galaxy catalogue
-        (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
-    zmax : float, optional
-        The upper redshift limit for integrals (default=10.). Should be well 
-        beyond the highest redshift reachable by GW data or selection effects.
-    zuncert : bool, optional
-        Should redshift uncertainties be marginalised over? (Default=True).
-    
+    catalogue method.   
     """
+    
     def __init__(self, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
+        """
+        Parameters
+        ----------
+        skymap : object
+            The GW skymap
+        observation_band : str
+            Observation band (eg. 'B', 'K', 'u', 'g')
+        fast_cosmology : object
+            Fast cosmology
+        px_zH0 : object
+            GW data, p(x|z,H0)
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        luminosity_prior : object
+            absolute magnitude prior, p(M|H0)
+        luminosity_weights : object
+            luminosity weighting function, p(s|M)
+        Kcorr : bool, optional
+            Should K corrections be applied to the analysis? (default=False)
+        zmax : float, optional
+            The upper redshift limit for the universe (default=10.)
+        """
+        
         super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
         
         self.skymap = skymap
@@ -140,9 +173,35 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         
     def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
+        """
+        p(x|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
+        
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+        
         return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
     def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
+        """
+        p(D|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
+        
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+        
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
         
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
@@ -209,16 +268,16 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
+        skyprob : float, optional
+            pdet probability covered by area G(B) (default=1.)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
 
         Returns
         -------
         floats
             p(G|D,H0), p(B|D,H0), num, den
-            where num/den = p(G|D,H0)
+            where (num/den)*skyprob = p(G|D,H0)
         """
         
         Mmin = M_Mobs(H0,self.Mmin_obs)
@@ -247,10 +306,10 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
+        skyprob : float, optional
+            GW sky probability covered by area G(B) (default=1.)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
 
         Returns
         -------
@@ -286,15 +345,15 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         mth : float
             Apparent magnitude threshold
+        skyprob : float, optional
+            pdet probability covered by area G(B) (default=1.)
         zcut : float, optional
             An artificial redshift cut to the galaxy catalogue (default=10.)
-        zmax : float, optional
-            The upper redshift limit for integrals (default=10.)
 
         Returns
         -------
         float
-            p(x|B,H0)
+            p(D|B,H0)
         """
         
         Mmin = M_Mobs(H0,self.Mmin_obs)
@@ -315,36 +374,49 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
 class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     """
-    Calculate the likelihood of H0 from one GW event, using the galaxy 
-    catalogue method.
-    
-    Parameters
-    ----------
-    base_functions : gwcosmo.gwcosmo.BaseFunctions object
-        p(x|z,H0)*p(z)*p(s|z)*p(M)*p(s|M) and p(D|z,H0)*p(z)*p(s|z)*p(M)*p(s|M)
-    skymap : gwcosmo.likelihood.skymap.skymap object
-        provides p(x|Omega) and skymap properties
-    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
-        The galaxy catalogue
-    fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
-        Cosmological model
-    Kcorr : bool, optional
-        Should K corrections be applied to the analysis? (default=False)
-        Will raise an error if used in conjunction with a galaxy catalogue 
-        without sufficient color information.
-    mth : float, optional
-        Specify an apparent magnitude threshold for the galaxy catalogue
-        (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
-    zmax : float, optional
-        The upper redshift limit for integrals (default=10.). Should be well 
-        beyond the highest redshift reachable by GW data or selection effects.
-    zuncert : bool, optional
-        Should redshift uncertainties be marginalised over? (Default=True).
-    
+    Calculate the likelihood on H0 from one GW event, using the galaxy 
+    catalogue method.    
     """
+    
     def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False):
+        """
+        Parameters
+        ----------
+        galaxy_catalog : object
+            The galaxy catalogue
+        skymap : object
+            The GW skymap
+        observation_band : str
+            Observation band (eg. 'B', 'K', 'u', 'g')
+        fast_cosmology : object
+            Fast cosmology
+        px_zH0 : object
+            GW data, p(x|z,H0)
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        luminosity_prior : object
+            absolute magnitude prior, p(M|H0)
+        luminosity_weights : object
+            luminosity weighting function, p(s|M)
+        Kcorr : bool, optional
+            Should K corrections be applied to the analysis? (default=False)
+        mth : float, optional
+            Specify an apparent magnitude threshold for the galaxy catalogue
+            (default=None). If none, mth is estimated from the galaxy catalogue.
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=None)
+        zmax : float, optional
+            The upper redshift limit for the universe (default=10.)
+        zuncert : bool, optional
+            Should redshift uncertainties be marginalised over? (Default=True)
+        complete_catalog : bool, optional
+            is the galaxy catalogue already complete? (Default=False)
+        """
+        
         super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
 
         self.mth = mth
@@ -406,8 +478,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
 
     def pxD_GH0_multi(self,H0):
-        """
-        Evaluate p(x|G,H0) and p(D|G,H0).
+        """       
+        Vectorises galaxy samples to use pxD_GH0() as efficiently as possible
 
         Parameters
         ----------
@@ -467,20 +539,17 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     def likelihood(self,H0):
         """
-        Compute the full likelihood.
+        Compute the likelihood on H0
         
         Parameters
         ----------
         H0 : array of floats
             Hubble constant values in kms-1Mpc-1
-        complete_catalog : bool, optional
-            Assume that the galaxy catalogue is complete? (default=False)
 
         Returns
         -------
         float
-            Returns likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
-            where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
+            likelihood
         """
         self.pG = np.ones(len(H0))
         self.pxB = np.zeros(len(H0))
@@ -520,6 +589,11 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         return likelihood
 
     def return_components(self):
+        """
+        Returns pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
+        where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
+        """
+        
         return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
         
     def __call__(self, H0):
@@ -533,15 +607,29 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
     method.
     
     This method is fast relative to the catalog methods, as it does not 
-    require an integral over either sky or absolute magnitude, only redshift.
-    
-    Parameters
-    ----------
-    base_functions : gwcosmo.gwcosmo.BaseFunctions object
-        p(x|z,H0) and p(D|z,H0)*p(z)*p(s|z)
-        
+    require an integral over either sky or absolute magnitude, only redshift.        
     """
+    
     def __init__(self, counterpart_z,counterpart_sigmaz, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        """ 
+        Parameters
+        ----------
+        counterpart_z : float
+            redshift of EM counterpart
+        counterpart_sigmaz : float
+            1 sigma uncertainty on redshift of EM counterpart
+        px_zH0 : object
+            GW data, p(x|z,H0) along LOS of counterpart
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        zmax : float
+            The upper redshift limit for the universe (default=10.)
+        """
+        
         self.counterpart_z = counterpart_z
         self.counterpart_sigmaz = counterpart_sigmaz
         super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
@@ -573,6 +661,19 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
         return num
         
     def likelihood(self,H0):
+        """
+        Compute the likelihood on H0
+        
+        Parameters
+        ----------
+        H0 : array of floats
+            Hubble constant values in kms-1Mpc-1
+
+        Returns
+        -------
+        float
+            likelihood
+        """
         
         px = self.px_H0(H0)
         pD = np.zeros(len(H0))
@@ -584,6 +685,10 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
         return likelihood
         
     def return_components(self):
+        """
+        Returns pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
+        where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
+        """
         return self.px, self.pD, 1., 0., 1., 0., 0., 1., 0.
         
     def __call__(self, H0):
@@ -602,19 +707,43 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
     
     This method is fast relative to the catalog methods, as it does not 
     require an integral over either sky or absolute magnitude, only redshift.
-    
-    Parameters
-    ----------
-    base_functions : gwcosmo.gwcosmo.BaseFunctions object
-        p(x|z,H0)*p(z)*p(s|z) and p(D|z,H0)*p(z)*p(s|z)
     """
+    
     def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+        """
+        Parameters
+        ----------
+        px_zH0 : object
+            GW data, p(x|z,H0)
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        zmax : float
+            The upper redshift limit for the universe (default=10.)
+        """
+        
         super().__init__(px_zH0, pD_zH0, zprior, zrates, zmax=zmax)
         
         self.px = None
         self.pD = None
         
     def likelihood(self,H0):
+        """
+        Compute the likelihood on H0
+        
+        Parameters
+        ----------
+        H0 : array of floats
+            Hubble constant values in kms-1Mpc-1
+
+        Returns
+        -------
+        float
+            likelihood
+        """
         
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
@@ -627,6 +756,10 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
         return likelihood
         
     def return_components(self):
+        """
+        Returns pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
+        where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
+        """
         return 0., 1., 0., 0., 1., 0., self.px, self.pD, 1.
         
     def __call__(self, H0):
@@ -640,13 +773,27 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
 
 class LuminosityWeighting(object):
     """
-    Host galaxy probability relation to luminosity
+    Host galaxy probability relation to luminosity: proportional to luminosity
     """
     
     def __init__(self):
         self.luminosity_weights = True
         
     def weighted_call(self, M):
+        """
+        Luminosity weighting
+        
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        
+        Returns
+        -------
+        float
+            Luminosity
+        """
+        
         return L_M(M)
         
     def __call__(self, M):
@@ -654,13 +801,26 @@ class LuminosityWeighting(object):
         
 class UniformWeighting(object):
     """
-    Host galaxy probability relation to luminosity
+    Host galaxy probability relation to luminosity: uniform
     """
     
     def __init__(self):
         self.luminosity_weights = False
         
     def unweighted_call(self, M):
+        """
+        Uniform weighting
+        
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        
+        Returns
+        -------
+        float
+            1.
+        """
         return 1.
         
     def __call__(self, M):
@@ -669,54 +829,145 @@ class UniformWeighting(object):
 
 class RedshiftEvolutionMadau():
     """
-    Merger rate relation to redshift
-    
-    TODO: consider how evolution paramters might need to be marginalised over in future
+    Merger rate relation to redshift: Madau model
     """
     
-    
     def __init__(self,hyper_params_evolution):
+        """
+        Parameters
+        ----------
+        hyper_params_evolution : dict
+            dictionary of redshift evolution parameters
+        """
         self.redshift_evolution = True
         self.Lambda, self.beta, self.zp = hyper_params_evolution['Lambda'], hyper_params_evolution['madau_beta'], hyper_params_evolution['madau_zp']
         
     def evolving(self, z):
+        """
+        Madau rate evolution
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
+        
         C = 1+(1+self.zp)**(-self.Lambda-self.beta)
         return C*((1+z)**self.Lambda)/(1+((1+z)/(1+self.zp))**(self.Lambda+self.beta)) #Equation 2 in https://arxiv.org/pdf/2003.12152.pdf
 
     def __call__(self, z):
+        """
+        Madau rate evolution, shifted to detector frame with 
+        additional factor of 1/(1+z)
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
         return self.evolving(z)/(1.+z)
         
         
         
 class RedshiftEvolutionPowerLaw():
     """
-    Merger rate relation to redshift
-    
-    TODO: consider how evolution parameters might need to be marginalised over in future
+    Merger rate relation to redshift: power-law model
     """
     
     def __init__(self,hyper_params_evolution):
+        """
+        Parameters
+        ----------
+        hyper_params_evolution : dict
+            dictionary of redshift evolution parameters
+        """
+        
         self.redshift_evolution = True
         self.Lambda = hyper_params_evolution['Lambda']
         
     def evolving(self, z):
+        """
+        Power-law rate evolution
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
         return (1+z)**self.Lambda
     
     def __call__(self, z):
+        """
+        Power-law rate evolution, shifted to detector frame with 
+        additional factor of 1/(1+z)
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
         return self.evolving(z)/(1.+z)
             
 class RedshiftNonEvolution():
     """
-    Merger rate relation to redshift
+    Merger rate relation to redshift: no evolution
     """
     
     def __init__(self,hyper_params_evolution):
+        """
+        Parameters
+        ----------
+        hyper_params_evolution : dict
+            dictionary of redshift evolution parameters
+        """
+        
         self.redshift_evolution = False
         
     def constant(self, z):
+        """
+        No rate evolution
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
         return 1.
         
     def __call__(self, z):
+        """
+        No rate evolution, but GW signals are shifted to detector frame with 
+        additional factor of 1/(1+z)
+        
+        Parameters
+        ----------
+        z : float
+            redshift
+            
+        Returns
+        -------
+        float
+        """
         return self.constant(z)/(1.+z)
 
 
@@ -727,9 +978,27 @@ class RedshiftNonEvolution():
 
 def z_nsmear(z, sigmaz, nsmear, zcut=10.):
     """
-    Draw redshift samples from a galaxy. Ensure no samples fall below z=0
+    Draw redshift samples from a galaxy.
+    
+    Ensure no samples fall below z=0.
     Remove samples above the redshift cut. zcut cannot be used as an upper limit
     for the draw, as this will cause an overdensity of support.
+    
+    Parameters
+    ----------
+    z : float
+        redshift
+    sigmaz : float
+        1 sigma redshift uncertainty
+    nsmear : float
+        number of samples to take from galaxy
+    zcut : float, optional
+        An artificial redshift cut to the galaxy catalogue (default=10.)
+        
+    Returns
+    -------
+    array of floats
+        nsmear redshift samples (excluding those above zcut)
     """
     a = (0.0 - z) / sigmaz
     zsmear = truncnorm.rvs(a, 5, loc=z, scale=sigmaz, size=nsmear)
@@ -739,9 +1008,32 @@ def z_nsmear(z, sigmaz, nsmear, zcut=10.):
     
 def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     """
-    Draw redshift samples from a galaxy. Ensure no samples fall below z=0
+    Draw redshift samples from a set of galaxies.
+    Ensure no samples fall below z=0
     Remove samples above the redshift cut. zcut cannot be used as an upper limit
     for the draw, as this will cause an overdensity of support.
+    
+    Parameters
+    ----------
+    z : array of floats
+        galaxy redshifts
+    sigmaz : array of floats
+        1 sigma redshift uncertainty
+    m : array of floats
+        galaxy apparent magnitudes
+    ra, dec : array of floats
+        galaxy right ascension and declinations
+    color : array of floats
+        galaxy colors
+    nsmear : float
+        number of samples to take from all galaxy
+    zcut : float, optional
+        An artificial redshift cut to the galaxy catalogue (default=10.)
+        
+    Returns
+    -------
+    array
+        sampz, sampm, sampra, sampdec, sampcolor, count
     """
     
     # get redshift samples, carefully not going below zero
