@@ -5,14 +5,25 @@ Rachel Gray 2020
 class SchechterParams():
     """
     Returns the source frame Schechter function parameters for a given band.
-    ugriz parameters are from https://arxiv.org/pdf/astro-ph/0210215.pdf
-        (tables 1 and 2)
     
-    Parameters
-    ----------
-    band : observation band (B,K,u,g,r,i,z)
+    Note Mstar is here is M* - 5log10(h)
+
+    ugriz parameters are from https://arxiv.org/pdf/astro-ph/0210215.pdf
+    (tables 1 and 2)
+    B parameters are from section 3 of
+    https://iopscience.iop.org/article/10.3847/0004-637X/820/2/136
+    K parameters are from section 2.1 of
+    https://iopscience.iop.org/article/10.3847/0004-637X/832/1/39
+    (note Mstar=-22.77=-23.55-5log10(0.697)) 
     """
+    
     def __init__(self, band):
+        """
+        Parameters
+        ----------
+        band : observation band (B,K,u,g,r,i,z)
+        """
+        
         self.Mstar = None
         self.alpha = None
         self.Mmin = None
