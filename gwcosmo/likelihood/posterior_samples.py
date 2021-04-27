@@ -201,7 +201,6 @@ class make_px_function(object):
         zmax = z_dlH0(np.amax(samples.distance),H0[-1])*2.
         for i,H in enumerate(H0):
             if reweight_samples == True:
-                # TODO fix this for BNS
                 zkernel, norm = samples.marginalized_redshift_reweight(H, hyper_params_dict,name=name)
             else:
                 zkernel, norm = samples.marginalized_redshift(H)
