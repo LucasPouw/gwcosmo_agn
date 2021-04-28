@@ -10,6 +10,8 @@ from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
 from .skymap import ra_dec_from_ipix
 from ..prior.priors import distance_distribution, mass_prior
 import json
+import healpy as hp
+import copy
 
 from scipy.interpolate import interp1d, interp2d
 
@@ -282,7 +284,7 @@ class make_pixel_px_function(object):
             
         return sel
         
-    def make_los_px_function(self, idx,H0,reweight_samples=True,mass_distribution='BBH-powerlaw',alpha=1.6,mmin=5.0,mmax=100.):
+    def make_los_px_function(self, idx,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
         """Make line of sight z,H0 function of GW data, using samples
         selected with idx"""
         
@@ -291,7 +293,7 @@ class make_pixel_px_function(object):
         samples.mass_1 = samples.mass_1[idx]
         samples.mass_2 = samples.mass_2[idx]
         
-        self.px_zH0 = make_px_function(samples,H0,reweight_samples=reweight_samples,mass_distribution=mass_distribution,alpha=alpha,mmin=mmin,mmax=mmax)
+        self.px_zH0 = make_px_function(samples,H0,hyper_params_dict,name=name,reweight_samples=reweight_samples)
         
         return self.px_zH0
         
