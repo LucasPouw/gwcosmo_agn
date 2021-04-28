@@ -258,6 +258,68 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             tempden[k] = np.sum(deninner*Lweights*zweights*normsamp)
 
         return tempnum,tempden
+
+    def pxD_GH0_multi(self,H0, z, sigmaz, m, ra, dec, color, nfine=10000, ncoarse=10, zcut=10.):
+        """
+        Evaluate p(x|G,H0) and p(D|G,H0).
+
+        Parameters
+        ----------
+        H0 : array of floats
+            Hubble constant value(s) in kms-1Mpc-1
+
+        Returns
+        -------
+        arrays
+            p(x|G,H0), p(D|G,H0)
+        """
+        
+        nGal = len(z)
+        galindex_sep = {}
+        if self.luminosity_weights.luminosity_weights == True:
+            # TODO: find better selection criteria for sampling
+            mlim = np.percentile(np.sort(m),0.01) # more draws for galaxies in brightest 0.01 percent
+            mlim = np.ceil(mlim * 10) / 10.0 # round up to nearst dp to avoid rounding error where no galaxies are selected
+            samp_res = {'fine': nfine, 'coarse': ncoarse}
+            galindex = {'fine': np.where(m <= mlim)[0], 'coarse': np.where(mlim < m)[0]}
+            
+            # for arrays with more than 1million entries, break into sub arrays
+            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
+            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
+            galindex_sep['coarse'] = {i+1 : chunks_coarse[i] for i in range(no_chunks_coarse)} 
+            galindex_sep['fine'] = {i : galindex['fine'] for i in range(1)} 
+        else:
+            samp_res = {'coarse': ncoarse}
+            galindex = {'coarse': np.arange(len(z))}
+            
+            # for arrays with more than 1million entries, break into sub arrays
+            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
+            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
+            galindex_sep['coarse'] = {i : chunks_coarse[i] for i in range(no_chunks_coarse)} 
+        
+        K = sum(len(v) for v in galindex.values()) # total number of sub arrays
+        tempnum = np.zeros([K,len(H0)])
+        tempden = np.zeros([K,len(H0)])
+        
+        # loop over sub arrays of galaxies
+        for i,key in enumerate(samp_res):
+            print('{} galaxies are getting sampled {}ly'.format(len(galindex[key]),key))
+            for n, key2 in enumerate(galindex_sep[key]):
+                zs = z[galindex_sep[key][key2]]
+                sigmazs = sigmaz[galindex_sep[key][key2]]
+                ms = m[galindex_sep[key][key2]]
+                ras = ra[galindex_sep[key][key2]]
+                decs = dec[galindex_sep[key][key2]]
+                colors = color[galindex_sep[key][key2]]
+                
+                sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=zcut)
+                    
+                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count)
+                
+        num = np.sum(tempnum,axis=0)/nGal
+        den = np.sum(tempden,axis=0)/nGal
+
+        return num,den  
         
     def pGB_DH0(self, H0, mth, skyprob, zcut=10.):
         """
@@ -485,68 +547,6 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         hi_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, self.hi_res_nside, order_in='NESTED', order_out='NESTED')
         self.hi_res_skyprob = hi_res_skyprob/np.sum(hi_res_skyprob) #renormalise
 
-
-    def pxD_GH0_multi(self,H0, z, sigmaz, m, ra, dec, color):
-        """
-        Evaluate p(x|G,H0) and p(D|G,H0).
-
-        Parameters
-        ----------
-        H0 : array of floats
-            Hubble constant value(s) in kms-1Mpc-1
-
-        Returns
-        -------
-        arrays
-            p(x|G,H0), p(D|G,H0)
-        """
-        
-        nGal = len(z)
-        galindex_sep = {}
-        if self.luminosity_weights.luminosity_weights == True:
-            # TODO: find better selection criteria for sampling
-            mlim = np.percentile(np.sort(m),0.01) # more draws for galaxies in brightest 0.01 percent
-            mlim = np.ceil(mlim * 10) / 10.0 # round up to nearst dp to avoid rounding error where no galaxies are selected
-            samp_res = {'fine': self.nfine, 'coarse': self.ncoarse}
-            galindex = {'fine': np.where(m <= mlim)[0], 'coarse': np.where(mlim < m)[0]}
-            
-            # for arrays with more than 1million entries, break into sub arrays
-            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
-            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
-            galindex_sep['coarse'] = {i+1 : chunks_coarse[i] for i in range(no_chunks_coarse)} 
-            galindex_sep['fine'] = {i : galindex['fine'] for i in range(1)} 
-        else:
-            samp_res = {'coarse': self.ncoarse}
-            galindex = {'coarse': np.arange(len(z))}
-            
-            # for arrays with more than 1million entries, break into sub arrays
-            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
-            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
-            galindex_sep['coarse'] = {i : chunks_coarse[i] for i in range(no_chunks_coarse)} 
-        
-        K = sum(len(v) for v in galindex.values()) # total number of sub arrays
-        tempnum = np.zeros([K,len(H0)])
-        tempden = np.zeros([K,len(H0)])
-        
-        # loop over sub arrays of galaxies
-        for i,key in enumerate(samp_res):
-            print('{} galaxies are getting sampled {}ly'.format(len(galindex[key]),key))
-            for n, key2 in enumerate(galindex_sep[key]):
-                zs = z[galindex_sep[key][key2]]
-                sigmazs = sigmaz[galindex_sep[key][key2]]
-                ms = m[galindex_sep[key][key2]]
-                ras = ra[galindex_sep[key][key2]]
-                decs = dec[galindex_sep[key][key2]]
-                colors = color[galindex_sep[key][key2]]
-                
-                sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=self.zcut)
-                    
-                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count)
-                
-        num = np.sum(tempnum,axis=0)/nGal
-        den = np.sum(tempden,axis=0)/nGal
-
-        return num,den  
         
     def full_pixel(self, H0, z, sigmaz, m, ra, dec, color, mth, px_Omega=1., pOmega=1.):
         """
@@ -574,7 +574,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.zeros(len(H0))
         
         print('Computing the in-catalogue part')
-        pxG, pDG = self.pxD_GH0_multi(H0, z, sigmaz, m, ra, dec, color)
+        pxG, pDG = self.pxD_GH0_multi(H0, z, sigmaz, m, ra, dec, color, nfine=self.nfine, ncoarse=self.ncoarse, zcut=self.zcut)
 
         if not self.complete_catalog:
             print('Computing the beyond catalogue part')   
@@ -766,68 +766,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pB = 0.
         self.pxO = 0.
         self.pDO = 1.
-        self.pO = 0.
-
-
-    def pxD_GH0_multi(self,H0):
-        """       
-        Vectorises galaxy samples to use pxD_GH0() as efficiently as possible
-
-        Parameters
-        ----------
-        H0 : array of floats
-            Hubble constant value(s) in kms-1Mpc-1
-
-        Returns
-        -------
-        arrays
-            p(x|G,H0), p(D|G,H0)
-        """
-        
-        galindex_sep = {}
-        if self.luminosity_weights.luminosity_weights == True:
-            # TODO: find better selection criteria for sampling
-            mlim = np.percentile(np.sort(self.galm),0.01) # more draws for galaxies in brightest 0.01 percent
-            samp_res = {'fine': self.nfine, 'coarse': self.ncoarse}
-            galindex = {'fine': np.where(self.galm <= mlim)[0], 'coarse': np.where(mlim < self.galm)[0]}
-            
-            # for arrays with more than 1million entries, break into sub arrays
-            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
-            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
-            galindex_sep['coarse'] = {i+1 : chunks_coarse[i] for i in range(no_chunks_coarse)} 
-            galindex_sep['fine'] = {i : galindex['fine'] for i in range(1)} 
-        else:
-            samp_res = {'coarse': self.ncoarse}
-            galindex = {'coarse': np.arange(self.nGal)}
-            
-            # for arrays with more than 1million entries, break into sub arrays
-            no_chunks_coarse = int(np.ceil(len(galindex['coarse'])/1000000))
-            chunks_coarse = np.array_split(galindex['coarse'],no_chunks_coarse)
-            galindex_sep['coarse'] = {i : chunks_coarse[i] for i in range(no_chunks_coarse)} 
-        
-        K = sum(len(v) for v in galindex.values()) # total number of sub arrays
-        tempnum = np.zeros([K,len(H0)])
-        tempden = np.zeros([K,len(H0)])
-        
-        # loop over sub arrays of galaxies
-        for i,key in enumerate(samp_res):
-            print('{} galaxies are getting sampled {}ly'.format(len(galindex[key]),key))
-            for n, key2 in enumerate(galindex_sep[key]):
-                zs = self.galz[galindex_sep[key][key2]]
-                sigmazs = self.galsigmaz[galindex_sep[key][key2]]
-                ms = self.galm[galindex_sep[key][key2]]
-                ras = self.galra[galindex_sep[key][key2]]
-                decs = self.galdec[galindex_sep[key][key2]]
-                colors = self.galcolor[galindex_sep[key][key2]]
-                
-                sampz, sampm, sampra, sampdec, sampcolor, count = gal_nsmear(zs, sigmazs, ms, ras, decs, colors, samp_res[key], zcut=self.zcut)
-                    
-                tempnum[key2,:],tempden[key2,:] = self.pxD_GH0(H0, sampz, sampm, sampra, sampdec, sampcolor, count)
-                
-        num = np.sum(tempnum,axis=0)/self.nGal
-        den = np.sum(tempden,axis=0)/self.nGal
-
-        return num,den        
+        self.pO = 0.    
 
     def likelihood(self,H0):
         """
@@ -855,7 +794,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.zeros(len(H0))
         
         print('Computing the in-catalogue part')
-        self.pxG, self.pDG = self.pxD_GH0_multi(H0)
+        self.pxG, self.pDG = self.pxD_GH0_multi(H0, self.galz, self.galsigmaz, self.galm, self.galra, self.galdec, self.galcolor, nfine=self.nfine, ncoarse=self.ncoarse, zcut=self.zcut)
 
         if not self.complete_catalog:
             print('Computing the beyond catalogue part')   
