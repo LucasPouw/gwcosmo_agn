@@ -153,7 +153,7 @@ if combine_pixels:
         likelihoods[:,i] = np.load(outputfile+'_pixel_{}.npz'.format(idx),allow_pickle=True)['arr_0'][1]
     H0 = np.load(outputfile+'_pixel_{}.npz'.format(idx),allow_pickle=True)['arr_0'][0]
     likelihood = np.sum(likelihoods,axis=1)
-    np.savez(outputfile+'_pixel_likelihood.npz',[H0, likelihood])
+    #np.savez(outputfile+'_pixel_likelihood.npz',[H0, likelihood])
 
 else:
     print('Selected method is:', opts.method)
@@ -333,6 +333,8 @@ else:
     if opts.method == 'pixel':
         np.savez(outputfile+'_pixel_{}.npz'.format(pixel_index),[H0, likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO])
         exit()
+    else:
+        np.savez(outputfile+'_likelihood_breakdown.npz',[H0, likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO])
 
 prior_uniform = gwcosmo.prior.priors.pH0(H0,prior='uniform')
 posterior_uniform = prior_uniform*likelihood
@@ -345,7 +347,6 @@ prior_log_norm = prior_log/np.sum(prior_log*dH0)
 posterior_log_norm = posterior_log/np.sum(posterior_log*dH0)
 
 np.savez(outputfile+'.npz',[H0,likelihood,posterior_uniform_norm,posterior_log_norm,opts])
-np.savez(outputfile+'_likelihood_breakdown.npz',[H0, likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO])
 
 print("Uniform Prior")
 confidence_uniform = confidence_interval(posterior_uniform_norm,H0,level=0.683)
