@@ -3,22 +3,16 @@ Detection probability
 Rachel Gray, John Veitch, Ignacio Magana, Dominika Zieba
 """
 import lal
-from lal import ComputeDetAMResponse
 import lalsimulation as lalsim
 import numpy as np
 from scipy.interpolate import interp1d, splev, splrep, interp2d
 from scipy.integrate import quad
 from scipy.stats import ncx2
 from scipy.special import logit, expit
-import healpy as hp
-from gwcosmo.utilities.standard_cosmology import *
-from gwcosmo.prior.priors import mass_sampling as mass_prior
-
-import pickle
-import time
+from gwcosmo.utilities.standard_cosmology import fast_cosmology,z_dlH0,dl_zH0 
+from gwcosmo.prior.priors import mass_prior
 import progressbar
 import pkg_resources
-import os
 
 
 class DetectionProbability(object):
@@ -62,10 +56,10 @@ class DetectionProbability(object):
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
     
     """
-    def __init__(self, mass_distribution, asd, detectors=['H1', 'L1'],
-                 Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308,
-                 linear=False, basic=False, alpha=1.6, Mmin=5., Mmax=50., M1=50., M2=50.,
-                 constant_H0=False, full_waveform=True, seed=1000):
+    def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], detected_masses=False, det_combination=True,
+                 Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308, linear=False, basic=False, 
+                 alpha=1.6, Mmin=5., Mmax=50., beta=0., alpha_2=0., mu_g=35., sigma_g=5., lambda_peak=0.2,
+                 delta_m=0., b=0.5, M1=50., M2=50., constant_H0=False, full_waveform=True, seed=1000):
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -78,24 +72,22 @@ class DetectionProbability(object):
         self.alpha = alpha
         self.Mmin = Mmin
         self.Mmax = Mmax
-        self.M1=M1
-        self.M2=M2
+        self.alpha_2 = alpha_2
+        self.beta = beta
+        self.mu_g = mu_g
+        self.sigma_g = sigma_g
+        self.lambda_peak = lambda_peak
+        self.delta_m = delta_m
+        self.b = b
+        self.M1 = M1
+        self.M2 = M2
         self.full_waveform = full_waveform
         self.constant_H0 = constant_H0
         self.seed = seed
-       
+        self.detected_masses = detected_masses
+        self.det_combination = det_combination
         np.random.seed(seed)
-        
-        ASD_data = {}
-        self.asds = {}    #this is now a dictionary of functions
-        for det in self.detectors:
-            if self.asd == 'MDC':
-                ASD = np.genfromtxt(self.data_path + 'PSD_L1_H1_mid.txt')
-                self.asds[det] = interp1d(ASD[:, 0], ASD[:, 1])
-            else:
-                ASD_data[det] = np.genfromtxt(self.data_path + det + '_'+ self.asd + '_strain.txt')
-                self.asds[det] = interp1d(ASD_data[det][:, 0], ASD_data[det][:, 1])
-
+                
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         
         if self.full_waveform is True:
@@ -114,19 +106,19 @@ class DetectionProbability(object):
         self.incs = np.arccos(2.0*q - 1.0)
         self.psis = np.random.rand(N)*2.0*np.pi
         self.phis = np.random.rand(N)*2.0*np.pi
-        if self.mass_distribution == 'BNS':
-            mass_priors = mass_prior(self.mass_distribution)
+        
+        self.hyper_params_dict = {'alpha':self.alpha,'alpha_2':self.alpha_2,'mmin':self.Mmin,'mmax':self.Mmax,
+                                  'beta':self.beta,'sigma_g':self.sigma_g,'lambda_peak':self.lambda_peak,
+                                  'mu_g':self.mu_g,'delta_m':self.delta_m,'b':self.b}
+        
+        sampling = mass_prior(name=self.mass_distribution, hyper_params_dict=self.hyper_params_dict)
+        m1, m2 = sampling.sample(N)
+        
+        if self.mass_distribution == 'BNS' or self.mass_distribution.startswith('NSBH'):
             self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
-        if self.mass_distribution == 'NSBH':
-            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
-            self.dl_array = np.linspace(1.0e-100, 1000.0, 500)
-        if self.mass_distribution == 'BBH-powerlaw':
-            mass_priors = mass_prior(self.mass_distribution, self.alpha, self.Mmin, self.Mmax)
+        else:
             self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
-        if self.mass_distribution == 'BBH-constant':
-            mass_priors = mass_prior(self.mass_distribution, self.M1, self.M2)
-            self.dl_array = np.linspace(1.0e-100, 15000.0, 500)
-        m1, m2 = mass_priors.sample(N)
+        
         self.m1 = m1*1.988e30
         self.m2 = m2*1.988e30
 
@@ -136,20 +128,107 @@ class DetectionProbability(object):
         self.f_min = 10      #10 Hz minimum frequency
         self.f_max = 4999    #5000 Hz maximum frequency
         
-        self.__interpolnum = {}    #this is now a dictionary of functions, one per detector
-        for det in self.detectors:
-            self.__interpolnum[det] = self.__numfmax_fmax(self.M_min, det)
-
-        print("Calculating pdet with " + self.asd + " sensitivity and " +
-              self.mass_distribution + " mass distribution.")
+        if (self.asd == 'MDC' or self.asd == 'O1') and ('V1' in self.detectors):
+            self.detectors.remove('V1')
         
+        duty_factors = {'O3':{'H1':0.75,'L1':0.75,'V1':0.75},'O2':{'H1':0.60,'L1':0.60,'V1':-1},'O1':{'H1':0.60,'L1':0.50,'V1':-1},'MDC':{'H1':1.,'L1':1.,'V1':-1.}}
+        days_of_run = {'O3':361,'O2':268,'O1':129 ,'MDC':100} # data taken from https://www.gw-openscience.org/timeline for O1,O2 
+        
+        if self.asd == None:
+            self.duty_factor = {'O3':{},'O2':{},'O1':{}} 
+        else:
+            self.duty_factor={asd:{}}
+        
+        self.days_of_runs ={}
+        for psd in self.duty_factor:
+            self.days_of_runs[psd] = days_of_run[psd]
+ 
+        if self.det_combination==True:
+            for p in self.duty_factor:
+                for d in duty_factors[p]:
+                    if d in self.detectors:
+                        self.duty_factor[p][d] = duty_factors[p][d]
+                    else:
+                        self.duty_factor[p][d] = -1.0
+        
+        else:
+            for p in self.duty_factor:
+                for d in duty_factors[p]:
+                    if d in self.detectors:
+                        self.duty_factor[p][d] = 1.0
+                    else:
+                        self.duty_factor[p][d] = -1.0
+                    if p=='O1' and d=='V1':
+                        self.duty_factor[p][d] = -1.0
+        
+        total_days = 0
+        for key in self.days_of_runs:
+            total_days+=self.days_of_runs[key]
+        self.prob_of_run = {}
+        for key in self.days_of_runs:
+            self.prob_of_run[key] = self.days_of_runs[key]/total_days
+        self.psds = []
+        self.dets = []
+        p = np.random.rand(N)
+        
+        if self.asd == None:
+            self.asds = {'O3':{},'O2':{},'O1':{}}    #this is now a dictionary of functions
+            ASD_data = {'O3':{},'O2':{},'O1':{}}
+            self.__interpolnum = {'O3':{},'O2':{},'O1':{}}
+            for i in range(N):
+                if 0<=p[i]<=self.prob_of_run['O1']:
+                    psd = 'O1'
+                elif self.prob_of_run['O1']<p[i]<=self.prob_of_run['O1']+self.prob_of_run['O2']:
+                    psd = 'O2'
+                else:
+                    psd = 'O3'
+                self.psds.append(psd)
+        else:
+            self.asds = {self.asd:{}}
+            ASD_data = {self.asd:{}}
+            self.__interpolnum = {self.asd:{}}
+            for i in range(N):
+                self.psds.append(self.asd)
+                    
+        for i in range(N):
+            d = []
+            while len(d)==0:
+                h = np.random.rand()
+                l = np.random.rand()
+                v = np.random.rand()
+                if (h<=self.duty_factor[self.psds[i]]['H1']) and ('H1' in self.detectors):
+                    d.append('H1')
+                if (l<=self.duty_factor[self.psds[i]]['L1']) and ('L1' in self.detectors):
+                    d.append('L1')
+                if (v<=self.duty_factor[self.psds[i]]['V1']) and ('V1' in self.detectors):
+                    d.append('V1')
+            self.dets.append(d)
+          
+        for run in self.asds:
+            for det in self.duty_factor[run]:
+                if self.duty_factor[run][det]>0:
+                    if run == 'MDC':
+                        ASD_data[run][det] = np.genfromtxt(self.data_path + 'PSD_L1_H1_mid.txt')
+                    else:
+                        ASD_data[run][det] = np.genfromtxt(self.data_path +str(det)+ '_'+ str(run) + '_strain.txt')
+                    self.asds[run][det] = interp1d(ASD_data[run][det][:, 0], ASD_data[run][det][:, 1])
+                    if basic==True or full_waveform==False:
+                        self.__interpolnum[run][det] = self.__numfmax_fmax(self.M_min, det, run)
+                             
+        if self.asd != None:
+            print("Calculating pdet with " + self.asd + " sensitivity and " +
+                    self.mass_distribution + " mass distribution.")
+        else:
+            print("Calculating pdet with marginalizing over sensitivity and with " +
+                    self.mass_distribution + " mass distribution.")  
         if basic is True:
             self.interp_average_basic = self.__pD_dl_basic()
         
         elif constant_H0 is True:  
             self.prob = self.__pD_zH0(H0)
             logit_prob=logit(self.prob)
-            logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)   
+            logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)  
+            logit_prob=np.where(logit_prob==float('-inf'), -33, logit_prob)  
             self.interp_average = interp1d(self.z_array, logit_prob, kind='cubic')
             
         else:
@@ -366,7 +445,7 @@ class DetectionProbability(object):
         return hf[start: end + 1], f_array[start: end + 1]  
 
 
-    def snr_squared_waveform(self, hp, hc, RA, Dec, psi, gmst, detector):
+    def snr_squared_waveform(self, hp, hc, RA, Dec, psi, gmst, detector, psd):
         """
         Calculates SNR squared of the simulated inspiral waveform for single detector 
 
@@ -392,7 +471,7 @@ class DetectionProbability(object):
         
         hf, f_array = self.simulate_waveform_response(hp, hc, RA, Dec, psi, gmst, detector)
         df = f_array[1]-f_array[0]
-        SNR_squared=4*np.sum((np.abs(hf)**2/self.asds[detector](f_array)**2)*df)
+        SNR_squared=4*np.sum((np.abs(hf)**2/self.asds[psd][detector](f_array)**2)*df)
         return SNR_squared
 
         
@@ -443,7 +522,7 @@ class DetectionProbability(object):
         """
         return 1/(np.power(6.0, 3.0/2.0)*np.pi*M) * lal.C_SI**3/lal.G_SI
 
-    def __numfmax_fmax(self, M_min, detector):
+    def __numfmax_fmax(self, M_min, detector, psd):
         """
         lookup table for snr as a function of max frequency
         Calculates \int_fmin^fmax f'^(-7/3)/S_h(f')
@@ -462,7 +541,7 @@ class DetectionProbability(object):
         Interpolated 1D array of \int_fmin^fmax f'^(-7/3)/S_h(f')
         for different fmax's
         """
-        ASD = self.asds[detector]
+        ASD = self.asds[psd][detector]
         fmax = lambda m: self.__fmax(m)
         I = lambda f: np.power(f, -7.0/3.0)/(ASD(f)**2)
         f_min = self.f_min  # Hz, changed this from 20 to 10 to resolve NaN error
@@ -473,12 +552,12 @@ class DetectionProbability(object):
         bar = progressbar.ProgressBar()
         print("Calculating lookup table for snr as a function of max frequency.")
         for i in bar(range(self.Nsamps)):
-            num_fmax[i] = quad(I, f_min, arr_fmax[i], epsabs=0, epsrel=1.49e-4)[0]
-
+            num_fmax[i] = quad(I, f_min, arr_fmax[i],epsabs=0, epsrel=1.49e-4)[0]
+            
         return interp1d(arr_fmax, num_fmax)
     
 
-    def __snr_squared(self, RA, Dec, m1, m2, inc, psi, detector, gmst, z, H0):
+    def __snr_squared(self, RA, Dec, m1, m2, inc, psi, detector, gmst, z, H0, psd):
         """
         the optimal snr squared for one detector, used for marginalising
         over sky location, inclination, polarisation, mass
@@ -512,7 +591,7 @@ class DetectionProbability(object):
         A = self.__reduced_amplitude(RA, Dec, inc, psi, detector, gmst) * np.power(mc, 5.0/6.0) / (self.cosmo.dl_zH0(z, H0)*lal.PC_SI*1e6)
 
         fmax = self.__fmax(mtot)
-        num = self.__interpolnum[detector](fmax)
+        num = self.__interpolnum[psd][detector](fmax)
 
         return 4.0*A**2*num*np.power(lal.G_SI, 5.0/3.0)/lal.C_SI**3.0
 
@@ -533,29 +612,48 @@ class DetectionProbability(object):
         """
         lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
                                 for name in self.detectors]
-        
+
         network_rhosq = np.zeros((self.Nsamps, 1))
         prob = np.zeros(len(self.z_array))
         i=0
+        detect = np.ones(self.Nsamps)
         bar = progressbar.ProgressBar()
+        if self.detected_masses==True:
+            self.detected = np.zeros((len(self.z_array),self.Nsamps))
         for z in bar(self.z_array):
             dl = self.cosmo.dl_zH0(z, H0)
-            factor=1+z
+            factor = 1+z
+            survival = 0
+            np.random.seed(100)
             for n in range(self.Nsamps):
-                if self.full_waveform is True: 
-                    hp,hc = self.simulate_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], self.phis[n])
-                    rhosqs = [self.snr_squared_waveform(hp,hc,self.RAs[n],self.Decs[n],self.psis[n], 0., det)
-                              for det in self.detectors]
+                detectors = self.dets[n]
+                psd = self.psds[n]
+                if detect[n] == 1:               
+                    if self.full_waveform is True: 
+                        hp,hc = self.simulate_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], self.phis[n])
+                        rhosqs = [self.snr_squared_waveform(hp,hc,self.RAs[n],self.Decs[n],self.psis[n], 0., det, psd)
+                              for det in detectors]
 
-                else:
-                    rhosqs = [self.__snr_squared(self.RAs[n], self.Decs[n],
+                    else:
+                        rhosqs = [self.__snr_squared(self.RAs[n], self.Decs[n],
                               self.m1[n], self.m2[n], self.incs[n], self.psis[n],
-                              det, 0.0, self.z_array[i], H0)
-                              for det in self.detectors]
-                network_rhosq[n] = np.sum(rhosqs)
+                              det, 0.0, self.z_array[i], H0, psd)
+                              for det in detectors]
+                    network_rhosq[n] = np.sum(rhosqs)
 
-            survival = ncx2.sf(self.snr_threshold**2, 2*len(self.detectors), network_rhosq)  
-            prob[i] = np.sum(survival, 0)/self.Nsamps
+                    det_SNR = ncx2.rvs(2*len(detectors), network_rhosq[n])
+                
+                    if det_SNR>=self.snr_threshold**2:
+                        survival+=1
+                        if self.detected_masses==True:
+                            self.detected[i][n] = 1
+                    else:
+                        if (1-ncx2.cdf(x=self.snr_threshold**2,df=2*len(detectors), nc=network_rhosq[n]))<=1e-2:
+                            detect[n]=0 
+                else:
+                    ncx2.rvs(2*len(detectors),100)
+
+            prob[i] = survival/self.Nsamps
             i+=1
             
         return prob

@@ -17,11 +17,8 @@ from scipy.interpolate import splrep, splev
 import lal
 
 c = lal.C_SI/1000.  # 2.99792458e+05 # in km/s
-Omega_m = 0.3  # 0.3175 # PLANCK best fit
-H0 = 70  # 67.11 # in km/s/Mpc
 
-
-def h(z, Omega_m=Omega_m):
+def h(z, Omega_m=0.308):
     """
     Returns dimensionless redshift-dependent hubble parameter.
 
@@ -38,7 +35,7 @@ def h(z, Omega_m=Omega_m):
     return np.sqrt(Omega_m*(1+z)**3 + Omega_Lambda)
 
 
-def dcH0overc(z, Omega_m=Omega_m):
+def dcH0overc(z, Omega_m=0.308):
     """
     Returns dimensionless combination dc*H0/c
     given redshift and matter fraction.
@@ -57,7 +54,7 @@ def dcH0overc(z, Omega_m=Omega_m):
     return integrate.quad(integrand, 0, z)[0]  # in km/s
 
 
-def dLH0overc(z, Omega_m=Omega_m):
+def dLH0overc(z, Omega_m=0.308):
     """
     Returns dimensionless combination dL*H0/c
     given redshift and matter fraction.
@@ -74,7 +71,7 @@ def dLH0overc(z, Omega_m=Omega_m):
     return (1+z)*dcH0overc(z, Omega_m)
 
 
-def volume_z(z, Omega_m=Omega_m):
+def volume_z(z, Omega_m=0.308):
     """
     Returns the cosmological volume at the given redshift.
 
@@ -90,7 +87,7 @@ def volume_z(z, Omega_m=Omega_m):
     return dcH0overc(z, Omega_m)**2/h(z, Omega_m)
 
 
-def volume_time_z(z, Omega_m=Omega_m):
+def volume_time_z(z, Omega_m=0.308):
     """
     Returns the cosmological volume time element at a given redshift.
 
@@ -106,7 +103,7 @@ def volume_time_z(z, Omega_m=Omega_m):
     return volume_z(z, Omega_m=Omega_m)/(1.0+z)
 
 
-def prefactor_volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
+def prefactor_volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
     """
     Returns the prefactor modifying dL^2*ddL
     for the cosmological volume element.
@@ -127,7 +124,7 @@ def prefactor_volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     return (1+z)**(-3.) * (1 - 1. / (1 + (1+z)**2/(dHoc*h(z, Omega_m))))
 
 
-def volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
+def volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
     """
     Returns cosmological volume at the given dL*H0/c.
 
@@ -145,7 +142,7 @@ def volume_dHoc(dHoc, Omega_m=Omega_m, tolerance_z=1e-06, z=None):
     return dHoc**2*prefactor_volume_dHoc(dHoc, Omega_m, tolerance_z, z=z)
 
 
-def redshift(dHoc, Omega_m=Omega_m, tolerance_z=1e-06):
+def redshift(dHoc, Omega_m=0.308, tolerance_z=1e-06):
     """
     Returns redshift given dimensionless combination dL*H0/c
     and matter fraction.
@@ -272,7 +269,7 @@ def L_mdl(m, dl, Kcorr=0.):
 
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
-def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):
+def dl_zH0(z, H0=70., Omega_m=0.308, linear=False):
     """
     Returns luminosity distance given distance and cosmological parameters
 
@@ -299,7 +296,7 @@ def dl_zH0(z, H0=70., Omega_m=0.3, linear=False):
         return dLH0overc(z, Omega_m=Omega_m)*c/H0
 
 
-def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
+def z_dlH0(dl, H0=70., Omega_m=0.308, linear=False):
     """
     Returns redshift given luminosity distance and cosmological parameters
 
@@ -325,14 +322,21 @@ def z_dlH0(dl, H0=70., Omega_m=0.3, linear=False):
 
 class redshift_prior(object):
     """
-    p(z|Omega_m)
+    p(z|Omega_m): Uniform in comoving volume distribution of galaxies
+    
+    Parameters
+    ----------
+    Omega_m : matter fraction (default=0.308)
+    zmax : upper limit for redshift (default=10.0)
+    linear : assumes local cosmology and suppresses
+    non-linear effects (default=False)
     """
-    def __init__(self, Omega_m=0.3, zmax=10.0, linear=False):
+    def __init__(self, Omega_m=0.308, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
         z_array = np.linspace(0.0, self.zmax, 5000)
-        lookup = np.array([volume_time_z(z, Omega_m=self.Omega_m)
+        lookup = np.array([volume_z(z, Omega_m=self.Omega_m)
                           for z in z_array])
         self.interp = splrep(z_array, lookup)
 
@@ -353,13 +357,13 @@ class fast_cosmology(object):
 
     Parameters
     ----------
-    Omega_m : matter fraction (default=0.3)
-    zmax : upper limit for redshift (default=4.0)
+    Omega_m : matter fraction (default=0.308)
+    zmax : upper limit for redshift (default=10.0)
     linear : assumes local cosmology and suppresses
     non-linear effects (default=False)
 
     """
-    def __init__(self, Omega_m=0.3, zmax=10.0, linear=False):
+    def __init__(self, Omega_m=0.308, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
@@ -387,3 +391,26 @@ class fast_cosmology(object):
         else:
             # Standard cosmology     
             return splev(z, self.interp, ext=3)*c/H0
+        
+    def E(self,z):
+        """
+        Returns the E(z) factor
+        
+        Parameters
+        ----------
+        z : redshift
+        """
+        
+        return np.sqrt(self.Omega_m*(1+z)**3 + (1.0-self.Omega_m))
+
+    def dL_by_z_H0(self,z,H0):
+        """
+        Returns the derivative of the luminosity distance w.r.t. redshift
+        
+        Parameters
+        ----------
+        z : redshift
+        H0 : Hubble constant in km Mpc-1 s-1
+        """
+        speed_of_light = c
+        return self.dl_zH0(z, H0)/(1+z) + speed_of_light*(1+z)/(H0*self.E(z))
