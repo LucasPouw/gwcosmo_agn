@@ -136,24 +136,16 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
 outputfile = str(opts.outputfile)
-# Set command line arguments
-min_H0 = float(opts.min_H0)
-max_H0 = float(opts.max_H0)
-bins_H0 = int(opts.bins_H0)
-"Compute P(H0)"
-H0 = np.linspace(min_H0, max_H0, bins_H0)
-dH0 = H0[1] - H0[0]
 
 combine_pixels = str2bool(opts.combine_pixels)
 if combine_pixels:
     pixels = np.genfromtxt(outputfile+'_indices.txt',dtype=int)
+    H0 = np.load(outputfile+'_pixel_{}.npz'.format(pixels[0]),allow_pickle=True)['arr_0'][0]
     print('Combining {} pixels'.format(len(pixels)))
     likelihoods = np.zeros([len(H0),len(pixels)])
     for i, idx in enumerate(pixels):
         likelihoods[:,i] = np.load(outputfile+'_pixel_{}.npz'.format(idx),allow_pickle=True)['arr_0'][1]
-    H0 = np.load(outputfile+'_pixel_{}.npz'.format(idx),allow_pickle=True)['arr_0'][0]
     likelihood = np.sum(likelihoods,axis=1)
-    #np.savez(outputfile+'_pixel_likelihood.npz',[H0, likelihood])
 
 else:
     print('Selected method is:', opts.method)
@@ -172,6 +164,12 @@ else:
         posterior_samples_field = str(opts.posterior_samples_field)
     else:
         posterior_samples_field = None
+        
+    min_H0 = float(opts.min_H0)
+    max_H0 = float(opts.max_H0)
+    bins_H0 = int(opts.bins_H0)
+    H0 = np.linspace(min_H0, max_H0, bins_H0)
+    dH0 = H0[1] - H0[0]
 
     redshift_evolution = str(opts.redshift_evolution)
     Lambda = float(opts.Lambda)
@@ -228,6 +226,10 @@ else:
         if opts.method == 'counterpart' or opts.method == 'population' or opts.method == 'statistical':
             print("Setting up p(x|z,H0)")
             px_zH0 = gwcosmo.likelihood.posterior_samples.make_px_function(samples, H0, hyper_params_dict, name=mass_distribution, reweight_samples=reweight_samples)
+    
+    if opts.skymap is not None:
+        skymap_path = str(opts.skymap)
+        skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
 
     if opts.method == 'counterpart':
         ### This method currently only works with posterior samples which are already 
@@ -272,7 +274,6 @@ else:
         if (opts.skymap is None):
             parser.error('Provide a gravitational wave skymap')
             
-        skymap_path = str(opts.skymap)
         catalog_path = str(opts.galaxy_catalog)
         band = str(opts.catalog_band)
         Kcorr = str2bool(opts.Kcorrections)
@@ -296,8 +297,6 @@ else:
             ps_M = gwcosmo.gwcosmo.LuminosityWeighting()
         else:
             ps_M = gwcosmo.gwcosmo.UniformWeighting()
-            
-        skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
         
     if opts.method == 'statistical':
         
