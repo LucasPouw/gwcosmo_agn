@@ -150,8 +150,8 @@ class skymap(object):
 
     def pixel_split(self, ra, dec, nside):
         """
-        Convert a catalogue to a HEALPix map of mth per resolution
-        element (by taking the faintest object in each pixel).
+        For a list of galaxy ra and decs, return a dictionary identifying the
+        index of the galaxies in each pixel of a healpy map of resolution nside
 
         Parameters
         ----------
@@ -163,14 +163,10 @@ class skymap(object):
 
         Return
         ------
-        res : ndarray
-            arrays of galaxy indices corresponding to each pixel
-        idx : array
-            healpy index of each pixel containing at least one galaxy
+        dicts : dictionary
+            dictionary of galaxy indices in each pixel
             
-        ra[res[i]] returns the ra values of each galaxy in skymap pixel
-        idx[i].
-
+        dicts[idx] returns the indices of each galaxy in skymap pixel idx.
         """
 
         # The number of pixels based on the chosen value of nside
