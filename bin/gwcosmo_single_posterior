@@ -142,6 +142,8 @@ if combine_pixels:
     pixels = np.genfromtxt(outputfile+'_indices.txt',dtype=int)
     H0 = np.load(outputfile+'_pixel_{}.npz'.format(pixels[0]),allow_pickle=True)['arr_0'][0]
     dH0 = H0[1] - H0[0]
+    min_H0 = np.amin(H0)
+    max_H0 = np.amax(H0)
     print('Combining {} pixels'.format(len(pixels)))
     likelihoods = np.zeros([len(H0),len(pixels)])
     for i, idx in enumerate(pixels):
