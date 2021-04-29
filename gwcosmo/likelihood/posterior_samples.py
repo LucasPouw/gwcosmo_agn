@@ -188,17 +188,26 @@ class make_px_function(object):
     """
     Make a line of sight, or sky-marginalised, function of the GW data in
     redshift and H0.
-
-    Parameters
-    ----------
-    samples : posterior_samples object
-        The GW samples
-    H0 : array
-    reweight_samples : bool, optional
-        Should the samples be reweighted to the same source-frame mass prior
-        as used in the selection effects? (Default=True)
     """
+    
     def __init__(self, samples,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
+        """
+        Parameters
+        ----------
+        samples : posterior_samples object
+            The GW samples
+        H0 : array of floats
+            Hubble constant values in kms-1Mpc-1
+        hyper_params_dict : dictionary
+            dictionary defining mass distribution parameters 'alpha', 'alpha_2',
+             'mmin', 'mmax', 'beta', 'sigma_g', 'lambda_peak', 'mu_g', 'delta_m', 'b'
+        name : str, optional
+            Mass distribution (default='BBH-powerlaw')
+        reweight_samples : bool, optional
+            Should the samples be reweighted to the same source-frame mass prior
+            as used in the selection effects? (Default=True)
+        """
+        
         redshift_bins = 500
         vals = np.zeros((len(H0),redshift_bins))
         zmin = z_dlH0(np.amin(samples.distance),H0[0])*0.5
@@ -226,8 +235,27 @@ class make_px_function(object):
 
 class make_pixel_px_function(object):
     """
+    Make a line of sight function of the GW data in redshift and H0.
+    
+    Identifies samples within a certain angular radius of the centre of a
+    healpy pixel, and uses these to construct p(x|z,Omega,H0)
     """
+    
     def __init__(self, samples, skymap, npixels=30, thresh=0.999):
+        """
+        Parameters
+        ----------
+        samples : posterior_samples object
+            The GW samples
+        skymap : object
+            The GW skymap
+        npixels : int, optional
+            The minimum number of pixels desired to cover given sky area of
+            the GW event (default=30)
+        thresh : float, optional
+            The sky area threshold (default=0.999)
+        """
+        
         self.skymap = skymap
         self.samples = samples
         nside=4
@@ -280,7 +308,7 @@ class make_pixel_px_function(object):
             sep += step
             sel = np.where(separations<sep)[0]
             nsamps = len(sel)
-        print('angular radius: {}, No. samples: {}'.format(sep,len(sel)))
+        print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
             
         return sel
         
@@ -306,6 +334,7 @@ class make_pixel_px_function(object):
 def angular_sep(ra1,dec1,ra2,dec2):
     """Find the angular separation between two points, (ra1,dec1)
     and (ra2,dec2), in radians."""
+    
     cos_angle = np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)
     angle = np.arccos(cos_angle)
     return angle
