@@ -210,7 +210,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
         """
-        Evaluate p(x|G,H0) and p(D|G,H0).
+        Evaluate p(x|G,H0) and p(D|G,H0) using galaxy samples.
 
         Parameters
         ----------
@@ -261,12 +261,23 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
     def pxD_GH0_multi(self,H0, z, sigmaz, m, ra, dec, color, nfine=10000, ncoarse=10, zcut=10.):
         """
-        Evaluate p(x|G,H0) and p(D|G,H0).
+        Evaluate p(x|G,H0) and p(D|G,H0) using a list of galaxies. 
+        Wrapper for pxD_GH0().
 
         Parameters
         ----------
         H0 : array of floats
             Hubble constant value(s) in kms-1Mpc-1
+        z, sigmaz, m, ra, dec, color : arrays of floats
+            redshift, redshift 1 sigma uncertainty, apparent magnitude, right 
+            ascension (radians), declination (radians) and colour for a set of
+            galaxies
+        nfine : int, optional
+            The number of samples to take from galaxies which are sampled finely
+        ncoarse : int, optional
+            The number of samples to take from galaxies which are sampled coarsely
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
 
         Returns
         -------
@@ -440,36 +451,54 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
 class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     """
-    Calculate the likelihood of H0 from one GW event, using the galaxy 
-    catalogue method.
-    
-    Parameters
-    ----------
-    base_functions : gwcosmo.gwcosmo.BaseFunctions object
-        p(x|z,H0)*p(z)*p(s|z)*p(M)*p(s|M) and p(D|z,H0)*p(z)*p(s|z)*p(M)*p(s|M)
-    skymap : gwcosmo.likelihood.skymap.skymap object
-        provides p(x|Omega) and skymap properties
-    galaxy_catalog : gwcosmo.prior.catalog.galaxyCatalog object
-        The galaxy catalogue
-    fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
-        Cosmological model
-    Kcorr : bool, optional
-        Should K corrections be applied to the analysis? (default=False)
-        Will raise an error if used in conjunction with a galaxy catalogue 
-        without sufficient color information.
-    mth : float, optional
-        Specify an apparent magnitude threshold for the galaxy catalogue
-        (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
-    zmax : float, optional
-        The upper redshift limit for integrals (default=10.). Should be well 
-        beyond the highest redshift reachable by GW data or selection effects.
-    zuncert : bool, optional
-        Should redshift uncertainties be marginalised over? (Default=True).
-    
+    Calculate the likelihood on H0 for one pixel using one GW event, 
+    using the galaxy catalogue method.    
     """
+    
     def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32):
+        """
+        Parameters
+        ----------
+        pixel_index : int
+            The healpy index of the pixel being analysed (assuming low-res nside)
+        galaxy_catalog : object
+            The galaxy catalogue
+        skymap : object
+            The GW skymap
+        observation_band : str
+            Observation band (eg. 'B', 'K', 'u', 'g')
+        fast_cosmology : object
+            Fast cosmology
+        px_zH0 : object
+            GW data, p(x|z,H0)
+        pD_zH0 : object
+            probability of detection, p(D|z,H0)
+        zprior : object
+            redshift prior, p(z)
+        zrates : object
+            rate evolution function, p(s|z)
+        luminosity_prior : object
+            absolute magnitude prior, p(M|H0)
+        luminosity_weights : object
+            luminosity weighting function, p(s|M)
+        Kcorr : bool, optional
+            Should K corrections be applied to the analysis? (default=False)
+        mth : float, optional
+            Specify an apparent magnitude threshold for the galaxy catalogue
+            (default=None). If none, mth is estimated from the galaxy catalogue.
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=None)
+        zmax : float, optional
+            The upper redshift limit for the universe (default=10.)
+        zuncert : bool, optional
+            Should redshift uncertainties be marginalised over? (Default=True)
+        complete_catalog : bool, optional
+            is the galaxy catalogue already complete? (Default=False)
+        nside : int, optional
+            The high-resolution value of nside to subdivide the current pixel into
+            Assumes that nside is equal or greater than galaxy_catalog.nside
+        """
+        
         super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         
         self.zcut = zcut
@@ -550,7 +579,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         
     def full_pixel(self, H0, z, sigmaz, m, ra, dec, color, mth, px_Omega=1., pOmega=1.):
         """
-        Compute the full likelihood.
+        Compute the full likelihood on H0 for a single (sub-)pixel.
         
         Parameters
         ----------
@@ -565,6 +594,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             Returns likelihood, pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
             where likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB + (pxO / pDO) * pO
         """
+        
         pG = np.ones(len(H0))
         pxB = np.zeros(len(H0))
         pDB = np.ones(len(H0))
@@ -592,6 +622,19 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         return pxG, pDG, pG, pxB, pDB, pB
         
     def likelihood(self,H0):
+        """
+        Compute the likelihood on H0 for a single pixel
+        
+        Parameters
+        ----------
+        H0 : array of floats
+            Hubble constant values in kms-1Mpc-1
+
+        Returns
+        -------
+        float
+            likelihood
+        """
         
         self.pxG = np.zeros([len(H0),len(self.sub_pixel_indices)])
         self.pDG = np.zeros([len(H0),len(self.sub_pixel_indices)])
@@ -658,6 +701,12 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         return likelihood
         
     def return_components(self):
+        """
+        Returns pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO
+        where each contains values for i sub-pixels
+        and likelihood = sum_i[(pxG_i / pDG_i) * pG_i + (pxB_i / pDB_i) * pB_i + (pxO_i / pDO_i) * pO_i]
+        """
+        
         return self.pxG, self.pDG, self.pG, self.pxB, self.pDB, self.pB, self.pxO, self.pDO, self.pO
         
     def __call__(self, H0):
@@ -782,6 +831,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         float
             likelihood
         """
+        
         self.pG = np.ones(len(H0))
         self.pxB = np.zeros(len(H0))
         self.pDB = np.ones(len(H0))
