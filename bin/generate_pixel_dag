@@ -1,0 +1,193 @@
+#!/usr/bin/env python
+
+# code to generate a .dag file for submitting jobs to the cluster
+import numpy as np
+import htcondor
+from htcondor import dags
+import os
+from os.path import basename
+from optparse import Option, OptionParser
+
+path = os.path.abspath(os.path.dirname(__file__))
+
+dag=dags.DAG()
+
+parser = OptionParser(
+    description = __doc__,
+    usage = "%prog [options]",
+    option_list = [
+        Option("--min_H0", default='20.0', type=float,
+            help="Minimum value of H0"),
+        Option("--max_H0", default='200.0', type=float,
+            help="Maximum value of H0"),
+        Option("--bins_H0", default='200', type=int,
+            help="Number of H0 bins"),
+        Option("--posterior_samples", default=None,
+            help="Path to LALinference posterior samples file in format (.dat or hdf5)"),
+        Option("--posterior_samples_field", default=None,
+            help="Internal field of the posterior samples file, e.g. h5 or json field"),
+        Option("--skymap", default=None,
+            help="Path to LALinference 3D skymap file in format (.fits or fits.gz)"),
+        Option("--Pdet", default=None,
+            help="Path to precomputed probability of detection pickle"),
+        Option("--galaxy_catalog", default=None,
+            help="Path to galaxy catalogue in format (hdf5)"),
+        Option("--galaxy_weighting", default='True',
+            help="Weight potential host galaxies by luminosity? (Default=True)"),
+        Option("--catalog_band", default='B', type=str,
+            help = "Observation band of galaxy catalog (B,K,u,g,r,i,z) (must be compatible with the catalogue provided)"),
+        Option("--assume_complete_catalog", default='False',
+            help="Assume a complete catalog? (Default=False)"),
+        Option("--redshift_uncertainty", default='True',
+            help="Marginalise over redshift uncertainties (default=True)"),
+        Option("--redshift_evolution", default='None',
+            help="Allow GW host probability to evolve with redshift. Select between None, PowerLaw or Madau (Default=None)"),
+        Option("--Lambda", default='3.0', type=float,
+            help="Set rate evolution parameter Lambda for redshift evolution (For Madau model this is equal to alpha)"),
+        Option("--Madau_beta", default='3.0', type=float,
+            help="Set Beta for Madau model. (Not used if redshift_evolution=None or PowerLaw)"),
+        Option("--Madau_zp", default='0.0', type=float,
+            help="Set zp for Madau model. (Not used if redshift_evolution=None or PowerLaw)"),
+        Option("--Kcorrections", default='False',
+            help="Apply K-corrections."),
+        Option("--reweight_posterior_samples", default='False',
+            help="Reweight posterior samples with the same priors used to calculate the selection effects."),
+        Option("--zmax", default='10.0', type=float,
+            help="Upper redshift limit for integrals (default=10)"),
+        Option("--zcut", default=None,
+            help="Hard redshift cut to apply to the galaxy catalogue (default=None)"),
+        Option("--mth", default=None,
+            help="Override the apparent magnitude threshold of the catalogue, if provided (default=None)"),
+        Option("--nside", default='32', type=int,
+            help="skymap nside choice for reading in galaxies from the overlap of catalogue and skymap (default=32)"),
+        Option("--sky_area", default='0.999', type=float,
+            help="contour boundary for galaxy catalogue method (default=0.999)"), 
+        Option("--min_pixels", default=30, type=int,
+            help="minimum number of pixels desired to cover sky area of event (for use with pixel method only)"),
+        Option("--outputfile", default='Posterior',
+            help="Name of output file")
+    ])
+opts, args = parser.parse_args()
+
+# None is interpreted as a string if explicitly passed to the command line, so remove arguments if None is still present
+if opts.mth == None:
+    mth_str = ""
+else:
+    mth_str = f"--mth {opts.mth}"
+    
+if opts.zcut == None:
+    zcut_str = ""
+else:
+    zcut_str = f"--zcut {opts.zcut}"
+
+if opts.posterior_samples == None:
+    samples_str = ""
+else:
+    samples_str = f"--posterior_samples {opts.posterior_samples}"
+    
+if opts.posterior_samples_field == None:
+    samples_field_str = ""
+else:
+    samples_field_str = f"--posterior_samples_field {opts.posterior_samples_field}"
+
+if opts.skymap == None:
+    skymap_str = ""
+else:
+    skymap_str = f"--skymap {opts.skymap}"
+
+if opts.Pdet == None:
+    pdet_str = ""
+else:
+    pdet_str = f"--Pdet {opts.Pdet}"
+
+if opts.galaxy_catalog == None:
+    catalog_str = ""
+else:
+    catalog_str = f"--galaxy_catalog {opts.galaxy_catalog}"
+
+    
+common_args  = f"\
+    --method pixel \
+    --min_H0 {opts.min_H0} \
+    --max_H0 {opts.max_H0} \
+    --bins_H0 {opts.bins_H0} \
+    {samples_str} \
+    {samples_field_str} \
+    {skymap_str} \
+    {pdet_str} \
+    {catalog_str} \
+    --galaxy_weighting {opts.galaxy_weighting} \
+    --catalog_band {opts.catalog_band} \
+    --assume_complete_catalog {opts.assume_complete_catalog} \
+    --redshift_uncertainty {opts.redshift_uncertainty} \
+    --redshift_evolution {opts.redshift_evolution} \
+    --Lambda {opts.Lambda} \
+    --Madau_beta {opts.Madau_beta} \
+    --Madau_zp {opts.Madau_zp} \
+    --Kcorrections {opts.Kcorrections} \
+    --reweight_posterior_samples {opts.reweight_posterior_samples} \
+    --zmax {opts.zmax} \
+    {zcut_str} \
+    {mth_str} \
+    --nside {opts.nside} \
+    --sky_area {opts.sky_area} \
+    --min_pixels {opts.min_pixels} \
+    --outputfile {opts.outputfile} \
+    "
+
+return_value = os.system(path +'/gwcosmo_single_posterior ' + common_args + ' --return_skymap_indices True')
+if return_value != 0:
+    raise Exception('returning pixel indices failed')
+
+os.system('mkdir -p log')
+    
+pixelated_likelihood = htcondor.Submit(
+    Executable = path+'/gwcosmo_single_posterior',
+    Universe   = 'vanilla',
+    #transfer_input_files = ','.join([skymap_path,posterior_samples_path,pdet_path,catalog_path]),
+    #transfer_output_files = f'{event}_pixel_$(pixel_index).npz',
+    #should_transfer_files = 'NO',
+    arguments  = common_args + " --pixel_index $(pixel_index)",
+    output     = 'log/output_pixel_$(pixel_index).out',
+    error      = 'log/output_pixel_$(pixel_index).err',            
+    Log        = 'log/output_pixel_$(pixel_index).log',             
+    getenv     = 'True',
+    request_cpus = '1', 
+    request_memory = '1GB',
+    request_disk = '100MB',
+)
+
+combine_pixels = htcondor.Submit(
+    Executable = path+'/gwcosmo_single_posterior',
+    Universe   = 'vanilla',
+    #transfer_input_files = ','.join([skymap_path,posterior_samples_path,pdet_path,catalog_path]),
+    #transfer_output_files = f'{event}.npz,{event}.pdf',
+    #should_transfer_files = 'NO',
+    arguments  = common_args + "--combine_pixels True ",
+    output     = 'log/combined.out',
+    error      = 'log/combined.err',           
+    Log        = 'log/combined.log',            
+    getenv     = 'True',
+    request_cpus = '1', 
+    request_memory = '1GB',
+    request_disk = '100MB',
+)
+     
+pixels = np.genfromtxt('{}_indices.txt'.format(opts.outputfile),dtype=int)
+pixel_vars=[]
+for i,ind in enumerate(pixels):
+    pixel_vars.append({'pixel_index':'{}'.format(ind)})
+
+single_pixel_layer = dag.layer(
+    name = 'single_pixel',
+    submit_description = pixelated_likelihood,
+    vars = pixel_vars,
+)
+
+combin_pixels_layer = single_pixel_layer.child_layer(
+    name = 'combine_pixel',
+    submit_description = combine_pixels,
+)
+
+
+dags.write_dag(dag,'./')
