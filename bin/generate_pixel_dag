@@ -65,7 +65,15 @@ parser = OptionParser(
         Option("--min_pixels", default=30, type=int,
             help="minimum number of pixels desired to cover sky area of event (for use with pixel method only)"),
         Option("--outputfile", default='Posterior',
-            help="Name of output file")
+            help="Name of output file"),
+        Option("--cpus", default=1, type=int,
+            help="Number of cpus asked for each run (default=1)"),
+        Option("--ram", default=1000, type=int,
+            help="RAM asked for each run (default=1 GB)"),
+        Option("--search_tag", default='ligo.prod.o1.cbc.hubble.gwcosmo', type=str,
+            help="Search tag for the runs -- used in LIGO clusters (default=ligo.prod.o1.cbc.hubble.gwcosmo)"),
+        Option("--run_on_ligo_cluster", default='True', type=str,
+            help="Set to true if running on a LIGO cluster (default=True)")
     ])
 opts, args = parser.parse_args()
 
@@ -104,7 +112,9 @@ if opts.galaxy_catalog == None:
     catalog_str = ""
 else:
     catalog_str = f"--galaxy_catalog {opts.galaxy_catalog}"
-
+cpus = str(opts.cpus)
+ram = str(opts.ram)
+search_tag = opts.search_tag
     
 common_args  = f"\
     --method pixel \
@@ -140,7 +150,7 @@ if return_value != 0:
     raise Exception('returning pixel indices failed')
 
 os.system('mkdir -p log')
-    
+
 pixelated_likelihood = htcondor.Submit(
     Executable = path+'/gwcosmo_single_posterior',
     Universe   = 'vanilla',
@@ -149,12 +159,11 @@ pixelated_likelihood = htcondor.Submit(
     #should_transfer_files = 'NO',
     arguments  = common_args + " --pixel_index $(pixel_index)",
     output     = 'log/output_pixel_$(pixel_index).out',
-    error      = 'log/output_pixel_$(pixel_index).err',            
-    Log        = 'log/output_pixel_$(pixel_index).log',             
+    error      = 'log/output_pixel_$(pixel_index).err',
+    Log        = 'log/output_pixel_$(pixel_index).log',
     getenv     = 'True',
-    request_cpus = '1', 
-    request_memory = '1GB',
-    request_disk = '100MB',
+    request_cpus = cpus,
+    request_memory = ram,
 )
 
 combine_pixels = htcondor.Submit(
@@ -165,13 +174,49 @@ combine_pixels = htcondor.Submit(
     #should_transfer_files = 'NO',
     arguments  = common_args + "--combine_pixels True ",
     output     = 'log/combined.out',
-    error      = 'log/combined.err',           
-    Log        = 'log/combined.log',            
+    error      = 'log/combined.err',
+    Log        = 'log/combined.log',
     getenv     = 'True',
-    request_cpus = '1', 
-    request_memory = '1GB',
-    request_disk = '100MB',
+    request_cpus = '1',
+    request_memory = ram,
 )
+
+
+
+if opts.run_on_ligo_cluster=='True':    
+    pixelated_likelihood = htcondor.Submit(
+        Executable = path+'/gwcosmo_single_posterior',
+        Universe   = 'vanilla',
+        #transfer_input_files = ','.join([skymap_path,posterior_samples_path,pdet_path,catalog_path]),
+        #transfer_output_files = f'{event}_pixel_$(pixel_index).npz',
+        #should_transfer_files = 'NO',
+        arguments  = common_args + " --pixel_index $(pixel_index)",
+        output     = 'log/output_pixel_$(pixel_index).out',
+        error      = 'log/output_pixel_$(pixel_index).err',            
+        Log        = 'log/output_pixel_$(pixel_index).log',             
+        getenv     = 'True',
+        request_cpus = cpus,
+        accounting_group = search_tag,
+        accounting_group_user = str(os.getcwd().split('/')[2]),
+        request_memory = ram,
+    )
+
+    combine_pixels = htcondor.Submit(
+        Executable = path+'/gwcosmo_single_posterior',
+        Universe   = 'vanilla',
+        #transfer_input_files = ','.join([skymap_path,posterior_samples_path,pdet_path,catalog_path]),
+        #transfer_output_files = f'{event}.npz,{event}.pdf',
+        #should_transfer_files = 'NO',
+        arguments  = common_args + "--combine_pixels True ",
+        output     = 'log/combined.out',
+        error      = 'log/combined.err',           
+        Log        = 'log/combined.log',            
+        getenv     = 'True',
+        request_cpus = '1', 
+        accounting_group = search_tag,
+        accounting_group_user = str(os.getcwd().split('/')[2]),
+        request_memory = ram,
+    )
      
 pixels = np.genfromtxt('{}_indices.txt'.format(opts.outputfile),dtype=int)
 pixel_vars=[]
