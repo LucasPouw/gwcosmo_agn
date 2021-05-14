@@ -71,12 +71,12 @@ class posterior_samples(object):
         """
         if self.posterior_samples[-3:] == 'dat':
             samples = np.genfromtxt(self.posterior_samples, names=True)
+            #try:
+            #    self.distance = samples['dist']
+            #except KeyError:
             try:
-                self.distance = samples['dist']
-            except KeyError:
-                try:
                     self.distance = samples['distance']
-                except KeyError:
+            except KeyError:
                     print("No distance samples found.")
             self.ra = samples['ra']
             self.dec = samples['dec']
