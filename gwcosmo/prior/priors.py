@@ -208,14 +208,14 @@ class mass_prior(object):
             Number of samples you want
         """
 
-        vals_m1 = np.log10(np.random.rand(Nsample))
-        vals_m2 = np.log10(np.random.rand(Nsample))
+        vals_m1 = np.random.rand(Nsample)
+        vals_m2 = np.random.rand(Nsample)
 
-        m1_trials = np.logspace(np.log10(self.dist['mass_1'].minimum*(1+1e-2)),np.log10(self.dist['mass_1'].maximum*(1-1e-2)),10000)
-        m2_trials = np.logspace(np.log10(self.dist['mass_2'].minimum*(1+1e-2)),np.log10(self.dist['mass_2'].maximum*(1-1e-2)),10000)
+        m1_trials = np.logspace(np.log10(self.dist['mass_1'].minimum),np.log10(self.dist['mass_1'].maximum),10000)
+        m2_trials = np.logspace(np.log10(self.dist['mass_2'].minimum),np.log10(self.dist['mass_2'].maximum),10000)
 
-        cdf_m1_trials = np.log10(self.dist['mass_1'].cdf(m1_trials))
-        cdf_m2_trials = np.log10(self.dist['mass_2'].cdf(m2_trials))
+        cdf_m1_trials = self.dist['mass_1'].cdf(m1_trials)
+        cdf_m2_trials = self.dist['mass_2'].cdf(m2_trials)
 
         m1_trials = np.log10(m1_trials)
         m2_trials = np.log10(m2_trials)
@@ -223,8 +223,8 @@ class mass_prior(object):
         _,indxm1 = np.unique(cdf_m1_trials,return_index=True)
         _,indxm2 = np.unique(cdf_m2_trials,return_index=True)
 
-        interpo_icdf_m1 = interp1d(cdf_m1_trials[indxm1],m1_trials[indxm1],fill_value=(m1_trials[indxm1][0],m1_trials[indxm1][1]),bounds_error=False)
-        interpo_icdf_m2 = interp1d(cdf_m2_trials[indxm2],m2_trials[indxm2],fill_value=(m2_trials[indxm2][0],m2_trials[indxm2][1]),bounds_error=False)
+        interpo_icdf_m1 = interp1d(cdf_m1_trials[indxm1],m1_trials[indxm1],bounds_error=False)
+        interpo_icdf_m2 = interp1d(cdf_m2_trials[indxm2],m2_trials[indxm2],bounds_error=False)
 
         mass_1_samples = 10**interpo_icdf_m1(vals_m1)
 
@@ -233,6 +233,6 @@ class mass_prior(object):
             indx = np.where(mass_2_samples>mass_1_samples)[0]
             mass_1_samples[indx],mass_2_samples[indx] = mass_2_samples[indx],mass_1_samples[indx]
         else:
-            mass_2_samples = 10**interpo_icdf_m2(vals_m2+np.log10(self.dist['mass_2'].cdf(mass_1_samples)))
+            mass_2_samples = 10**interpo_icdf_m2(vals_m2*self.dist['mass_2'].cdf(mass_1_samples))
 
         return mass_1_samples, mass_2_samples
