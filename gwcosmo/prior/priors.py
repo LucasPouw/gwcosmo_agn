@@ -8,7 +8,6 @@ import numpy as np
 
 from scipy.interpolate import interp1d
 
-import numpy as _np
 import copy as _copy
 import sys as _sys
 from . import custom_math_priors as _cmp
@@ -65,7 +64,7 @@ class distance_distribution(object):
 
     def prob(self, samples):
         return self.dist['luminosity_distance'].prob(samples)
-    
+
 
 class mass_prior(object):
     """
@@ -76,7 +75,7 @@ class mass_prior(object):
     ----------
     name: str
         Name of the model that you want. Available 'BBH-powerlaw', 'BBH-powerlaw-gaussian'
-        'BBH-broken-powerlaw'.
+        'BBH-broken-powerlaw', 'NSBH-powerlaw', 'NSBH-powerlaw-gaussian', 'NSBH-broken-powerlaw', 'BNS'.
     hyper_params_dict: dict
         Dictionary of hyperparameters for the prior model you want to use. See code lines for more details
     """
@@ -117,7 +116,9 @@ class mass_prior(object):
             if self.name == 'BBH-powerlaw-gaussian':
                 m1pr = _cmp.PowerLawGaussian_math(alpha=-alpha,min_pl=mmin,max_pl=mmax,lambda_g=lambda_peak
                     ,mean_g=mu_g,sigma_g=sigma_g,min_g=mmin,max_g=mu_g+5*sigma_g)
-                m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=_np.max([mu_g+5*sigma_g,mmax]))
+
+                # The max of the secondary mass is adapted to the primary mass maximum which is desided byt the Gaussian and PL
+                m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=np.max([mu_g+5*sigma_g,mmax]))
                 dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
                       'mass_2':_cmp.SmoothedProb(origin_prob=m2pr,bottom=mmin,bottom_smooth=delta_m)}
 
@@ -128,14 +129,15 @@ class mass_prior(object):
                 dist={'mass_1': _cmp.SmoothedProb(origin_prob=m1pr,bottom=mmin,bottom_smooth=delta_m),
                       'mass_2':m2pr}
 
+            # TODO Add a check on the mu_g - 5 sigma of the gaussian to not overlap with mmin, print a warning
+            if (mu_g - 5*sigma_g)<=mmin:
+                print('Warning, your mean (minuse 5 sigma) of the gaussian component is too close to the minimum mass')
 
-            # TODO Assume that the gaussian peak does not overlap too much with the mmin
-            
             self.mmin = mmin
             self.mmax = dist['mass_1'].maximum
 
         elif self.name == 'BBH-broken-powerlaw' or self.name == 'NSBH-broken-powerlaw':
-            alpha_1 = hyper_params_dict['alpha']
+            alpha_1 = hyper_params_dict['alpha_1']
             alpha_2 = hyper_params_dict['alpha_2']
             beta = hyper_params_dict['beta']
             mmin = hyper_params_dict['mmin']
@@ -143,7 +145,7 @@ class mass_prior(object):
             b =  hyper_params_dict['b']
 
             delta_m = hyper_params_dict['delta_m']
-            
+
             if self.name == 'BBH-broken-powerlaw':
                 m1pr = _cmp.BrokenPowerLaw_math(alpha_1=-alpha_1,alpha_2=-alpha_2,min_pl=mmin,max_pl=mmax,b=b)
                 m2pr = _cmp.PowerLaw_math(alpha=beta,min_pl=mmin,max_pl=mmax)
@@ -159,21 +161,21 @@ class mass_prior(object):
 
             self.mmin = mmin
             self.mmax = mmax
-            
+
         elif self.name == 'BNS':
-            
+
             dist={'mass_1':_cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0),
                   'mass_2':_cmp.PowerLaw_math(alpha=0.0,min_pl=1.0,max_pl=3.0)}
 
             self.mmin = 1.0
             self.mmax = 3.0
-            
+
         else:
             print('Name not known, aborting')
             _sys.exit()
 
         self.dist = dist
-        
+
         if self.name.startswith('NSBH'):
             self.mmin=1.0
 
@@ -188,11 +190,11 @@ class mass_prior(object):
         ms2: dict
             mass two in solar masses
         """
-        
+
         if self.name == 'BNS':
             to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].prob(ms2)
         else:
-            to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].conditioned_prob(ms2,self.mmin*_np.ones_like(ms1),ms1)
+            to_ret =self.dist['mass_1'].prob(ms1)*self.dist['mass_2'].conditioned_prob(ms2,self.mmin*np.ones_like(ms1),ms1)
 
         return to_ret
 
@@ -206,29 +208,31 @@ class mass_prior(object):
             Number of samples you want
         """
 
-        vals_m1 = np.random.rand(Nsample)
-        vals_m2 = np.random.rand(Nsample)
-        
-        m1_trials = np.linspace(self.dist['mass_1'].minimum,self.dist['mass_1'].maximum,10000)
-        m2_trials = np.linspace(self.dist['mass_2'].minimum,self.dist['mass_2'].maximum,10000)
-        
-        cdf_m1_trials = self.dist['mass_1'].cdf(m1_trials)
-        cdf_m2_trials = self.dist['mass_2'].cdf(m2_trials)
-        
-        interpo_icdf_m1 = interp1d(cdf_m1_trials,m1_trials)
-        interpo_icdf_m2 = interp1d(cdf_m2_trials,m2_trials)
-        
-        mass_1_samples = interpo_icdf_m1(vals_m1)
-        
+        vals_m1 = np.log10(np.random.rand(Nsample))
+        vals_m2 = np.log10(np.random.rand(Nsample))
+
+        m1_trials = np.logspace(np.log10(self.dist['mass_1'].minimum*(1+1e-2)),np.log10(self.dist['mass_1'].maximum*(1-1e-2)),10000)
+        m2_trials = np.logspace(np.log10(self.dist['mass_2'].minimum*(1+1e-2)),np.log10(self.dist['mass_2'].maximum*(1-1e-2)),10000)
+
+        cdf_m1_trials = np.log10(self.dist['mass_1'].cdf(m1_trials))
+        cdf_m2_trials = np.log10(self.dist['mass_2'].cdf(m2_trials))
+
+        m1_trials = np.log10(m1_trials)
+        m2_trials = np.log10(m2_trials)
+
+        _,indxm1 = np.unique(cdf_m1_trials,return_index=True)
+        _,indxm2 = np.unique(cdf_m2_trials,return_index=True)
+
+        interpo_icdf_m1 = interp1d(cdf_m1_trials[indxm1],m1_trials[indxm1],fill_value=(m1_trials[indxm1][0],m1_trials[indxm1][1]),bounds_error=False)
+        interpo_icdf_m2 = interp1d(cdf_m2_trials[indxm2],m2_trials[indxm2],fill_value=(m2_trials[indxm2][0],m2_trials[indxm2][1]),bounds_error=False)
+
+        mass_1_samples = 10**interpo_icdf_m1(vals_m1)
+
         if self.name == 'BNS':
-            mass_2_samples = interpo_icdf_m2(vals_m2)
+            mass_2_samples = 10**interpo_icdf_m2(vals_m2)
             indx = np.where(mass_2_samples>mass_1_samples)[0]
-            
-            for indx_sw in indx:
-                support = mass_1_samples[indx_sw]
-                mass_1_samples[indx_sw] = mass_2_samples[indx_sw]
-                mass_2_samples[indx_sw] = support
+            mass_1_samples[indx],mass_2_samples[indx] = mass_2_samples[indx],mass_1_samples[indx]
         else:
-            mass_2_samples = interpo_icdf_m2(vals_m2*self.dist['mass_2'].cdf(mass_1_samples))
-         
+            mass_2_samples = 10**interpo_icdf_m2(vals_m2+np.log10(self.dist['mass_2'].cdf(mass_1_samples)))
+
         return mass_1_samples, mass_2_samples

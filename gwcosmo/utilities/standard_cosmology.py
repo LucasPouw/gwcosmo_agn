@@ -192,16 +192,16 @@ def dl_mM(m, M, Kcorr=0.):
     """
     returns luminosity distance in Mpc given
     apparent magnitude and absolute magnitude
-    
+
     Parameters
     ----------
     m : apparent magnitude
     M : absolute magnitude in the source frame
-    Kcorr : (optional) K correction, to convert absolute magnitude from the 
-        observed band to the source frame band (default=0).  If fluxes are 
+    Kcorr : (optional) K correction, to convert absolute magnitude from the
+        observed band to the source frame band (default=0).  If fluxes are
         bolometric, this should be left as 0. If not, a K correction of 0 is
         only valid at low redshifts.
-        
+
     Returns
     -------
     Luminosity distance in Mpc
@@ -211,12 +211,14 @@ def dl_mM(m, M, Kcorr=0.):
 
 def L_M(M):
     """
-    Returns luminosity when given an absolute magnitude
-    
+    Returns luminosity when given an absolute magnitude.
+    The constant used here corresponds to the conversion between bolometric mangitude and luminosity. 
+    It does not matter for the H0 inference, so please use with care when using with band specific magnitudes.
+
     Parameters
     ----------
     M : absolute magnitude in the source frame
-    
+
     Returns
     -------
     Luminosity in Watts
@@ -230,16 +232,16 @@ def M_mdl(m, dl, Kcorr=0.):
     Returns a source's absolute magnitude given
     apparent magnitude and luminosity distance
     If a K correction is supplied it will be applied
-    
+
     Parameters
     ----------
     m : apparent magnitude
     dl : luminosity distance in Mpc
-    Kcorr : (optional) K correction, to convert absolute magnitude from the 
-        observed band to the source frame band (default=0).  If fluxes are 
+    Kcorr : (optional) K correction, to convert absolute magnitude from the
+        observed band to the source frame band (default=0).  If fluxes are
         bolometric, this should be left as 0. If not, a K correction of 0 is
         only valid at low redshifts.
-    
+
     Returns
     -------
     Absolute magnitude in the source frame
@@ -251,16 +253,16 @@ def L_mdl(m, dl, Kcorr=0.):
     """
     Returns luminosity when given apparent magnitude and luminosity distance
     If a K correction is supplied it will be applied
-    
+
     Parameters
     ----------
     m : apparent magnitude
     dl : luminosity distance in Mpc
-    Kcorr : (optional) K correction, to convert absolute magnitude from the 
-        observed band to the source frame band (default=0).  If fluxes are 
+    Kcorr : (optional) K correction, to convert absolute magnitude from the
+        observed band to the source frame band (default=0).  If fluxes are
         bolometric, this should be left as 0. If not, a K correction of 0 is
         only valid at low redshifts.
-    
+
     Returns
     -------
     Luminosity in the source frame
@@ -323,7 +325,7 @@ def z_dlH0(dl, H0=70., Omega_m=0.308, linear=False):
 class redshift_prior(object):
     """
     p(z|Omega_m): Uniform in comoving volume distribution of galaxies
-    
+
     Parameters
     ----------
     Omega_m : matter fraction (default=0.308)
@@ -335,13 +337,13 @@ class redshift_prior(object):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
-        z_array = np.linspace(0.0, self.zmax, 5000)
-        lookup = np.array([volume_z(z, Omega_m=self.Omega_m)
-                          for z in z_array])
-        self.interp = splrep(z_array, lookup)
+        z_array = np.logspace(-5, np.log10(self.zmax), 12000)
+        lookup = np.log10(np.array([volume_z(z, Omega_m=self.Omega_m)
+                          for z in z_array]))
+        self.interp = splrep(np.log10(z_array), lookup)
 
     def p_z(self, z):
-        return splev(z, self.interp, ext=3)
+        return 10.**splev(np.log10(z), self.interp, ext=3)
 
     def __call__(self, z):
         if self.linear:
@@ -389,24 +391,24 @@ class fast_cosmology(object):
             # Local cosmology
             return z*c/H0
         else:
-            # Standard cosmology     
+            # Standard cosmology
             return splev(z, self.interp, ext=3)*c/H0
-        
+
     def E(self,z):
         """
         Returns the E(z) factor
-        
+
         Parameters
         ----------
         z : redshift
         """
-        
+
         return np.sqrt(self.Omega_m*(1+z)**3 + (1.0-self.Omega_m))
 
     def dL_by_z_H0(self,z,H0):
         """
         Returns the derivative of the luminosity distance w.r.t. redshift
-        
+
         Parameters
         ----------
         z : redshift
