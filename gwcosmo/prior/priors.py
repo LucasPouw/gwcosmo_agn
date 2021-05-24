@@ -223,8 +223,8 @@ class mass_prior(object):
         _,indxm1 = np.unique(cdf_m1_trials,return_index=True)
         _,indxm2 = np.unique(cdf_m2_trials,return_index=True)
 
-        interpo_icdf_m1 = interp1d(cdf_m1_trials[indxm1],m1_trials[indxm1],bounds_error=False)
-        interpo_icdf_m2 = interp1d(cdf_m2_trials[indxm2],m2_trials[indxm2],bounds_error=False)
+        interpo_icdf_m1 = interp1d(cdf_m1_trials[indxm1],m1_trials[indxm1],bounds_error=False,fill_value=(m1_trials[0],m1_trials[-1]))
+        interpo_icdf_m2 = interp1d(cdf_m2_trials[indxm2],m2_trials[indxm2],bounds_error=False,fill_value=(m2_trials[0],m2_trials[-1]))
 
         mass_1_samples = 10**interpo_icdf_m1(vals_m1)
 
