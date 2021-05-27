@@ -34,7 +34,7 @@ parser = OptionParser(
         Option("--mass_distribution", default=None,
             help="Choose between BNS or NSBH/BBH-powerlaw, NSBH/BBH-powerlaw-gaussian, NSBH/BBH-broken-powerlaw mass distributions for default Pdet calculations."),
         Option("--psd", default=None,
-            help="Select between 'O1' and 'O2' and 'O3' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."), 
+            help="Select between 'O1' and 'O2' and 'O3' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."),
         Option("--powerlaw_slope", default='1.6', type=float,
             help="Set powerlaw slope for BBH powerlaw mass distribution."),
         Option("--powerlaw_slope_2", default='0.0', type=float,
@@ -98,13 +98,13 @@ for option in parser.option_list:
         missing.extend(option._long_opts)
 if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
-    
+
 mass_distribution = str(opts.mass_distribution)
 if opts.psd == None:
     psd = None
 else:
     psd = str(opts.psd)
- 
+
 alpha = float(opts.powerlaw_slope)
 Mmin = float(opts.minimum_mass)
 Mmax = float(opts.maximum_mass)
@@ -132,7 +132,7 @@ detected_masses = str2bool(opts.detected_masses)
 detector = str(opts.detectors)
 dets = []
 if 'H' in detector:
-    dets.append('H1') 
+    dets.append('H1')
 if 'L' in detector:
     dets.append('L1')
 if 'V' in detector:
@@ -149,9 +149,9 @@ else:
     kind = 'inspiral'
 
 if opts.combine is None:
-    
+
     pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic, detectors=dets,
-                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g, 
+                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g,
                                                               lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, det_combination = det_combination,
                                                               b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
 
@@ -161,17 +161,17 @@ if opts.combine is None:
                 pdet_path = '{}PSD_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, Nsamps, kind)
             else:
                 pdet_path = '{}PSD_{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(psd, mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
-            
+
         else:
             if mass_distribution == 'BNS':
                 pdet_path = '{}_Nsamps{}_{}.p'.format(mass_distribution, Nsamps, kind)
             else:
-                pdet_path = '{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)         
+                pdet_path = '{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
     else:
         pdet_path = str(opts.outputfile)
 
     pickle.dump( pdet, open( pdet_path, "wb" ) )
-    
+
 else:
     probs = {}
     detected = {}
@@ -201,16 +201,16 @@ else:
     pdet = gwcosmo.likelihood.detection_probability.DetectionProbability(
                     mass_distribution=pdets.mass_distribution, alpha=pdets.alpha, Mmin=pdets.Mmin, Mmax=pdets.Mmax,
                     asd=pdets.asd, detectors=pdets.detectors, detected_masses=detected_masses, alpha_2=pdets.alpha_2,
-                    Nsamps=2, network_snr_threshold=pdets.snr_threshold,seed=pdets.seed, beta=pdets.beta, mu_g=pdets.mu_g, 
+                    Nsamps=2, network_snr_threshold=pdets.snr_threshold,seed=pdets.seed, beta=pdets.beta, mu_g=pdets.mu_g,
                     Omega_m=pdets.Omega_m,linear=pdets.linear, basic=False, M1=pdets.M1, M2=pdets.M2, lambda_peak=pdets.lambda_peak,
-                    sigma_g=pdets.sigma_g, delta_m=pdets.delta_m, b=pdets.b, constant_H0=False, H0=H0vec, full_waveform=pdets.full_waveform)   
+                    sigma_g=pdets.sigma_g, delta_m=pdets.delta_m, b=pdets.b, constant_H0=False, H0=H0vec, full_waveform=pdets.full_waveform)
 
     if pdets.full_waveform is True:
        kind = 'full_waveform'
     else:
        kind = 'inspiral'
 
-    pdet.Nsamps = pdets.Nsamps 
+    pdet.Nsamps = pdets.Nsamps
     pdet.H0vec = H0vec
     pdet.prob = prob
     pdet.RAs = pdets.RAs
@@ -219,50 +219,49 @@ else:
     pdet.psis = pdets.psis
     pdet.phis = pdets.phis
     pdet.dl_array = pdets.dl_array
-    pdet.m1 = pdets.m1/1.988e30
-    pdet.m2 = pdets.m2/1.988e30
+    pdet.m1 = pdets.m1/1.9884754153381438e30
+    pdet.m2 = pdets.m2/1.9884754153381438e30
     pdet.dets = pdets.dets
-    pdet.psds = pdets.psds 
-   
+    pdet.psds = pdets.psds
+
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
-        logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])  
-        logit_prob[i]=np.where(logit_prob[i]==float('-inf'), -33, logit_prob[i]) 
+        logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])
+        logit_prob[i]=np.where(logit_prob[i]==float('-inf'), -33, logit_prob[i])
     interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='linear')
     pdet.interp_average = interp_average
-    
+
     if pdets.asd != None:
         if pdets.mass_distribution == 'BBH-powerlaw' or pdets.mass_distribution == 'NSBH-powerlaw':
             pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, pdets.mass_distribution,
-                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), str(pdets.Mmax), 
+                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), str(pdets.Mmax),
                                                                              str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-powerlaw-gaussian' or pdets.mass_distribution == 'NSBH-powerlaw-gaussian':
-            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, 
-                                                                             pdets.mass_distribution, str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), 
+            pdet_path = '{}PSD_{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd,
+                                                                             pdets.mass_distribution, str(pdets.alpha), str(pdets.beta), str(pdets.Mmin),
                                                                              str(pdets.Mmax), str(pdets.mu_g), str(pdets.lambda_peak), str(pdets.sigma_g),                                                                                              str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-broken-powerlaw' or pdets.mass_distribution == 'NSBH-broken-powerlaw':
-            pdet_path = '{}PSD_{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, pdets.mass_distribution, 
-                                                                             str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin), 
+            pdet_path = '{}PSD_{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.asd, pdets.mass_distribution,
+                                                                             str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin),
                                                                              str(pdets.Mmax), str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         else:
             pdet_path = '{}PSD_{}_Nsamps{}_{}_snr_{}'.format(pdets.psd, pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets.snr_threshold))
     else:
         if pdets.mass_distribution == 'BBH-powerlaw' or pdets.mass_distribution == 'NSBH-powerlaw':
             pdet_path = '{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution,
-                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), str(pdets.Mmax), 
+                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), str(pdets.Mmax),
                                                                              str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-powerlaw-gaussian' or pdets.mass_distribution == 'NSBH-powerlaw-gaussian':
-            pdet_path = '{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, 
-                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin), 
+            pdet_path = '{}_alpha_{}_beta_{}_Mmin_{}_Mmax_{}_mu_{}_lambda_{}_sigma_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution,
+                                                                             str(pdets.alpha), str(pdets.beta), str(pdets.Mmin),
                                                                              str(pdets.Mmax), str(pdets.mu_g), str(pdets.lambda_peak), str(pdets.sigma_g),                                                                                              str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         elif pdets.mass_distribution == 'BBH-broken-powerlaw' or pdets.mass_distribution == 'NSBH-broken-powerlaw':
-            pdet_path = '{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, 
-                                                                             str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin), 
+            pdet_path = '{}_alpha1_{}_alpha2_{}_beta_{}_Mmin_{}_Mmax_{}_delta_{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution,
+                                                                             str(pdets.alpha), str(pdets.alpha_2), str(pdets.beta), str(pdets.Mmin),
                                                                              str(pdets.Mmax), str(pdets.delta_m),str(pdets.Nsamps), kind, str(pdets.snr_threshold))
         else:
             pdet_path = '{}_Nsamps{}_{}_snr_{}'.format(pdets.mass_distribution, str(pdets.Nsamps), kind,str(pdets.snr_threshold))
-    
+
     if detected_masses==True:
         np.savez(pdet_path+'_detected.npz',[detected,m1,m2])
     pickle.dump( pdet, open( pdet_path+'.p', "wb" ) )
-
