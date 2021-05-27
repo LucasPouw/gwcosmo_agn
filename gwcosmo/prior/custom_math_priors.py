@@ -118,14 +118,14 @@ class SmoothedProb(object):
         self.minimum=self.origin_prob.minimum
 
         # Find the values of the integrals in the region of the window function before and after the smoothing
-        int_array = _np.linspace(self.origin_prob.minimum,bottom+bottom_smooth,1000)
+        int_array = _np.linspace(bottom,bottom+bottom_smooth,1000)
         integral_before = _np.trapz(self.origin_prob.prob(int_array),int_array)
         integral_now = _np.trapz(self.prob(int_array),int_array)
 
         self.integral_before = integral_before
         self.integral_now = integral_now
         # Renormalize the the smoother function.
-        self.norm = 1 - integral_before + integral_now
+        self.norm = 1 - integral_before + integral_now - self.origin_prob.cdf(bottom)
 
         x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
         cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
