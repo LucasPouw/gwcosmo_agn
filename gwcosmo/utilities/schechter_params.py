@@ -8,13 +8,12 @@ class SchechterParams():
     
     Note Mstar is here is M* - 5log10(h)
 
-    ugriz parameters are from https://arxiv.org/pdf/astro-ph/0210215.pdf
+    ugriz parameters are from https://iopscience.iop.org/article/10.1086/375776/pdf
     (tables 1 and 2)
-    B parameters are from section 3 of
-    https://iopscience.iop.org/article/10.3847/0004-637X/820/2/136
+    B parameters are from https://doi.org/10.1046/j.1365-8711.2002.05831.x
     K parameters are from section 2.1 of
     https://iopscience.iop.org/article/10.3847/0004-637X/832/1/39
-    (note Mstar=-22.77=-23.55-5log10(0.697)) 
+    (note paper quotes M*=-23.55 but means M*=-23.55 + 5log10(h)) 
     """
     
     def __init__(self, band):
@@ -33,9 +32,9 @@ class SchechterParams():
         
     def values(self, band):
         if band == 'B':
-            return -1.07, -19.70, -22.96, -12.96
+            return -1.21, -19.70, -22.96, -12.96
         elif band == 'K':
-            return -1.02, -22.77, -27.0, -12.96
+            return -1.02, -23.55, -27.0, -12.96
         elif band == 'u':
             return -0.92, -17.93, -21.93, -15.54 #TODO check Mmin and Mmax
         elif band == 'g':
