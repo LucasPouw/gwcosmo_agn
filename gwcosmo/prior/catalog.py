@@ -367,8 +367,7 @@ class OldStyleDESI(OldStyleCatalog):
         "Apply K-correction"
         #https://arxiv.org/pdf/1709.08316.pdf
         if band == 'W1':
-            n = -3.85
-            k_corr = -2.5*(1 + n)*np.log10(1 + z)  #check if log10 or ln
+            k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
             return k_corr
         else:
             raise ValueError("Only W1 band supported for K-correction")
@@ -384,8 +383,7 @@ class OldStyleGLADEPlus(OldStyleCatalog):
         "Apply K-correction"
         #https://arxiv.org/pdf/1709.08316.pdf
         if band == 'W1':
-            n = -3.85
-            k_corr = -2.5*(1 + n)*np.log10(1 + z)  #check if log10 or ln
+            k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
             return k_corr
         else:
             raise ValueError("Only W1 band supported for K-correction")
