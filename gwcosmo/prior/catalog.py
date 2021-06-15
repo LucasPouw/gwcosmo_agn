@@ -84,7 +84,7 @@ def load_catalog(name, band):
     elif name == 'DES':
         cat = OldStyleDES(band=band)
     elif name == 'DESI':
-        cat = DESI(band=band)
+        cat = OldStyleDESI(band=band)
     elif name == 'GLADE+':
         cat = OldStyleGLADEPlus(band=band)
     return cat
@@ -355,6 +355,24 @@ class OldStyleCatalog(GalaxyCatalog):
         self.__dict__ = state
         self.populate()
         
+        
+class OldStyleDESI(OldStyleCatalog):
+    supported_bands = {'g', 'W1'}
+    supports_kcorrections = True
+    def __init__(self, catalog_file = 'DESI.hdf5', band='W1', Kcorr=True):
+        self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
+        super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'DESI')
+
+    def get_k_correction(self, band, z, color_name, color_value):
+        "Apply K-correction"
+        #https://arxiv.org/pdf/1709.08316.pdf
+        if band == 'W1':
+            n = -3.85
+            k_corr = -2.5*(1 + n)*np.log10(1 + z)  #check if log10 or ln
+            return k_corr
+        else:
+            raise ValueError("Only W1 band supported for K-correction")
+ 
 class OldStyleGLADEPlus(OldStyleCatalog):
     supported_bands = {'B', 'K', 'W1'}
     supports_kcorrections = False
