@@ -1,3 +1,3 @@
-import gwcosmo.likelihood.posterior_samples
-import gwcosmo.likelihood.detection_probability
-import gwcosmo.likelihood.skymap
+from . import posterior_samples
+from . import detection_probability
+from . import skymap
