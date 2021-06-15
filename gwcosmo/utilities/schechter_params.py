@@ -49,7 +49,9 @@ class SchechterParams():
         elif band == 'z':
             return -1.08, -21.18, -24.08, -17.34 #TODO check Mmin and Mmax
         elif band == 'W1':
-            return -1.438, -20.753, -24, -16.5 # TODO: REALLY check Mmin and Mmax (and the others!)
+            return -1.12, -24.09, -28, -16.6 # https://iopscience.iop.org/article/10.1088/0004-637X/697/1/506/pdf Tab 3 (All 3.6)
+                                             # https://arxiv.org/pdf/1702.07829.pdf (Mmin Mmax Fig2)
+                                             
         else:
             raise Exception("Expected 'W1', B', 'K', 'u', 'g', 'r', 'i' or 'z' band argument") 
         
