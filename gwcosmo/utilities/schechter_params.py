@@ -15,6 +15,8 @@ class SchechterParams():
     K parameters are from section 2.1 of
     https://iopscience.iop.org/article/10.3847/0004-637X/832/1/39
     (note Mstar=-22.77=-23.55-5log10(0.697)) 
+    W1 band parameters are from https://arxiv.org/pdf/1608.02648.pdf
+    (Using "total" fit luminosity function - could also filter by W1-W2 color index or use mass instead?)
     """
     
     def __init__(self, band):
@@ -46,7 +48,9 @@ class SchechterParams():
             return -1.00, -20.82, -23.84, -17.07 #TODO check Mmin and Mmax
         elif band == 'z':
             return -1.08, -21.18, -24.08, -17.34 #TODO check Mmin and Mmax
+        elif band == 'W1':
+            return -1.438, -20.753, -24, -16.5 # TODO: REALLY check Mmin and Mmax (and the others!)
         else:
-            raise Exception("Expected 'B', 'K', 'u', 'g', 'r', 'i' or 'z' band argument") 
+            raise Exception("Expected 'W1', B', 'K', 'u', 'g', 'r', 'i' or 'z' band argument") 
         
 
