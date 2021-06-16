@@ -87,6 +87,10 @@ def load_catalog(name, band):
         cat = OldStyleDESI(band=band)
     elif name == 'GLADE+':
         cat = OldStyleGLADEPlus(band=band)
+    else:
+        raise ValueError(f"Unable catalog {name}")
+    if band is not None:
+        cat = cat.remove_missing_magnitudes(band)
     return cat
 
 def load_catalog_from_opts(opts):
@@ -168,7 +172,7 @@ class GalaxyCatalog:
         TODO: Currently this doesn't select based on ra,dec
         """
         assert (ra is None and dec is None) or (ra is not None and dec is not None)
-        
+
         print(f'Computing magnitude threshold for {ra},{dec}')
         print(f'Ngal = {len(self)}')
         if len(self) < 10:
@@ -232,6 +236,12 @@ class GalaxyCatalog:
         idx = np.where(((self['z']-3*self['sigmaz']) <= zcut))
         return GalaxyCatalog(data = self.data[idx], name = self.name+f'_zcut{zcut}',
                              supported_bands = self.supported_bands)
+
+    def remove_missing_magnitudes(self, band):
+        m = self.get_magnitudes(band)
+        idx = np.where(np.isfinite(m))
+        return GalaxyCatalog(data = self.data[idx], name = self.name+f'_valid_{band}_mags',
+                             supported_bands = [band])
 
     def apply_color_limit(self, band, cmin, cmax):
         if band == 'W1':
@@ -354,8 +364,8 @@ class OldStyleCatalog(GalaxyCatalog):
     def __setstate__(self, state):
         self.__dict__ = state
         self.populate()
-        
-        
+
+
 class OldStyleDESI(OldStyleCatalog):
     supported_bands = {'g', 'W1'}
     supports_kcorrections = True
@@ -371,7 +381,7 @@ class OldStyleDESI(OldStyleCatalog):
             return k_corr
         else:
             raise ValueError("Only W1 band supported for K-correction")
- 
+
 class OldStyleGLADEPlus(OldStyleCatalog):
     supported_bands = {'B', 'K', 'W1'}
     supports_kcorrections = False
