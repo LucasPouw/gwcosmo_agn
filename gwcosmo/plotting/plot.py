@@ -172,7 +172,7 @@ def overdensity_given_skypos(galaxy_cat,band,ra,dec,zproxy,nside=64,h0=67.7
     return galdens,priordens,gal_index
 
 
-def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7
+def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7,nside=None
                              ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
@@ -195,9 +195,10 @@ def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7
         GWcosmo fast cosmology class
     lweight: bool
         If to use luminosity weightening or not
-    """
+    """        
+    
     skymap_gwcosmo = gwcosmo.likelihood.skymap.skymap(fits_file)
-    gal_index = np.where(skymap_gwcosmo.samples_within_region(galaxy_cat.data['ra'],galaxy_cat.data['dec'],CL))[0]
+    gal_index = np.where(skymap_gwcosmo.samples_within_region(galaxy_cat.data['ra'],galaxy_cat.data['dec'],CL,nside=nside))[0]
     to_return = np.zeros_like(zproxy)
 
     if not gal_index.size:
