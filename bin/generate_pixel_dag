@@ -6,7 +6,7 @@ import htcondor
 from htcondor import dags
 import os
 from os.path import basename
-from optparse import Option, OptionParser
+from optparse import Option, OptionParser, OptionGroup
 
 path = os.path.abspath(os.path.dirname(__file__))
 
