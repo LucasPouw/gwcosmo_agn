@@ -16,7 +16,7 @@ from scipy.stats import ncx2, truncnorm
 from .utilities.standard_cosmology import dl_zH0,M_mdl,L_M
 from .utilities.schechter_function import M_Mobs
 from .utilities.schechter_params import SchechterParams
-from .prior.catalog import color_names, color_limits
+from .prior.catalog import color_names, color_limits, GalaxyCatalog
 from .likelihood.skymap import ra_dec_from_ipix,ipix_from_ra_dec
 import healpy as hp
 
