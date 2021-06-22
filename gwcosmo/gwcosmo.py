@@ -790,13 +790,13 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.mth = mth
         self.zcut = zcut
         self.complete_catalog = complete_catalog
-        self.catalog = galaxy_catalog
+        self.full_catalog = galaxy_catalog
 
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
                 self.zcut = 0.5
-            self.catalog = self.catalog.apply_color_limit(observation_band,
+            self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
             if zcut is None:
@@ -804,23 +804,23 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             self.color_limit = [-np.inf,np.inf]
 
         if mth is None:
-            mth = self.catalog.magnitude_thresh(observation_band)
+            mth = self.full_catalog.magnitude_thresh(observation_band)
 
-        print('Catalogue apparent magnitude threshold: {}'.format(self.mth))
+        print('Catalogue apparent magnitude threshold: {}'.format(mth))
 
         #TODO make this changeable from command line?
         self.nfine = 10000
         self.ncoarse = 10
 
-        self.nGal = len(self.catalog)
+        self.nGal = len(self.full_catalog)
 
         if zuncert == False:
             self.nfine = 1
             self.ncoarse = 1
             self.galsigmaz = np.zeros(len(self.galz))
 
-        self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.catalog['ra'],
-                                                                       self.catalog['dec'],
+        self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.full_catalog['ra'],
+                                                                       self.full_catalog['dec'],
                                                                        sky_thresh)
         self.OmegaO = 1. - self.OmegaG
         self.px_OmegaO = 1. - self.px_OmegaG
@@ -862,7 +862,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.zeros(len(H0))
 
         # Apply cuts to catalog
-        subcatalog = self.catalog.apply_redshift_cut(self.zcut)
+        subcatalog = self.full_catalog.apply_redshift_cut(self.zcut)
         if color_names[self.band] is None:
             clim = [-inf, inf]
         else:
