@@ -160,9 +160,14 @@ class GalaxyCatalog:
     def read_pixel_index_cache(self, nside, cachedir=None):
         cachefile = self._cachefile(nside, cachedir=cachedir)
         if os.path.exists(cachefile):
-            self.pixmap[nside] = pickle.load(open(cachefile,'rb'))
-            return True
-        return False
+            try:
+                self.pixmap[nside] = pickle.load(open(cachefile,'rb'))
+                return True
+            except:
+                print(f"Warning, unable to open pixel cache file {cachefile}, possible corrupted file")
+                return False
+        else:
+            return False
 
     def magnitude_thresh(self, band, ra=None, dec=None):
         """
