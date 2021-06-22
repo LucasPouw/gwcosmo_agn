@@ -311,7 +311,7 @@ else:
 
         #catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap=skymap,band=band,thresh=sky_area,Kcorr=Kcorr,nside=nside)
 
-        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area)
+        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
 
     if opts.method == 'pixel':
 

@@ -744,7 +744,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999):
+    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
         """
         Parameters
         ----------
@@ -819,6 +819,18 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             self.ncoarse = 1
             self.galsigmaz = np.zeros(len(self.galz))
 
+        # Isolate galaxies inside the skymap credible region
+        keep_idx = skymap.samples_within_region(self.full_catalog['ra'],
+                                                self.full_catalog['dec'],
+                                                sky_thresh,
+                                                nside=nside)
+        subcatalog = GalaxyCatalog(data = self.full_catalog[keep_idx],
+                                   name = self.full_catalog.name+'_subsky',
+                                   supported_bands = self.full_catalog.supported_bands,
+                                   Kcorr = self.full_catalog.Kcorr)
+
+        self.full_catalog = subcatalog
+
         self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.full_catalog['ra'],
                                                                        self.full_catalog['dec'],
                                                                        sky_thresh)
@@ -867,10 +879,10 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             clim = [-inf, inf]
         else:
             clim = color_limits[color_names[self.band]]
-            subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, mth)
+        subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, mth)
 
-            print('mth in this sub-pixel: {}'.format(mth))
-            print('Ngal in this sub-pixel: {}'.format(len(subcatalog)))
+        print('mth in this sky patch: {}'.format(mth))
+        print('Ngal in this sky patch: {}'.format(len(subcatalog)))
         galz = subcatalog['z']
         galra = subcatalog['ra']
         galdec = subcatalog['dec']
