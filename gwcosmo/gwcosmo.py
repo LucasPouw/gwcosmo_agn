@@ -803,10 +803,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.zcut = self.zmax
             self.color_limit = [-np.inf,np.inf]
 
-        if mth is None:
-            mth = self.full_catalog.magnitude_thresh(observation_band)
 
-        print('Catalogue apparent magnitude threshold: {}'.format(mth))
 
         #TODO make this changeable from command line?
         self.nfine = 10000
@@ -830,6 +827,9 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                                    Kcorr = self.full_catalog.Kcorr)
 
         self.full_catalog = subcatalog
+        if mth is None:
+            self.mth = self.full_catalog.magnitude_thresh(observation_band)
+        print('Catalogue apparent magnitude threshold: {}'.format(self.mth))
 
         self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.full_catalog['ra'],
                                                                        self.full_catalog['dec'],
@@ -879,9 +879,10 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             clim = [-inf, inf]
         else:
             clim = color_limits[color_names[self.band]]
-        subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, mth)
 
-        print('mth in this sky patch: {}'.format(mth))
+        subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, self.mth)
+
+        print('mth in this sky patch: {}'.format(self.mth))
         print('Ngal in this sky patch: {}'.format(len(subcatalog)))
         galz = subcatalog['z']
         galra = subcatalog['ra']
