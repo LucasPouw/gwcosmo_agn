@@ -781,7 +781,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             Should redshift uncertainties be marginalised over? (Default=True)
         complete_catalog : bool, optional
             is the galaxy catalogue already complete? (Default=False)
-
+        nside : int, optional
+            Resolution to work out fraction of skymap support
         TODO: UPDATE this for new catalog classes
         """
 
@@ -833,7 +834,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.full_catalog['ra'],
                                                                        self.full_catalog['dec'],
-                                                                       sky_thresh)
+                                                                       sky_thresh, nside=nside)
         self.OmegaO = 1. - self.OmegaG
         self.px_OmegaO = 1. - self.px_OmegaG
 
