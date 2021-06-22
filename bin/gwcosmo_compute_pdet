@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 This script calculates pdets.
 Ignacio Magana, Rachel Gray
@@ -33,7 +33,7 @@ parser = OptionParser(
     option_list = [
         Option("--mass_distribution", default=None,
             help="Choose between BNS or NSBH/BBH-powerlaw, NSBH/BBH-powerlaw-gaussian, NSBH/BBH-broken-powerlaw mass distributions for default Pdet calculations."),
-        Option("--psd", default=None,
+        Option("--psd", default=None, type=str,
             help="Select between 'O1' and 'O2' and 'O3' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."),
         Option("--powerlaw_slope", default='1.6', type=float,
             help="Set powerlaw slope for BBH powerlaw mass distribution."),
@@ -100,10 +100,8 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
 mass_distribution = str(opts.mass_distribution)
-if opts.psd == None:
-    psd = None
-else:
-    psd = str(opts.psd)
+
+psd = opts.psd
 
 alpha = float(opts.powerlaw_slope)
 Mmin = float(opts.minimum_mass)

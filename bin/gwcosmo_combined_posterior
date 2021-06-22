@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 This script combines individual H0 posteriors.
 Ignacio Magana
@@ -9,7 +9,7 @@ import sys
 from optparse import Option, OptionParser
 
 #Global Imports
-import matplotlib 
+import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 matplotlib.rcParams['font.family']= 'Times New Roman'
@@ -62,7 +62,7 @@ for path, subdirs, files in os.walk(dir):
         filepath = os.path.join(path, name)
         if filepath[-4:] == '.npz':
             dir_list.append(filepath)
-            
+
 
 outputfile = str(opts.outputfile)
 

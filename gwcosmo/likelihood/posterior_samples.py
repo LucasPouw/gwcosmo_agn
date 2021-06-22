@@ -7,11 +7,13 @@ from scipy.stats import gaussian_kde
 from astropy import units as u
 import h5py
 from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
+from .skymap import ra_dec_from_ipix
 from ..prior.priors import distance_distribution, mass_prior
 import json
+import healpy as hp
+import copy
 
 from scipy.interpolate import interp1d, interp2d
-
 
 class posterior_samples(object):
     """
@@ -157,11 +159,12 @@ class posterior_samples(object):
 
         # Re-weight
         weights = new_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift,H0)
+
         if len(np.argwhere(weights==0.))>0.999*len(weights):
             norm = 0.
             weights = np.ones(len(weights))
         else:
-            norm = np.sum(weights)
+            norm = np.sum(weights)/len(weights)
 
         return gaussian_kde(redshift,weights=weights), norm
 
@@ -175,7 +178,8 @@ class posterior_samples(object):
 
         # remove dl^2 prior and include dz/ddL jacobian
         weights = 1/(self.cosmo.dL_by_z_H0(redshift,H0)*self.cosmo.dl_zH0(redshift,H0)**2)
-        norm = np.sum(weights)
+        norm = np.sum(weights)/len(weights)
+
         return gaussian_kde(redshift,weights=weights), norm
 
 
@@ -184,17 +188,26 @@ class make_px_function(object):
     """
     Make a line of sight, or sky-marginalised, function of the GW data in
     redshift and H0.
-
-    Parameters
-    ----------
-    samples : posterior_samples object
-        The GW samples
-    H0 : array
-    reweight_samples : bool, optional
-        Should the samples be reweighted to the same source-frame mass prior
-        as used in the selection effects? (Default=True)
     """
+    
     def __init__(self, samples,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
+        """
+        Parameters
+        ----------
+        samples : posterior_samples object
+            The GW samples
+        H0 : array of floats
+            Hubble constant values in kms-1Mpc-1
+        hyper_params_dict : dictionary
+            dictionary defining mass distribution parameters 'alpha', 'alpha_2',
+             'mmin', 'mmax', 'beta', 'sigma_g', 'lambda_peak', 'mu_g', 'delta_m', 'b'
+        name : str, optional
+            Mass distribution (default='BBH-powerlaw')
+        reweight_samples : bool, optional
+            Should the samples be reweighted to the same source-frame mass prior
+            as used in the selection effects? (Default=True)
+        """
+        
         redshift_bins = 500
         vals = np.zeros((len(H0),redshift_bins))
         zmin = z_dlH0(np.amin(samples.distance),H0[0])*0.5
@@ -220,4 +233,109 @@ class make_px_function(object):
         return self.px_zH0(z,H0)
 
 
+class make_pixel_px_function(object):
+    """
+    Make a line of sight function of the GW data in redshift and H0.
+    
+    Identifies samples within a certain angular radius of the centre of a
+    healpy pixel, and uses these to construct p(x|z,Omega,H0)
+    """
+    
+    def __init__(self, samples, skymap, npixels=30, thresh=0.999):
+        """
+        Parameters
+        ----------
+        samples : posterior_samples object
+            The GW samples
+        skymap : object
+            The GW skymap
+        npixels : int, optional
+            The minimum number of pixels desired to cover given sky area of
+            the GW event (default=30)
+        thresh : float, optional
+            The sky area threshold (default=0.999)
+        """
+        
+        self.skymap = skymap
+        self.samples = samples
+        nside=4
+        indices,prob = skymap.above_percentile(thresh, nside=nside)
+    
+        while len(indices) < npixels:
+            nside = nside*2
+            indices,prob = skymap.above_percentile(thresh, nside=nside)
+        
+        self.nside = nside
+        print('{} pixels to cover the {}% sky area (nside={})'.format(len(indices),thresh*100,nside))
+        
+        dicts = {}
+        for i,idx in enumerate(indices):
+            dicts[idx] = prob[i]
+        self.indices = indices
+        self.prob = dicts # dictionary - given a pixel index, returns skymap prob
+        
+    def px_zH0(self,z,H0):
+        print('Has not been initialised yet')
+        pass
+
+        
+    def identify_samples(self, idx, minsamps=100):
+        """
+        Find the samples required 
+        
+        Parameters
+        ----------
+        idx : int
+            The pixel index
+        minsamps : int, optional
+            The threshold number of samples to reach per pixel
+            
+        Return
+        ------
+        sel : array of ints
+            The indices of posterior samples for pixel idx
+        """
+    
+        racent,deccent = ra_dec_from_ipix(self.nside, idx, nest=self.skymap.nested)
+    
+        separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
+        sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
+        step = sep/2. # choose step size for increasing radius
+        
+        sel = np.where(separations<sep)[0] # find all the samples within the angular radius sep from the pixel centre
+        nsamps = len(sel)
+        while nsamps < minsamps:
+            sep += step
+            sel = np.where(separations<sep)[0]
+            nsamps = len(sel)
+        print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
+            
+        return sel
+        
+    def make_los_px_function(self, idx,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
+        """Make line of sight z,H0 function of GW data, using samples
+        selected with idx"""
+        
+        samples = copy.deepcopy(self.samples)
+        samples.distance = samples.distance[idx]
+        samples.mass_1 = samples.mass_1[idx]
+        samples.mass_2 = samples.mass_2[idx]
+        
+        self.px_zH0 = make_px_function(samples,H0,hyper_params_dict,name=name,reweight_samples=reweight_samples)
+        
+        return self.px_zH0
+        
+    def __call__(self,z,H0):
+        return self.px_zH0(z,H0)
+        
+        
+        
+    
+def angular_sep(ra1,dec1,ra2,dec2):
+    """Find the angular separation between two points, (ra1,dec1)
+    and (ra2,dec2), in radians."""
+    
+    cos_angle = np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)
+    angle = np.arccos(cos_angle)
+    return angle
 
