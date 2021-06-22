@@ -305,7 +305,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         galindex_sep = {}
         if self.luminosity_weights.luminosity_weights == True:
             # TODO: find better selection criteria for sampling
-            print(m)
             mlim = np.percentile(np.sort(m),0.01) # more draws for galaxies in brightest 0.01 percent
             mlim = np.ceil(mlim * 10) / 10.0 # round up to nearst dp to avoid rounding error where no galaxies are selected
             samp_res = {'fine': nfine, 'coarse': ncoarse}
@@ -782,7 +781,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             Should redshift uncertainties be marginalised over? (Default=True)
         complete_catalog : bool, optional
             is the galaxy catalogue already complete? (Default=False)
-            
+
         TODO: UPDATE this for new catalog classes
         """
 
