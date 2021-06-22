@@ -353,7 +353,12 @@ class OldStyleCatalog(GalaxyCatalog):
         This is a separate step to load the data
         """
         f = h5py.File(self.filename, 'r')
-        names = list(self.colnames)
+        names = []
+        for n in self.colnames:
+            if n in f:
+                names.append(n)
+            else:
+                print(f'Unable to find column for {n}-band')
         self.data = np.rec.fromarrays([f[n] for n in names], names = names)
 
     def __getstate__(self):
