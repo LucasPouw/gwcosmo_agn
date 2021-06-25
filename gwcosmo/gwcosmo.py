@@ -16,7 +16,7 @@ from scipy.stats import ncx2, truncnorm
 from .utilities.standard_cosmology import dl_zH0,M_mdl,L_M
 from .utilities.schechter_function import M_Mobs
 from .utilities.schechter_params import SchechterParams
-from .prior.catalog import color_names, color_limits
+from .prior.catalog import color_names, color_limits, GalaxyCatalog
 from .likelihood.skymap import ra_dec_from_ipix,ipix_from_ra_dec
 import healpy as hp
 
@@ -305,7 +305,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         galindex_sep = {}
         if self.luminosity_weights.luminosity_weights == True:
             # TODO: find better selection criteria for sampling
-            print(m)
             mlim = np.percentile(np.sort(m),0.01) # more draws for galaxies in brightest 0.01 percent
             mlim = np.ceil(mlim * 10) / 10.0 # round up to nearst dp to avoid rounding error where no galaxies are selected
             samp_res = {'fine': nfine, 'coarse': ncoarse}
@@ -745,7 +744,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999):
+    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
         """
         Parameters
         ----------
@@ -782,7 +781,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             Should redshift uncertainties be marginalised over? (Default=True)
         complete_catalog : bool, optional
             is the galaxy catalogue already complete? (Default=False)
-
+        nside : int, optional
+            Resolution to work out fraction of skymap support
         TODO: UPDATE this for new catalog classes
         """
 
@@ -791,38 +791,50 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.mth = mth
         self.zcut = zcut
         self.complete_catalog = complete_catalog
-        self.catalog = galaxy_catalog
+        self.full_catalog = galaxy_catalog
 
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
                 self.zcut = 0.5
-            self.catalog = self.catalog.apply_color_limit(observation_band,
+            self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
             if zcut is None:
                 self.zcut = self.zmax
             self.color_limit = [-np.inf,np.inf]
 
-        if mth is None:
-            mth = self.catalog.magnitude_thresh(observation_band)
 
-        print('Catalogue apparent magnitude threshold: {}'.format(self.mth))
 
         #TODO make this changeable from command line?
         self.nfine = 10000
         self.ncoarse = 10
 
-        self.nGal = len(self.catalog)
+        self.nGal = len(self.full_catalog)
 
         if zuncert == False:
             self.nfine = 1
             self.ncoarse = 1
             self.galsigmaz = np.zeros(len(self.galz))
 
-        self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.catalog['ra'],
-                                                                       self.catalog['dec'],
-                                                                       sky_thresh)
+        # Isolate galaxies inside the skymap credible region
+        keep_idx = skymap.samples_within_region(self.full_catalog['ra'],
+                                                self.full_catalog['dec'],
+                                                sky_thresh,
+                                                nside=nside)
+        subcatalog = GalaxyCatalog(data = self.full_catalog[keep_idx],
+                                   name = self.full_catalog.name+'_subsky',
+                                   supported_bands = self.full_catalog.supported_bands,
+                                   Kcorr = self.full_catalog.Kcorr)
+
+        self.full_catalog = subcatalog
+        if mth is None:
+            self.mth = self.full_catalog.magnitude_thresh(observation_band)
+        print('Catalogue apparent magnitude threshold: {}'.format(self.mth))
+
+        self.OmegaG, self.px_OmegaG = skymap.region_with_sample_support(self.full_catalog['ra'],
+                                                                       self.full_catalog['dec'],
+                                                                       sky_thresh, nside=nside)
         self.OmegaO = 1. - self.OmegaG
         self.px_OmegaO = 1. - self.px_OmegaG
 
@@ -863,15 +875,16 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         den = np.zeros(len(H0))
 
         # Apply cuts to catalog
-        subcatalog = self.catalog.apply_redshift_cut(self.zcut)
+        subcatalog = self.full_catalog.apply_redshift_cut(self.zcut)
         if color_names[self.band] is None:
             clim = [-inf, inf]
         else:
             clim = color_limits[color_names[self.band]]
-            subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, mth)
 
-            print('mth in this sub-pixel: {}'.format(mth))
-            print('Ngal in this sub-pixel: {}'.format(len(subcatalog)))
+        subcatalog = subcatalog.apply_color_limit(self.band, clim[0], clim[1]).apply_magnitude_limit(self.band, self.mth)
+
+        print('mth in this sky patch: {}'.format(self.mth))
+        print('Ngal in this sky patch: {}'.format(len(subcatalog)))
         galz = subcatalog['z']
         galra = subcatalog['ra']
         galdec = subcatalog['dec']

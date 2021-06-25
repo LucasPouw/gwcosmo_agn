@@ -160,9 +160,14 @@ class GalaxyCatalog:
     def read_pixel_index_cache(self, nside, cachedir=None):
         cachefile = self._cachefile(nside, cachedir=cachedir)
         if os.path.exists(cachefile):
-            self.pixmap[nside] = pickle.load(open(cachefile,'rb'))
-            return True
-        return False
+            try:
+                self.pixmap[nside] = pickle.load(open(cachefile,'rb'))
+                return True
+            except:
+                print(f"Warning, unable to open pixel cache file {cachefile}, possible corrupted file")
+                return False
+        else:
+            return False
 
     def magnitude_thresh(self, band, ra=None, dec=None):
         """
@@ -257,11 +262,19 @@ class GalaxyCatalog:
                              supported_bands = self.supported_bands)
 
     def get_k_correction(self, band, z, color_name, color_value):
-        """
-        Dummy k-correction function for catalogs which don't support them
-        """
-        kcor = np.zeros(len(z))
-        return kcor
+        "Apply K-correction"
+        #https://arxiv.org/pdf/1709.08316.pdf
+        if band == 'W1':
+            k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
+            return k_corr
+        else:
+            try:
+                kcor = calc_kcor(band, z, color_name, color_value)
+                return kcor
+            except:
+                print(f'Cannot calculate k-corrections for band {band} color name {color_name}')
+                print('Will return 0 k corrections')
+                return np.zeros(len(z))
 
 def newarr():
     return array.array('Q')
@@ -353,7 +366,12 @@ class OldStyleCatalog(GalaxyCatalog):
         This is a separate step to load the data
         """
         f = h5py.File(self.filename, 'r')
-        names = list(self.colnames)
+        names = []
+        for n in self.colnames:
+            if n in f:
+                names.append(n)
+            else:
+                print(f'Unable to find column for {n}-band')
         self.data = np.rec.fromarrays([f[n] for n in names], names = names)
 
     def __getstate__(self):
@@ -373,30 +391,12 @@ class OldStyleDESI(OldStyleCatalog):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
         super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'DESI')
 
-    def get_k_correction(self, band, z, color_name, color_value):
-        "Apply K-correction"
-        #https://arxiv.org/pdf/1709.08316.pdf
-        if band == 'W1':
-            k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
-            return k_corr
-        else:
-            raise ValueError("Only W1 band supported for K-correction")
-
 class OldStyleGLADEPlus(OldStyleCatalog):
     supported_bands = {'B', 'K', 'W1'}
     supports_kcorrections = False
     def __init__(self, catalog_file = 'glade+.hdf5', band='W1', Kcorr=False):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
         super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'GladePlus')
-
-    def get_k_correction(self, band, z, color_name, color_value):
-        "Apply K-correction"
-        #https://arxiv.org/pdf/1709.08316.pdf
-        if band == 'W1':
-            k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
-            return k_corr
-        else:
-            raise ValueError("Only W1 band supported for K-correction")
 
 class OldStyleGLADE(OldStyleCatalog):
     supported_bands = {'B','K'}
@@ -413,6 +413,3 @@ class OldStyleDES(OldStyleCatalog):
         print(self.colnames)
         super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'DES')
 
-    def get_k_correction(self, band, z, color_name, color_value):
-        kcor = calc_kcor(band, z, color_name, color_value)
-        return kcor
