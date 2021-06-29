@@ -94,7 +94,7 @@ parser = OptionParser(
             help="Set zp for Madau model. (Not used if redshift_evolution=None or PowerLaw)"),
         Option("--Kcorrections", default='False',
             help="Apply K-corrections."),
-        Option("--reweight_posterior_samples", default='False',
+        Option("--reweight_posterior_samples", default='True',
             help="Reweight posterior samples with the same priors used to calculate the selection effects."),
         Option("--zmax", default=10.0, type=float,
             help="Upper redshift limit for integrals (default=10)"),

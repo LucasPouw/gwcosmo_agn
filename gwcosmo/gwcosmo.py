@@ -986,9 +986,7 @@ class DirectCounterpartLikelihood(gwcosmoLikelihood):
         zsmear =  z_nsmear(self.counterpart_z, self.counterpart_sigmaz, 10000)
         num = np.zeros(len(H0))
         for k,h in enumerate(H0):
-            num[k] = np.sum(self.px_zH0(zsmear,h))
-            # TODO should this include p(s|z)? Would come into play
-            # for host galaxies with large redshift uncertainty.
+            num[k] = np.sum(self.px_zH0(zsmear,h)*self.zrates(zsmear))
         return num
 
     def likelihood(self,H0):

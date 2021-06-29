@@ -94,6 +94,28 @@ def get_gaussian_norm(mu,sigma,min,max):
     return 0.5*_erf(max_point)-0.5*_erf(min_point)
 
 
+def get_gaussian_norm(mu,sigma,min,max):
+    '''
+    This function returns the gaussian normalization factor
+
+    Parameters
+    ----------
+    mu: float
+        mean of the gaussian
+    sigma: float
+        standard deviation of the gaussian
+    min_pl: float
+        lower cutoff
+    max_pl: float
+        upper cutoff
+    '''
+
+    # Get the gaussian norm as in Eq. 28 on the tex document
+    max_point = (max-mu)/(sigma*_np.sqrt(2.))
+    min_point = (min-mu)/(sigma*_np.sqrt(2.))
+    return 0.5*_erf(max_point)-0.5*_erf(min_point)
+
+
 class SmoothedProb(object):
     '''
     Class for smoothing the low part of a PDF. The smoothing follows Eq. B7 of
@@ -118,14 +140,18 @@ class SmoothedProb(object):
         self.minimum=self.origin_prob.minimum
 
         # Find the values of the integrals in the region of the window function before and after the smoothing
-        int_array = _np.linspace(self.origin_prob.minimum,bottom+bottom_smooth,1000)
+        int_array = _np.linspace(bottom,bottom+bottom_smooth,1000)
         integral_before = _np.trapz(self.origin_prob.prob(int_array),int_array)
         integral_now = _np.trapz(self.prob(int_array),int_array)
 
         self.integral_before = integral_before
         self.integral_now = integral_now
         # Renormalize the the smoother function.
-        self.norm = 1 - integral_before + integral_now
+        self.norm = 1 - integral_before + integral_now - self.origin_prob.cdf(bottom)
+
+        x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
+        cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
+        self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='cubic')
 
         x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
         cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)

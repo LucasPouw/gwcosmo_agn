@@ -33,7 +33,7 @@ parser = OptionParser(
     option_list = [
         Option("--mass_distribution", default=None,
             help="Choose between BNS or NSBH/BBH-powerlaw, NSBH/BBH-powerlaw-gaussian, NSBH/BBH-broken-powerlaw mass distributions for default Pdet calculations."),
-        Option("--psd", default=None,
+        Option("--psd", default=None, type=str,
             help="Select between 'O1' and 'O2' and 'O3' PSDs, for default Pdet calculations. By default we use aLIGO at design sensitivity."),
         Option("--powerlaw_slope", default='1.6', type=float,
             help="Set powerlaw slope for BBH powerlaw mass distribution."),
@@ -100,7 +100,8 @@ if len(missing) > 0:
     parser.error('Missing required options: {0}'.format(str(missing)))
 
 mass_distribution = str(opts.mass_distribution)
-psd = str(opts.psd)
+
+psd = opts.psd
 
 alpha = float(opts.powerlaw_slope)
 Mmin = float(opts.minimum_mass)
@@ -216,8 +217,8 @@ else:
     pdet.psis = pdets.psis
     pdet.phis = pdets.phis
     pdet.dl_array = pdets.dl_array
-    pdet.m1 = pdets.m1/1.988e30
-    pdet.m2 = pdets.m2/1.988e30
+    pdet.m1 = pdets.m1/1.9884754153381438e30
+    pdet.m2 = pdets.m2/1.9884754153381438e30
     pdet.dets = pdets.dets
     pdet.psds = pdets.psds
 
@@ -262,4 +263,3 @@ else:
     if detected_masses==True:
         np.savez(pdet_path+'_detected.npz',[detected,m1,m2])
     pickle.dump( pdet, open( pdet_path+'.p', "wb" ) )
-
