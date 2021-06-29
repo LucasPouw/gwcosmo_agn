@@ -19,10 +19,10 @@ from .utilities.schechter_params import SchechterParams
 from .prior.catalog import color_names, color_limits, GalaxyCatalog
 from .likelihood.skymap import ra_dec_from_ipix,ipix_from_ra_dec
 import healpy as hp
-
+import pickle
 import time
 import progressbar
-
+import os
 
 ################################################################################
 ################################# THE MAIN CLASSES #############################
@@ -496,7 +496,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     """
 
-    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
         """
         Parameters
         ----------
@@ -544,7 +544,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.zcut = zcut
         self.complete_catalog = complete_catalog
         self.full_catalog = galaxy_catalog
-
+        self.path = outputfile+'_'+str(pixel_index)+'_checkpoint.p'
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
@@ -653,17 +653,34 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             likelihood
         """
 
-        self.pxG = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pDG = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pG = np.zeros([len(H0),len(self.sub_pixel_indices)])
+        if os.path.isfile(self.path):
+            pdet_checkpoint = pickle.load(open(self.path,'rb'))
+            self.pxG = pdet_checkpoint['pxG']
+            self.pDG = pdet_checkpoint['pDG']
+            self.pG = pdet_checkpoint['pG']
 
-        self.pxB = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pDB = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pB = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pxB = pdet_checkpoint['pxB']
+            self.pDB = pdet_checkpoint['pDB']
+            self.pB = pdet_checkpoint['pB']
 
-        self.pxO = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pDO = np.zeros([len(H0),len(self.sub_pixel_indices)])
-        self.pO = np.zeros(len(self.sub_pixel_indices))
+            self.pxO = pdet_checkpoint['pxO']
+            self.pDO = pdet_checkpoint['pDO']
+            self.pO = pdet_checkpoint['pO']
+            checkpoint_idx = pdet_checkpoint['checkpoint_idx']+1
+            
+        else:
+            self.pxG = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pDG = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pG = np.zeros([len(H0),len(self.sub_pixel_indices)])
+
+            self.pxB = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pDB = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pB = np.zeros([len(H0),len(self.sub_pixel_indices)])
+
+            self.pxO = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pDO = np.zeros([len(H0),len(self.sub_pixel_indices)])
+            self.pO = np.zeros(len(self.sub_pixel_indices))
+            checkpoint_idx = 0
 
         if inf in self.mth_map.values():
             temp_pxO = np.zeros(len(H0))
@@ -674,7 +691,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 temp_pDO[i] = self.pD_OH0(h, skyprob=1.)
 
         # loop over sub-pixels
-        for i, idx in enumerate(self.sub_pixel_indices):
+        for i in range(checkpoint_idx,len(self.sub_pixel_indices)):
+            idx = self.sub_pixel_indices[i]
             px_Omega = self.hi_res_skyprob[idx]
             ra, dec = ra_dec_from_ipix(self.hi_res_nside, idx)
             subcatalog = self.full_catalog.select_pixel(self.hi_res_nside, idx)
@@ -718,7 +736,15 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.pxO[:,i] = np.zeros(len(H0))
                 self.pDO[:,i] = np.ones(len(H0))
                 self.pO[i] = 0.
-
+                
+            if os.path.isfile(self.path):
+                os.remove(self.path)
+            checkpoint = {'checkpoint_idx':i,'pxG':self.pxG,'pDG':self.pDG,'pG':self.pG,'pxB':self.pxB,
+                          'pDB':self.pDB,'pB':self.pB,'pxO':self.pxO,'pDO':self.pDO,'pO':self.pO}
+            pickle.dump(checkpoint, open(self.path, "wb" ))
+        
+        if os.path.isfile(self.path):
+                os.remove(self.path)
         sub_likelihood = np.zeros([len(H0),len(self.sub_pixel_indices)])
         for i in range(len(self.sub_pixel_indices)):
             sub_likelihood[:,i] = (self.pxG[:,i] / self.pDG[:,i]) * self.pG[:,i] + (self.pxB[:,i] / self.pDB[:,i]) * self.pB[:,i] + (self.pxO[:,i] / self.pDO[:,i]) * self.pO[i]

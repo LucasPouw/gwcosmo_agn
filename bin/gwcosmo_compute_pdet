@@ -128,6 +128,7 @@ pdet_path = str(opts.combine)
 Omega_m=float(opts.Omega_m)
 detected_masses = str2bool(opts.detected_masses)
 detector = str(opts.detectors)
+
 dets = []
 if 'H' in detector:
     dets.append('H1')
@@ -148,11 +149,6 @@ else:
 
 if opts.combine is None:
 
-    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic, detectors=dets,
-                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g,
-                                                              lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, det_combination = det_combination,
-                                                              b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold)
-
     if opts.outputfile is None:
         if psd != None:
             if mass_distribution == 'BNS':
@@ -167,6 +163,12 @@ if opts.combine is None:
                 pdet_path = '{}_alpha_{}_Mmin_{}_Mmax_{}_Nsamps{}_{}.p'.format(mass_distribution, alpha, Mmin, Mmax, Nsamps, kind)
     else:
         pdet_path = str(opts.outputfile)
+
+    pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic, detectors=dets,
+                                                              linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g,
+                                                              lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, det_combination = det_combination,
+                                                              b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold, path=pdet_path)
+
 
     pickle.dump( pdet, open( pdet_path, "wb" ) )
 
@@ -221,6 +223,7 @@ else:
     pdet.m2 = pdets.m2/1.9884754153381438e30
     pdet.dets = pdets.dets
     pdet.psds = pdets.psds
+    pdet.z_array = pdets.z_array
 
     logit_prob=logit(prob)
     for i in range (len(logit_prob)):
