@@ -94,28 +94,6 @@ def get_gaussian_norm(mu,sigma,min,max):
     return 0.5*_erf(max_point)-0.5*_erf(min_point)
 
 
-def get_gaussian_norm(mu,sigma,min,max):
-    '''
-    This function returns the gaussian normalization factor
-
-    Parameters
-    ----------
-    mu: float
-        mean of the gaussian
-    sigma: float
-        standard deviation of the gaussian
-    min_pl: float
-        lower cutoff
-    max_pl: float
-        upper cutoff
-    '''
-
-    # Get the gaussian norm as in Eq. 28 on the tex document
-    max_point = (max-mu)/(sigma*_np.sqrt(2.))
-    min_point = (min-mu)/(sigma*_np.sqrt(2.))
-    return 0.5*_erf(max_point)-0.5*_erf(min_point)
-
-
 class SmoothedProb(object):
     '''
     Class for smoothing the low part of a PDF. The smoothing follows Eq. B7 of
@@ -245,8 +223,6 @@ class SmoothedProb(object):
         """
 
         return _np.exp(self.log_conditioned_prob(x,a,b))
-
-
 
 class PowerLaw_math(object):
     """
