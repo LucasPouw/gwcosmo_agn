@@ -186,6 +186,7 @@ combine_pixels = htcondor.Submit(
     getenv     = 'True',
     request_cpus = '1',
     request_memory = ram,
+    priority = 10
 )
 
 
