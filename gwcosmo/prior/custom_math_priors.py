@@ -52,7 +52,7 @@ def _S_factor(mass, mmin,delta_m):
     to_ret[select_one]=1.
     return to_ret
 
-def get_PL_norm(alpha,min,max):
+def get_PL_norm(alpha,minv,maxv):
     '''
     This function returns the powerlaw normalization factor
 
@@ -68,9 +68,31 @@ def get_PL_norm(alpha,min,max):
 
     # Get the PL norm as in Eq. 24 on the tex document
     if alpha == -1:
-        return _np.log(max/min)
+        return _np.log(maxv/minv)
     else:
-        return (_np.power(max,alpha+1) - _np.power(min,alpha+1))/(alpha+1)
+        return (_np.power(maxv,alpha+1) - _np.power(minv,alpha+1))/(alpha+1)
+
+def get_gaussian_norm(mu,sigma,min,max):
+    '''
+    This function returns the gaussian normalization factor
+
+    Parameters
+    ----------
+    mu: float
+        mean of the gaussian
+    sigma: float
+        standard deviation of the gaussian
+    min_pl: float
+        lower cutoff
+    max_pl: float
+        upper cutoff
+    '''
+
+    # Get the gaussian norm as in Eq. 28 on the tex document
+    max_point = (max-mu)/(sigma*_np.sqrt(2.))
+    min_point = (min-mu)/(sigma*_np.sqrt(2.))
+    return 0.5*_erf(max_point)-0.5*_erf(min_point)
+
 
 def get_gaussian_norm(mu,sigma,min,max):
     '''
@@ -126,6 +148,10 @@ class SmoothedProb(object):
         self.integral_now = integral_now
         # Renormalize the the smoother function.
         self.norm = 1 - integral_before + integral_now - self.origin_prob.cdf(bottom)
+
+        x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
+        cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
+        self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='cubic')
 
         x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
         cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
@@ -305,7 +331,7 @@ class PowerLaw_math(object):
             Value at which compute the cumulative
         """
 
-        # Define the cumulative density function as in Eq. 24 on the paper
+        # Define the cumulative density function, see  Eq. 24 to see the integral form
 
         if self.alpha == -1:
             to_ret = _np.log(x/self.min_pl)/self.norm
@@ -427,7 +453,7 @@ class Truncated_Gaussian_math(object):
             Value at which compute the cumulative
         """
 
-        # Define the cumulative density function as in Eq. 24 on the paper
+        # Define the cumulative density function as in Eq. 28 on the paper to see the integral form
 
         max_point = (x-self.mu)/(self.sigma*_np.sqrt(2.))
         min_point = (self.min_g-self.mu)/(self.sigma*_np.sqrt(2.))
@@ -508,7 +534,7 @@ class PowerLawGaussian_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 37 on on the tex document
+        # Define the PDF as in Eq. 36-37-38 on on the tex document
         return _np.exp(self.log_prob(x))
 
     def cdf(self,x):
@@ -537,7 +563,7 @@ class PowerLawGaussian_math(object):
             New upper boundary
         """
 
-        return  (1-self.lambda_g)*self.pl.conditioned_prob(x,a,b)+self.lambda_g*self.gg.conditioned_prob(x,a,b)
+        return _np.exp(self.log_conditioned_prob(x,a,b))
 
     def log_prob(self,x):
         """
@@ -549,7 +575,7 @@ class PowerLawGaussian_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 37 on on the tex document
+        # Define the PDF as in Eq. 36-37-38 on on the tex document
         return _np.logaddexp(_np.log1p(-self.lambda_g)+self.pl.log_prob(x),_np.log(self.lambda_g)+self.gg.log_prob(x))
 
     def log_conditioned_prob(self,x,a,b):
@@ -566,7 +592,7 @@ class PowerLawGaussian_math(object):
             New upper boundary
         """
 
-        return _np.exp(self.log_conditioned_prob(x,a,b))
+        return  _np.logaddexp(_np.log1p(-self.lambda_g)+self.pl.log_conditioned_prob(x,a,b),_np.log(self.lambda_g)+self.gg.log_conditioned_prob(x,a,b))
 
 
 class PowerLawDoubleGaussian_math(object):
@@ -624,7 +650,6 @@ class PowerLawDoubleGaussian_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 46 on the tex document
         return _np.exp(self.log_prob(x))
 
 
@@ -638,7 +663,7 @@ class PowerLawDoubleGaussian_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 46 on the tex document
+        # Define the PDF as in Eq. 44-45-46 on the tex document
 
         pl_part = _np.log1p(-self.lambda_g)+self.pl.log_prob(x)
         g_low = self.gg_low.log_prob(x)+_np.log(self.lambda_g)+_np.log(self.lambda_g_low)
@@ -656,7 +681,7 @@ class PowerLawDoubleGaussian_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 46 on the tex document
+        # Define the PDF as in Eq.  44-45-46  on the tex document
 
         pl_part = _np.log1p(-self.lambda_g)+self.pl.log_conditioned_prob(x,a,b)
         g_low = self.gg_low.log_conditioned_prob(x,a,b)+_np.log(self.lambda_g)+_np.log(self.lambda_g_low)
@@ -727,7 +752,7 @@ class BrokenPowerLaw_math(object):
         self.alpha_1 = alpha_1
         self.alpha_2 = alpha_2
 
-        # Define the breaking point as in Eq.
+        # Define the breaking point
         self.break_point = min_pl+b*(max_pl-min_pl)
         self.b=b
 
@@ -735,7 +760,7 @@ class BrokenPowerLaw_math(object):
         self.pl1=PowerLaw_math(alpha_1,min_pl,self.break_point)
         self.pl2=PowerLaw_math(alpha_2,self.break_point,max_pl)
 
-        # Define the broken powerlaw as in Eq. 42 on the tex document
+        # Define the broken powerlaw as in Eq. 39-40-41 on the tex document
         self.new_norm=(1+self.pl1.prob(_np.array([self.break_point]))/self.pl2.prob(_np.array([self.break_point])))
 
     def prob(self,x):
@@ -748,7 +773,7 @@ class BrokenPowerLaw_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 42 on the tex document
+        # Define the PDF as in Eq. 39-40-41 on the tex document
         return _np.exp(self.log_prob(x))
 
 
@@ -762,7 +787,7 @@ class BrokenPowerLaw_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 46 on the tex document
+        # Define the PDF as in Eq. 39-40-41 on the tex document
 
         to_ret = _np.logaddexp(self.pl1.log_prob(x),self.pl2.log_prob(x)+self.pl1.log_prob(_np.array([self.break_point]))
         -self.pl2.log_prob(_np.array([self.break_point])))-_np.log(self.new_norm)
@@ -778,7 +803,7 @@ class BrokenPowerLaw_math(object):
             Value at which compute the probability
         """
 
-        # Define the PDF as in Eq. 46 on the tex document
+        # Define the PDF as in Eq. 39-40-41 on the tex document
 
         to_ret = _np.logaddexp(self.pl1.log_conditioned_prob(x,a,b),self.pl2.log_conditioned_prob(x,a,b)
         +self.pl1.log_prob(_np.array([self.break_point]))-self.pl2.log_prob(_np.array([self.break_point])))-_np.log(self.new_norm)
