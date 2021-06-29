@@ -13,7 +13,8 @@ from gwcosmo.utilities.standard_cosmology import fast_cosmology,z_dlH0,dl_zH0
 from gwcosmo.prior.priors import mass_prior
 import progressbar
 import pkg_resources
-
+import pickle
+import os
 
 class DetectionProbability(object):
     """
@@ -24,12 +25,18 @@ class DetectionProbability(object):
     Parameters
     ----------
     mass_distribution : str
-        choice of mass distribution ('BNS', 'NSBH', 'BBH-powerlaw', 'BBH-constant')
+        Choose between BNS or NSBH/BBH-powerlaw, NSBH/BBH-powerlaw-gaussian, 
+        NSBH/BBH-broken-powerlaw mass distributions for default Pdet calculations."
     psd : str
-        Select between 'O1', 'O2', 'O3', 'O4low', 'O4high', 'O5' or the 'MDC' PSDs.
+        Select between None for marginalization over the sensitivity or 'O1', 'O2', 
+        'O3', 'O4low', 'O4high', 'O5' or the 'MDC' PSDs.
     detectors : list of str, optional
-        list of detector names (default=['H1','L1'])
+        list of detector names (default=['H1','L1', 'V1'])
         Select from 'L1', 'H1', 'V1', 'K1'.
+    detected_masses : bool, optional 
+        Set to True if you want to keep track of the detected masses (default=False)
+    det_combination : bool, optional
+        Set to True if you want to marginalize over detector combinations (default=True)
     Nsamps : int, optional
         Number of samples for monte carlo integration (default=5000)
     H0 : float or array, optional
@@ -48,18 +55,38 @@ class DetectionProbability(object):
         specify minimum source frame mass for BBH-powerlaw distribution (default=5)
     Mmax : float, optional
         specify maximum source frame mass for BBH-powerlaw distribution  (default=50)
+    beta : float, optional
+        Set powerlaw slope for the second black hole. (default=0)
+    alpha_2 : float, optional
+        Set second powerlaw slope for BBH with broken powerlaw mass distribution
+    mu_g : float, optional
+        Set the mu of the gaussian peak in case of BBH-powerlaw-gaussian mass distribution
+    sigma_g : float, optional
+        Set the sigma of the gaussian peak in case of BBH-powerlaw-gaussian mass distribution
+    lambda_peak : float, optional
+        Set the lambda of the gaussian peak in case of BBH-powerlaw-gaussian mass distribution.
+    delta_m : float, optional
+        Set the smoothing parameter in case of BBH-powerlaw-gaussian or BBH-broken-powerlaw mass distributions
+    b : float, optional
+        Set the fraction at which the powerlaw breaks in case of BBH-broken-powerlaw mass distribution
     M1, M2 : float, optional
         specify source masses in solar masses if using BBH-constant mass distribution (default=50,50)
     constant_H0 : bool, optional
         if True, set Hubble constant to 70 kms-1Mpc-1 for all calculations (default=False)
     full_waveform: bool, optional
         if True, use LALsimulation simulated inspiral waveform, otherwise use just the inspiral (default=True)
+    seed : int, optional
+        Set the random seed (default=1000)
+    path: str, optional
+        The output path of the file(used for the checkpointing)
+    
 
     """
     def __init__(self, mass_distribution, asd=None, detectors=['H1', 'L1', 'V1'], detected_masses=False, det_combination=True,
                  Nsamps=5000, H0=70, network_snr_threshold=12, Omega_m=0.308, linear=False, basic=False,
                  alpha=1.6, Mmin=5., Mmax=50., beta=0., alpha_2=0., mu_g=35., sigma_g=5., lambda_peak=0.2,
-                 delta_m=0., b=0.5, M1=50., M2=50., constant_H0=False, full_waveform=True, seed=1000):
+                 delta_m=0., b=0.5, M1=50., M2=50., constant_H0=False, full_waveform=True, seed=1000,path='./'):
+
         self.data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
         self.mass_distribution = mass_distribution
         self.asd = asd
@@ -89,13 +116,31 @@ class DetectionProbability(object):
         np.random.seed(seed)
 
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
+        self.path = str(path)+'_checkpoint.p'
+
 
         if self.full_waveform is True:
-            self.z_array = np.logspace(-4.0, 1., 500)
+            self.z_array = np.logspace(-4.0, 1., 1000)
         else:
             # TODO: For higher values of z (z=10) this goes
             # outside the range of the psds and gives an error
             self.z_array = np.logspace(-4.0, 0.5, 500)
+
+        checkpoint_z = 0
+        prob_checkpoint = np.zeros(len(self.z_array))
+        detect = np.ones(self.Nsamps)
+        self.detected = 0
+        if self.detected_masses==True:
+            self.detected = np.zeros((len(self.z_array),self.Nsamps))
+
+        if os.path.isfile(self.path):
+            pdet_checkpoint = pickle.load(open(self.path, 'rb'))
+            self.z_array = pdet_checkpoint['z_array']
+            checkpoint_z = pdet_checkpoint['checkpoint_z']
+            prob_checkpoint = pdet_checkpoint['prob_checkpoint']
+            self.detected = pdet_checkpoint['detected']
+            self.seed = pdet_checkpoint['seed']
+            detect = pdet_checkpoint['detect']
 
         # set up the samples for monte carlo integral
         N = self.Nsamps
@@ -225,14 +270,14 @@ class DetectionProbability(object):
             self.interp_average_basic = self.__pD_dl_basic()
 
         elif constant_H0 is True:
-            self.prob = self.__pD_zH0(H0)
+            self.prob = self.__pD_zH0(H0,prob_checkpoint,detect,checkpoint_z)
             logit_prob=logit(self.prob)
             logit_prob=np.where(logit_prob==float('+inf'), 100, logit_prob)
             logit_prob=np.where(logit_prob==float('-inf'), -33, logit_prob)
             self.interp_average = interp1d(self.z_array, logit_prob, kind='cubic')
 
         else:
-            self.prob = self.__pD_zH0_array(self.H0vec)
+            self.prob = self.__pD_zH0_array(self.H0vec,prob_checkpoint,detect,checkpoint_z)
 
             #interpolation of prob is done in logit(prob)=prob/(1-prob)
             #this prevents values from going above 1 and below 0
@@ -595,7 +640,7 @@ class DetectionProbability(object):
 
         return 4.0*A**2*num*np.power(lal.G_SI, 5.0/3.0)/lal.C_SI**3.0
 
-    def __pD_zH0(self, H0):
+    def __pD_zH0(self, H0, prob, detect, checkpoint):
         """
         Detection probability over a range of redshifts and H0s,
         returned as an interpolated function.
@@ -613,14 +658,10 @@ class DetectionProbability(object):
         lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
                                 for name in self.detectors]
 
-        network_rhosq = np.zeros((self.Nsamps, 1))
-        prob = np.zeros(len(self.z_array))
-        i=0
-        detect = np.ones(self.Nsamps)
-        bar = progressbar.ProgressBar()
-        if self.detected_masses==True:
-            self.detected = np.zeros((len(self.z_array),self.Nsamps))
-        for z in bar(self.z_array):
+        network_rhosq = np.zeros(self.Nsamps)
+        bar =  progressbar.ProgressBar()
+        for i in bar(range(checkpoint, len(self.z_array))):
+            z = self.z_array[i]
             dl = self.cosmo.dl_zH0(z, H0)
             factor = 1+z
             survival = 0
@@ -654,11 +695,21 @@ class DetectionProbability(object):
                     ncx2.rvs(2*len(detectors),100)
 
             prob[i] = survival/self.Nsamps
-            i+=1
-
+            if i%50==0:
+                if os.path.isfile(self.path):
+                    os.remove(self.path)
+                checkpoint = self.checkpointing(detect,prob,i)
+                pickle.dump(checkpoint, open( self.path, "wb" ))
+        if os.path.isfile(self.path):
+                    os.remove(self.path)
         return prob
 
-    def __pD_zH0_array(self, H0vec):
+    def checkpointing(self,detect,prob,i):
+
+        return {'seed':self.seed,'detect':detect,'detected':self.detected,'prob_checkpoint':prob,'checkpoint_z':i,'z_array':self.z_array}
+
+
+    def __pD_zH0_array(self, H0vec, prob_checkpoint,detect,checkpoint_z):
         """
         Function which calculates p(D|z,H0) for a range of
         redshift and H0 values
@@ -673,7 +724,7 @@ class DetectionProbability(object):
         list of arrays?
             redshift, H0 values, and the corresponding p(D|z,H0) for a grid
         """
-        return np.array([self.__pD_zH0(H0) for H0 in H0vec])
+        return np.array([self.__pD_zH0(H0,prob_checkpoint,detect,checkpoint_z) for H0 in H0vec])
 
     def pD_dlH0_eval(self, dl, H0):
         """

@@ -335,7 +335,7 @@ else:
 
         me = gwcosmo.gwcosmo.SinglePixelGalaxyCatalogLikelihood(pixel_index, catalog, skymap, band, cosmo,\
                                                               px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, \
-                                                              ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, \
+                                                              ps_M, outputfile, Kcorr=Kcorr, mth=mth, zcut=zcut, \
                                                               zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, \
                                                               nside=nside, nside_low_res = nside_low_res )
 
