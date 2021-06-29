@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # code to generate a .dag file for submitting jobs to the cluster
 import os
