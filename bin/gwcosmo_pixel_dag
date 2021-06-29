@@ -122,6 +122,10 @@ cpus = str(opts.cpus)
 ram = str(opts.ram)
 search_tag = opts.search_tag
 
+# If no seed is given, choose one up to 10000
+if opts.seed is None:
+    opts.seed = np.random.randint(10000)
+
 common_args  = f"\
     --method pixel \
     --min_H0 {opts.min_H0} \
