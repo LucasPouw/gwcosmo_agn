@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/riccardo/Devel-gwcosmo/ImplementationSchechParamsTest/pending-review-addscheckcommand-definitive-venv/bin/python
 """
 This script computes posterior on H0 using a single gravitational wave event
 and an electromagnetic counterpart.
@@ -106,6 +106,14 @@ parser = OptionParser(
             help="Hard redshift cut to apply to the galaxy catalogue (default=%default)"),
         Option("--mth", default=None,
             help="Override the apparent magnitude threshold of the catalogue, if provided (default=None)"),
+        Option("--schech_alpha", default=None,
+            help="Override the default value for slope of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mstar", default=None,
+            help="Override the default value for Mstar of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mmin", default=None,
+            help="Override the default value for Mmin of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mmax", default=None,
+            help="Override the default value for Mmax of schechter function for given band, if provided (default=None)"),
         Option("--nside", default=32, type=int,
             help="skymap nside choice for reading in galaxies from the overlap of catalogue and skymap (default=32)"),
         Option("--sky_area", default=0.999, type=float,
@@ -302,8 +310,25 @@ else:
             zcut = float(opts.zcut)
         else:
             zcut = None
+        if opts.schech_alpha is not None:
+            schech_alpha=float(opts.schech_alpha)
+        else:
+            schech_alpha = None
+        if opts.schech_Mstar is not None:
+            schech_Mstar=float(opts.schech_Mstar)
+        else:
+            schech_Mstar = None
+        if opts.schech_Mmin is not None:
+            schech_Mmin=float(opts.schech_Mmin)
+        else:
+            schech_Mmin = None
+        if opts.schech_Mmax is not None:
+            schech_Mmax=float(opts.schech_Mmax)
+        else:
+            schech_Mmax = None
 
-        sp = SchechterParams(band)
+        sp = SchechterParams(band, schech_alpha, schech_Mstar, schech_Mmin, schech_Mmax)
+        print("Schechter function with parameters: alpha={}, Mstar={}, Mmin={}, Mmax={}, ".format(sp.alpha,  sp.Mstar, sp.Mmin, sp.Mmax))
         p_M = SchechterMagFunction(Mstar_obs=sp.Mstar,alpha=sp.alpha)
         if galaxy_weighting:
             ps_M = gwcosmo.gwcosmo.LuminosityWeighting()
@@ -314,7 +339,7 @@ else:
 
         #catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap=skymap,band=band,thresh=sky_area,Kcorr=Kcorr,nside=nside)
 
-        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
+        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, sp, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
 
     if opts.method == 'pixel':
 
@@ -333,7 +358,7 @@ else:
         print("Setting up p(x|z,H0)")
         px_zH0 = pixelated_samples.make_los_px_function(samp_ind,H0,hyper_params_dict,name=mass_distribution,reweight_samples=reweight_samples)
 
-        me = gwcosmo.gwcosmo.SinglePixelGalaxyCatalogLikelihood(pixel_index, catalog, skymap, band, cosmo,\
+        me = gwcosmo.gwcosmo.SinglePixelGalaxyCatalogLikelihood(pixel_index, catalog, skymap, band, sp, cosmo,\
                                                               px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, \
                                                               ps_M, outputfile, Kcorr=Kcorr, mth=mth, zcut=zcut, \
                                                               zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, \

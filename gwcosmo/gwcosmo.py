@@ -152,7 +152,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
     """
 
-    def __init__(self, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
+    def __init__(self, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
         """
         Parameters
         ----------
@@ -189,7 +189,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         self.Kcorr = Kcorr
         self.band = observation_band
-        sp = SchechterParams(self.band)
         self.Mmin_obs = sp.Mmin
         self.Mmax_obs = sp.Mmax
 
@@ -496,7 +495,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     """
 
-    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
         """
         Parameters
         ----------
@@ -770,7 +769,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
+    def __init__(self, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
         """
         Parameters
         ----------
@@ -812,7 +811,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         TODO: UPDATE this for new catalog classes
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
 
         self.mth = mth
         self.zcut = zcut

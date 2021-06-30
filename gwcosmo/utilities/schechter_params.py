@@ -16,7 +16,7 @@ class SchechterParams():
     (note paper quotes M*=-23.55 but means M*=-23.55 + 5log10(h))
     """
 
-    def __init__(self, band):
+    def __init__(self, band, schech_alpha, schech_Mstar, schech_Mmin, schech_Mmax):
         """
         Parameters
         ----------
@@ -28,9 +28,18 @@ class SchechterParams():
         self.Mmin = None
         self.Mmax = None
 
-        self.alpha, self.Mstar, self.Mmin, self.Mmax = self.values(band)
+        self.alpha, self.Mstar, self.Mmin, self.Mmax = self.default_values(band) #initialize to default values
 
-    def values(self, band):
+        if schech_alpha is not None: #change to input value if provided
+            self.alpha=schech_alpha
+        if schech_Mstar is not None:
+            self.Mstar=schech_Mstar
+        if schech_Mmin is not None:
+            self.Mmin=schech_Mmin
+        if schech_Mmax is not None:
+            self.Mmax=schech_Mmax
+
+    def default_values(self, band):
         if band == 'B':
             return -1.21, -19.70, -22.96, -12.96
         elif band == 'K':
