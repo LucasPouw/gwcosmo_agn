@@ -657,20 +657,18 @@ class DetectionProbability(object):
         """
         lal_detectors = [lalsim.DetectorPrefixToLALDetector(name)
                                 for name in self.detectors]
-
-        network_rhosq = np.zeros(self.Nsamps)
+        
         bar =  progressbar.ProgressBar()
         for i in bar(range(checkpoint, len(self.z_array))):
             z = self.z_array[i]
             dl = self.cosmo.dl_zH0(z, H0)
             factor = 1+z
-            survival = 0
-            np.random.seed(100)
+            network_rhosq = np.zeros(self.Nsamps)
             for n in range(self.Nsamps):
                 detectors = self.dets[n]
                 psd = self.psds[n]
-                if detect[n] == 1:
-                    if self.full_waveform is True:
+                if detect[n] == 1:               
+                    if self.full_waveform is True: 
                         hp,hc = self.simulate_waveform(factor*self.m1[n], factor*self.m2[n], dl, self.incs[n], self.phis[n])
                         rhosqs = [self.snr_squared_waveform(hp,hc,self.RAs[n],self.Decs[n],self.psis[n], 0., det, psd)
                               for det in detectors]
@@ -681,29 +679,21 @@ class DetectionProbability(object):
                               det, 0.0, self.z_array[i], H0, psd)
                               for det in detectors]
                     network_rhosq[n] = np.sum(rhosqs)
-
-                    det_SNR = ncx2.rvs(2*len(detectors), network_rhosq[n])
-
-                    if det_SNR>=self.snr_threshold**2:
-                        survival+=1
-                        if self.detected_masses==True:
-                            self.detected[i][n] = 1
-                    else:
-                        if (1-ncx2.cdf(x=self.snr_threshold**2,df=2*len(detectors), nc=network_rhosq[n]))<=1e-2:
-                            detect[n]=0
-                else:
-                    ncx2.rvs(2*len(detectors),100)
-
-            prob[i] = survival/self.Nsamps
-            if i%50==0:
+                
+            survival = ncx2.sf(self.snr_threshold**2, 2*len(self.detectors), network_rhosq)
+            surviving_samples = np.where(survival<=1e-5)[0] #threshold to cosnider event undetectable
+            detect[surviving_samples] = 0.
+            
+            prob[i] = np.sum(survival, 0)/self.Nsamps
+            if i%20==0:
                 if os.path.isfile(self.path):
                     os.remove(self.path)
                 checkpoint = self.checkpointing(detect,prob,i)
                 pickle.dump(checkpoint, open( self.path, "wb" ))
         if os.path.isfile(self.path):
-                    os.remove(self.path)
+                os.remove(self.path)       
         return prob
-
+    
     def checkpointing(self,detect,prob,i):
 
         return {'seed':self.seed,'detect':detect,'detected':self.detected,'prob_checkpoint':prob,'checkpoint_z':i,'z_array':self.z_array}
