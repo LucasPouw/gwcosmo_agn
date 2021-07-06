@@ -246,7 +246,11 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         """
 
         # TODO: Move into the catalog class
-        Kcorr = self.full_catalog.get_k_correction(self.band, sampz, color_names[self.band], sampcolor)
+        if self.Kcorr:
+            Kcorr = self.full_catalog.get_k_correction(self.band, sampz, color_names[self.band], sampcolor)
+        else:
+            print('Using K-correction = 0')
+            Kcorr = 0.
 
         tempsky = self.skymap.skyprob(sampra, sampdec)*self.skymap.npix
 
