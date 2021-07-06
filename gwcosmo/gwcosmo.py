@@ -133,6 +133,8 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     ----------
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -476,6 +478,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         The galaxy catalogue
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -538,7 +542,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The high-resolution value of nside to subdivide the current pixel into
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         self.nside_low_res = nside_low_res
         self.zcut = zcut
         self.complete_catalog = complete_catalog
@@ -779,6 +783,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The GW skymap
         observation_band : str
             Observation band (eg. 'B', 'K', 'u', 'g')
+        sp : gwcosmo.utilities.schechter_params.SchechterParams class
+            Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
         fast_cosmology : object
             Fast cosmology
         px_zH0 : object

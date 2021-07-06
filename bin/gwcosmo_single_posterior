@@ -1,4 +1,5 @@
-#!/home/riccardo/Devel-gwcosmo/ImplementationSchechParamsTest/pending-review-addscheckcommand-definitive-venv/bin/python
+#!/usr/bin/env python3
+
 """
 This script computes posterior on H0 using a single gravitational wave event
 and an electromagnetic counterpart.
@@ -311,7 +312,7 @@ else:
         else:
             zcut = None
         if opts.schech_alpha is not None:
-            schech_alpha=float(opts.schech_alpha)
+            schech_alpha=float(opts.schech_alpha)    
         else:
             schech_alpha = None
         if opts.schech_Mstar is not None:
