@@ -120,7 +120,7 @@ class DetectionProbability(object):
 
 
         if self.full_waveform is True:
-            self.z_array = np.logspace(-4.0, 1., 1000)
+            self.z_array = np.logspace(-4.0, 1., 500)
         else:
             # TODO: For higher values of z (z=10) this goes
             # outside the range of the psds and gives an error
@@ -679,12 +679,16 @@ class DetectionProbability(object):
                               det, 0.0, self.z_array[i], H0, psd)
                               for det in detectors]
                     network_rhosq[n] = np.sum(rhosqs)
-                
+                    
             survival = ncx2.sf(self.snr_threshold**2, 2*len(self.detectors), network_rhosq)
-            surviving_samples = np.where(survival<=1e-5)[0] #threshold to cosnider event undetectable
-            detect[surviving_samples] = 0.
-            
             prob[i] = np.sum(survival, 0)/self.Nsamps
+            
+            if self.detected_masses==True:
+                self.detected[i] = np.float32(survival)
+                
+            not_surviving_samples = np.where(survival<=1e-6)[0] #threshold to consider event undetectable
+            detect[not_surviving_samples] = 0.            
+            
             if i%20==0:
                 if os.path.isfile(self.path):
                     os.remove(self.path)

@@ -116,7 +116,7 @@ b = float(opts.b)
 
 min_H0 = float(opts.min_H0)
 max_H0 = float(opts.max_H0)
-bins_H0 = float(opts.bins_H0)
+bins_H0 = int(opts.bins_H0)
 det_combination = str2bool(opts.det_combination)
 linear = str2bool(opts.linear_cosmology)
 basic = str2bool(opts.basic_pdet)
