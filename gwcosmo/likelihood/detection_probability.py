@@ -131,7 +131,7 @@ class DetectionProbability(object):
         detect = np.ones(self.Nsamps)
         self.detected = 0
         if self.detected_masses==True:
-            self.detected = np.zeros((len(self.z_array),self.Nsamps))
+            self.detected = np.zeros((len(self.z_array),self.Nsamps),dtype=np.float32)
 
         if os.path.isfile(self.path):
             pdet_checkpoint = pickle.load(open(self.path, 'rb'))
