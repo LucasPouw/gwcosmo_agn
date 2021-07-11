@@ -187,7 +187,7 @@ else:
              h0 = pdets.H0vec
              probs[h0] = pdets.prob
              if detected_masses==True:
-                 detected[h0] = pdets.detected==1
+                 detected[h0] = pdets.detected
 
     H0vec = np.array(list(probs.keys()))
     H0vec = sorted(H0vec)
