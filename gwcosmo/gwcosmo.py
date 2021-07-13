@@ -594,8 +594,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         self.mth_map={}
         for i, idx in enumerate(self.sub_pixel_indices):
-            ra, dec = ra_dec_from_ipix(self.hi_res_nside, idx)
-            pix_catalog = galaxy_catalog.select_pixel(self.hi_res_nside, idx)
+            ra, dec = ra_dec_from_ipix(self.hi_res_nside, idx, nest=skymap.nested)
+            pix_catalog = galaxy_catalog.select_pixel(self.hi_res_nside, idx, nested=skymap.nested)
             self.mth_map[i] = pix_catalog.magnitude_thresh(observation_band, ra, dec)
 
     def full_pixel(self, H0, z, sigmaz, m, ra, dec, color, mth, px_Omega=1., pOmega=1.):
