@@ -563,12 +563,12 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         #TODO make this changeable from command line?
         self.nfine = 10000
         self.ncoarse = 10
-
+        self.skymap_nested = skymap.nested
         self.hi_res_nside = nside
         # Get the coordinates of the hi-res pixel centres
-        pixra, pixdec = ra_dec_from_ipix(self.hi_res_nside, np.arange(hp.pixelfunc.nside2npix(self.hi_res_nside)), nest=skymap.nested)
+        pixra, pixdec = ra_dec_from_ipix(self.hi_res_nside, np.arange(hp.pixelfunc.nside2npix(self.hi_res_nside)), nest=self.skymap_nested)
         # compute the low-res index of each of them
-        ipix = ipix_from_ra_dec(nside_low_res, pixra, pixdec, nest=skymap.nested)
+        ipix = ipix_from_ra_dec(nside_low_res, pixra, pixdec, nest=self.skymap_nested)
         # Keep the ones that are within the current coarse pixel
         self.sub_pixel_indices = np.arange(hp.pixelfunc.nside2npix(self.hi_res_nside))[np.where(ipix == pixel_index)]
         print(f'Pixel {pixel_index} at nside={nside_low_res} contains pixels {self.sub_pixel_indices} at nside={self.hi_res_nside}')
@@ -595,7 +595,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.mth_map={}
         for i, idx in enumerate(self.sub_pixel_indices):
             ra, dec = ra_dec_from_ipix(self.hi_res_nside, idx, nest=skymap.nested)
-            pix_catalog = galaxy_catalog.select_pixel(self.hi_res_nside, idx, nested=skymap.nested)
+            pix_catalog = galaxy_catalog.select_pixel(self.hi_res_nside, idx, nested=self.skymap_nested)
             self.mth_map[i] = pix_catalog.magnitude_thresh(observation_band, ra, dec)
 
     def full_pixel(self, H0, z, sigmaz, m, ra, dec, color, mth, px_Omega=1., pOmega=1.):
@@ -698,7 +698,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         for i in range(checkpoint_idx,len(self.sub_pixel_indices)):
             idx = self.sub_pixel_indices[i]
             px_Omega = self.hi_res_skyprob[idx]
-            subcatalog = self.full_catalog.select_pixel(self.hi_res_nside, idx)
+            subcatalog = self.full_catalog.select_pixel(self.hi_res_nside, idx, nested=self.skymap_nested)
             mth = self.mth_map[i]
 
             if mth == np.inf:
