@@ -16,7 +16,7 @@ class SchechterParams():
     (note paper quotes M*=-23.55 but means M*=-23.55 + 5log10(h))
     """
 
-    def __init__(self, band, schech_alpha, schech_Mstar, schech_Mmin, schech_Mmax):
+    def __init__(self, band, schech_alpha=None, schech_Mstar=None, schech_Mmin=None, schech_Mmax=None):
         """
         Parameters
         ----------
