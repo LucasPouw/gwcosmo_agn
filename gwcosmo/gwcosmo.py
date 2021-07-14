@@ -83,6 +83,12 @@ class gwcosmoLikelihood(object):
 
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)
 
+    def integrate_1d(self, function, z_grid, dz, H0):
+        values_function = function(z_grid, H0)
+
+        return np.sum(values_function[:-1]+values_function[1:])*dz/2
+
+
     def px_OH0(self, H0, skyprob=1.):
         """
         Evaluate p(x|O,H0).
@@ -100,7 +106,10 @@ class gwcosmoLikelihood(object):
             p(x|O,H0)
         """
 
-        integral = quad(self.px_zH0_times_pz_times_ps_z,0.,self.zmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        z_grid = np.linspace(0.,self.zmax,2500)
+        dz = z_grid[1]-z_grid[0]
+
+        integral = self.integrate_1d(self.px_zH0_times_pz_times_ps_z,z_grid,dz,H0)
         return integral * skyprob
 
     def pD_OH0(self, H0, skyprob=1.):
@@ -120,7 +129,10 @@ class gwcosmoLikelihood(object):
             p(D|O,H0)
         """
 
-        integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        z_grid = np.linspace(0.,self.zmax,2000)
+        dz = z_grid[1]-z_grid[0]
+
+        integral = self.integrate_1d(self.pD_zH0_times_pz_times_ps_z,z_grid,dz,H0)
         return integral * skyprob
 
 
@@ -208,7 +220,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         """
 
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        return (self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*(self.luminosity_prior(M,H0)*self.luminosity_weights(M)).T).T
 
     def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
         """
@@ -224,7 +236,13 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             Hubble constant value in kms-1Mpc-1
         """
 
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+        return (self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*(self.luminosity_prior(M,H0)*self.luminosity_weights(M)).T).T
+
+    def integrate_2d(self, function, z_grid, dz, M_grid, dM, H0):
+        values_function = function(M_grid, z_grid, H0)
+
+        return np.sum(((values_function[:-1,:-1]+values_function[:-1,1:])*dM[:-1]+(values_function[1:,:-1]+values_function[1:,1:])*dM[1:])*dz)/4
+
 
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
         """
@@ -380,10 +398,24 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        num = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: Mmin,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),args=
-                      [H0],epsabs=0,epsrel=1.49e-4)[0]
+        z_grid = np.linspace(0.,zcut,1000)
+        dz = z_grid[1]-z_grid[0]
 
-        den = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,self.zmax,lambda x: Mmin,lambda x: Mmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        M_grid_len = 1000
+        M_grid = np.linspace(Mmin, np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        num = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
+
+        z_grid = np.linspace(0.,self.zmax,1000)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        den = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
+
         integral = num/den
 
         pG = integral*skyprob
@@ -417,13 +449,27 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        below_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),
-                                      lambda x: Mmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        z_grid = np.linspace(0.,zcut,2500)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid = np.linspace(np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),Mmax,M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        below_zcut_integral = self.integrate_2d(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
 
         above_zcut_integral = 0.
         if zcut < self.zmax:
-            above_zcut_integral = dblquad(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=[H0],
-                                                                                                                                epsabs=0,epsrel=1.49e-4)[0]
+
+            z_grid = np.linspace(zcut,self.zmax,2500)
+            dz = z_grid[0]-z_grid[0]
+
+            M_grid_len = 1000
+            M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+            dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+            above_zcut_integral = self.integrate_2d(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
+
 
         integral = below_zcut_integral + above_zcut_integral
 
@@ -456,13 +502,27 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        below_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,0.,zcut,lambda x: min(max(M_mdl(mth,self.cosmo.dl_zH0(x,H0)),Mmin),Mmax),
-                                      lambda x: Mmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        z_grid = np.linspace(0.,zcut,1000)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid = np.linspace(np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),Mmax,M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        below_zcut_integral = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
 
         above_zcut_integral = 0.
         if zcut < self.zmax:
-            above_zcut_integral = dblquad(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M,zcut,self.zmax,lambda x: Mmin, lambda x: Mmax,args=[H0],
-                                          epsabs=0,epsrel=1.49e-4)[0]
+
+            z_grid = np.linspace(zcut,self.zmax,1000)
+            dz = z_grid[1]-z_grid[0]
+
+            M_grid_len = 1000
+            M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+            dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+            above_zcut_integral = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M, z_grid, dz, M_grid, dM, H0)
+
 
         integral = below_zcut_integral + above_zcut_integral
 
@@ -671,7 +731,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             self.pDO = pdet_checkpoint['pDO']
             self.pO = pdet_checkpoint['pO']
             checkpoint_idx = pdet_checkpoint['checkpoint_idx']+1
-            
+
         else:
             self.pxG = np.zeros([len(H0),len(self.sub_pixel_indices)])
             self.pDG = np.zeros([len(H0),len(self.sub_pixel_indices)])
@@ -737,13 +797,13 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.pxO[:,i] = np.zeros(len(H0))
                 self.pDO[:,i] = np.ones(len(H0))
                 self.pO[i] = 0.
-                
+
             if os.path.isfile(self.path):
                 os.remove(self.path)
             checkpoint = {'checkpoint_idx':i,'pxG':self.pxG,'pDG':self.pDG,'pG':self.pG,'pxB':self.pxB,
                           'pDB':self.pDB,'pB':self.pB,'pxO':self.pxO,'pDO':self.pDO,'pO':self.pO}
             pickle.dump(checkpoint, open(self.path, "wb" ))
-        
+
         if os.path.isfile(self.path):
                 os.remove(self.path)
         sub_likelihood = np.zeros([len(H0),len(self.sub_pixel_indices)])
@@ -1422,5 +1482,3 @@ def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     count = count[ind]
 
     return sampz, sampm, sampra, sampdec, sampcolor, count
-
-
