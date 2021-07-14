@@ -698,11 +698,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         for i in range(checkpoint_idx,len(self.sub_pixel_indices)):
             idx = self.sub_pixel_indices[i]
             px_Omega = self.hi_res_skyprob[idx]
-            ra, dec = ra_dec_from_ipix(self.hi_res_nside, idx)
             subcatalog = self.full_catalog.select_pixel(self.hi_res_nside, idx)
-            # TODO: Does this need a coarse pixel for better estimation?
             mth = self.mth_map[i]
-            #mth = subcatalog.magnitude_thresh(self.band, ra, dec)
 
             if mth == np.inf:
                 self.pxO[:,i] = temp_pxO*px_Omega
