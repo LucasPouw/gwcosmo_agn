@@ -113,8 +113,6 @@ class DetectionProbability(object):
         self.seed = seed
         self.detected_masses = detected_masses
         self.det_combination = det_combination
-        np.random.seed(seed)
-         
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.path = str(path)+'_checkpoint.p'
 
@@ -141,7 +139,7 @@ class DetectionProbability(object):
             self.detected = pdet_checkpoint['detected']
             self.seed = pdet_checkpoint['seed']
             detect = pdet_checkpoint['detect']
-
+        np.random.seed(self.seed)
         # set up the samples for monte carlo integral
         N = self.Nsamps
         self.RAs = np.random.rand(N)*2.0*np.pi
