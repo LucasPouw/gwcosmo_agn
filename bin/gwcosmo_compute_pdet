@@ -231,7 +231,7 @@ else:
     for i in range (len(logit_prob)):
         logit_prob[i]=np.where(logit_prob[i]==float('+inf'), 100, logit_prob[i])
         logit_prob[i]=np.where(logit_prob[i]==float('-inf'), -33, logit_prob[i])
-    interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='linear')
+    interp_average = interp2d(pdet.z_array, pdet.H0vec, logit_prob, kind='cubic')
     pdet.interp_average = interp_average
 
     if pdets.asd != None:
