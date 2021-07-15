@@ -86,7 +86,9 @@ parser = OptionParser(
         Option("--detectors", default='HLV',
             help="Set the detectors to use for the pickle (default=HLV)."),
         Option("--det_combination", default='True',
-            help="Set whether or not to consider all possible detectors combinations (default=True).")
+            help="Set whether or not to consider all possible detectors combinations (default=True)."),
+        Option("--seed", default='1000', type=int,
+            help="Set the random seed.")
     ])
 opts, args = parser.parse_args()
 print(opts)
@@ -102,7 +104,7 @@ if len(missing) > 0:
 mass_distribution = str(opts.mass_distribution)
 
 psd = opts.psd
-
+seed = int(opts.seed)
 alpha = float(opts.powerlaw_slope)
 Mmin = float(opts.minimum_mass)
 Mmax = float(opts.maximum_mass)
@@ -167,7 +169,7 @@ if opts.combine is None:
     pdet = gwcosmo.detection_probability.DetectionProbability(mass_distribution=mass_distribution, asd=psd, detected_masses=detected_masses, basic=basic, detectors=dets,
                                                               linear=linear, alpha=alpha, Mmin=Mmin, Mmax=Mmax, Omega_m=Omega_m, alpha_2=alpha_2, mu_g=mu_g, sigma_g=sigma_g,
                                                               lambda_peak=lambda_peak, beta=beta, full_waveform=full_waveform, Nsamps=Nsamps, det_combination = det_combination,
-                                                              b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold, path=pdet_path)
+                                                              b=b, delta_m=delta_m, constant_H0=constant_H0, H0=H0, network_snr_threshold=network_snr_threshold, path=pdet_path, seed=seed)
 
 
     pickle.dump( pdet, open( pdet_path, "wb" ) )

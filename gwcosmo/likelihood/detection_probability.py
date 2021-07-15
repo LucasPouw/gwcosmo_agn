@@ -114,7 +114,7 @@ class DetectionProbability(object):
         self.detected_masses = detected_masses
         self.det_combination = det_combination
         np.random.seed(seed)
-
+         
         self.cosmo = fast_cosmology(Omega_m=self.Omega_m, linear=self.linear)
         self.path = str(path)+'_checkpoint.p'
 
