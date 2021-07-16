@@ -243,7 +243,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             numerator and denominator
         """
 
-        # TODO: Move into the catalog class
         if self.Kcorr:
             Kcorr = self.full_catalog.get_k_correction(self.band, sampz, color_names[self.band], sampcolor)
         else:
