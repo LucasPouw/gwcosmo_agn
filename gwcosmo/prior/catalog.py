@@ -1,4 +1,5 @@
 import os
+import glob
 import pickle
 import math
 import array
@@ -96,17 +97,6 @@ def load_catalog_from_opts(opts):
     band = opts.catalog_band
     return load_catalog(name, band)
 
-# Load original data
-# Load index files
-# Filter by pixel
-# Discard non-galaxies
-# SDSS-standardise (see https://git.ligo.org/cbc-cosmo/O2-H0/-/wikis/K-corrections-and-galaxy-catalog-review)
-# Discard missing z vals
-# Filter by z
-# Filter by color
-# Apply K corrections
-# Return catalog
-
 from abc import ABC, abstractmethod
 
 class GalaxyCatalog:
@@ -165,6 +155,20 @@ class GalaxyCatalog:
                 return False
         else:
             return False
+
+    def clean_cache(self, mtime, cachedir=None):
+        """
+        Remove any index cache files older than mtime
+        """
+        if cachedir is None:
+            cachedir = get_cachedir()
+        for f in glob.glob(cachedir+'/'+self.name+'_*'):
+            try:
+                if os.path.getmtime(f) < mtime:
+                    os.remove(f)
+            except FileNotFoundError:
+                # Here in case a parallel job has removed the file
+                pass
 
     def magnitude_thresh(self, band, ra=None, dec=None):
         """
@@ -295,6 +299,7 @@ def pixelate(cat, nside, allowed_pixels=None, nested=True):
 class DESI(GalaxyCatalog):
     """
     DESI data from data release 8
+    This class is not used / tested yet
     """
     supported_bands = {'G', 'R', 'Z', 'W1', 'W2'}
     def __init__(self,
@@ -334,13 +339,12 @@ class DESI(GalaxyCatalog):
 class OldStyleCatalog(GalaxyCatalog):
     """
     Catalog in the old GWCosmo format. Must have been
-    preprocessed.
+    preprocessed into HDF5 files.
     """
     filename = None
     def __init__(self,
                      catalog_file=None,
                      name = None):
-
 
         self.filename = get_catalogfile(catalog_file)
 
@@ -349,6 +353,7 @@ class OldStyleCatalog(GalaxyCatalog):
 
         super().__init__(supported_bands = self.supported_bands, name = name)
         self.populate()
+        self.clean_cache(os.path.getmtime(self.filename))
 
     def populate(self):
         """
