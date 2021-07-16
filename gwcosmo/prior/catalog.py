@@ -18,8 +18,6 @@ color_names = {'B': None, 'K': None, 'u': 'u - r', 'g': 'g - r', 'r': 'g - r',
                'i': 'g - i', 'z': 'r - z', 'W1': None}
 color_limits = {'u - r': [-0.1, 2.9], 'g - r': [-0.1, 1.9], 'g - i': [0, 3],
                 'r - z': [0, 1.5], None : [-np.inf, np.inf]}
-Kcorr_bands = {'B': 'B', 'K': 'K', 'u': 'r', 'g': 'r', 'r': 'g', 'i': 'g', 'z': 'r'}
-Kcorr_signs = {'B': 1, 'K': 1, 'u': 1, 'g': 1, 'r': -1, 'i': -1, 'z': -1}
 
 # istarmap.py for Python 3.8+
 import multiprocessing.pool as mpp
@@ -118,7 +116,7 @@ class GalaxyCatalog:
     colnames = {'z','sigmaz','ra','dec'}
 
     def __init__(self, data = None, name = 'Unknown Catalog',
-                 supported_bands=None, cachedir=None, Kcorr = False):
+                 supported_bands=None, cachedir=None):
         self.data = data
         self.name = name
         self.supported_bands = supported_bands
@@ -126,7 +124,6 @@ class GalaxyCatalog:
             self.colnames.union([f'm_{band}' for band in supported_bands])
         # Cache for pixel index to array index lookup
         self.pixmap = {}
-        self.Kcorr = Kcorr # Whether this catalog has k-corrections applied
 
     def __getitem__(self, *args, **kwargs):
         return self.data.__getitem__(*args, **kwargs)
@@ -205,8 +202,7 @@ class GalaxyCatalog:
 
         idx = pixmap[pixel_index]
         new = GalaxyCatalog(data = self.data[idx], name = self.name+f'_nside{nside}_pixel{pixel_index}',
-                            supported_bands = self.supported_bands,
-                           Kcorr = self.Kcorr)
+                            supported_bands = self.supported_bands)
         return new
 
     def idx2pixdict(self, nside, idx, nested=True):
@@ -223,18 +219,14 @@ class GalaxyCatalog:
 
     def get_color(self, band):
         """
-        Return color index (??)
-
-        TODO: CHECK THIS AND UPDATE
+        Return color index for K corrections
         """
         Kcorr_bands = {'B': 'B', 'K': 'K', 'u': 'r', 'g': 'r', 'r': 'g', 'i': 'g', 'z': 'r', 'W1': 'W1'}
+        Kcorr_signs = {'B': 1, 'K': 1, 'u': 1, 'g': 1, 'r': -1, 'i': -1, 'z': -1}
 
-        if self.Kcorr:
-            m = self.get_magnitudes(band)
-            m_K = self.get_magnitudes(Kcorr_bands[band])
-            color = Kcorr_signs[band]*(m - m_K)
-        else:
-            color = np.zeros(len(self))
+        m = self.get_magnitudes(band)
+        m_K = self.get_magnitudes(Kcorr_bands[band])
+        color = Kcorr_signs[band]*(m - m_K)
         return color
 
     def apply_redshift_cut(self, zcut):
@@ -304,14 +296,12 @@ class DESI(GalaxyCatalog):
     """
     DESI data from data release 8
     """
-    supports_kcorrections = False  # K corrections not implemented yet for DESI
     supported_bands = {'G', 'R', 'Z', 'W1', 'W2'}
     def __init__(self,
                   catalog_file='LS_DR8_total_csp.fits',
-                     band='G',
-                    Kcorr = False
+                     band='G'
                 ):
-        super().__init__(band = band, Kcorr=Kcorr, name = "DESI")
+        super().__init__(band = band, name = "DESI")
 
         self.band = band
 
@@ -349,7 +339,6 @@ class OldStyleCatalog(GalaxyCatalog):
     filename = None
     def __init__(self,
                      catalog_file=None,
-                     Kcorr = False,
                      name = None):
 
 
@@ -358,7 +347,7 @@ class OldStyleCatalog(GalaxyCatalog):
         self.OmegaG = 1.0
         self.px_OmegaG = 1.0
 
-        super().__init__(supported_bands = self.supported_bands, Kcorr=Kcorr, name = name)
+        super().__init__(supported_bands = self.supported_bands, name = name)
         self.populate()
 
     def populate(self):
@@ -386,30 +375,26 @@ class OldStyleCatalog(GalaxyCatalog):
 
 class OldStyleDESI(OldStyleCatalog):
     supported_bands = {'g', 'W1'}
-    supports_kcorrections = True
-    def __init__(self, catalog_file = 'DESI.hdf5', band='W1', Kcorr=True):
+    def __init__(self, catalog_file = 'DESI.hdf5', band='W1'):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
-        super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'DESI')
+        super().__init__(catalog_file = catalog_file, name = 'DESI')
 
 class OldStyleGLADEPlus(OldStyleCatalog):
     supported_bands = {'B', 'K', 'W1'}
-    supports_kcorrections = False
-    def __init__(self, catalog_file = 'glade+.hdf5', band='W1', Kcorr=False):
+    def __init__(self, catalog_file = 'glade+.hdf5', band='W1'):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
-        super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'GladePlus')
+        super().__init__(catalog_file = catalog_file, name = 'GladePlus')
 
 class OldStyleGLADE(OldStyleCatalog):
     supported_bands = {'B','K'}
-    supports_kcorrections = False
-    def __init__(self, catalog_file = 'glade.hdf5', band='B', Kcorr=False):
+    def __init__(self, catalog_file = 'glade.hdf5', band='B'):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
-        super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'Glade')
+        super().__init__(catalog_file = catalog_file, name = 'Glade')
 
 class OldStyleDES(OldStyleCatalog):
     supported_bands = {'G','I','R','Z'}
-    supports_kcorrections = True
-    def __init__(self, catalog_file = 'des.hdf5', band='G', Kcorr=True):
+    def __init__(self, catalog_file = 'des.hdf5', band='G'):
         self.colnames = set(self.colnames).union([f'm_{b.lower()}' for b in self.supported_bands])
         print(self.colnames)
-        super().__init__(catalog_file = catalog_file, Kcorr=Kcorr, name = 'DES')
+        super().__init__(catalog_file = catalog_file, name = 'DES')
 

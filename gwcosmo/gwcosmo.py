@@ -728,7 +728,10 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 dec = subcatalog['dec']
                 m = subcatalog.get_magnitudes(self.band)
                 sigmaz = subcatalog['sigmaz']
-                color = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+                if self.Kcorr:
+                    color = subcatalog.get_color(self.band)
+                else:
+                    color = np.zeros(len(m))
 
                 if len(subcatalog)==0:
                     self.pxG[:,i] = np.zeros(len(H0))
@@ -917,7 +920,11 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         galdec = subcatalog['dec']
         galm = subcatalog.get_magnitudes(self.band)
         galsigmaz = subcatalog['sigmaz']
-        galcolor = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+        if self.Kcorr:
+            color = subcatalog.get_color(self.band)
+        else:
+            color = np.zeros(len(galm))
+        
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0, galz, galsigmaz, galm, galra,
                                                 galdec, galcolor, nfine=self.nfine,
