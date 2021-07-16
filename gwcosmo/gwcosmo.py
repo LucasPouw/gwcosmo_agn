@@ -142,8 +142,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     mth : float, optional
         Specify an apparent magnitude threshold for the galaxy catalogue
         (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
     zmax : float, optional
         The upper redshift limit for integrals (default=10.). Should be well
         beyond the highest redshift reachable by GW data or selection effects.
@@ -550,11 +548,26 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.full_catalog = galaxy_catalog
         self.path = outputfile+'_'+str(pixel_index)+'_checkpoint.p'
         # Set redshift and colour limits based on whether Kcorrections are applied
+                # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
-                                                                    *color_limits[color_names[observation_band]])
+                                                          *color_limits[color_names[observation_band]])
         else:
             if zcut is None:
                 self.zcut = self.zmax
@@ -826,7 +839,21 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
