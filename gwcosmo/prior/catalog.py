@@ -245,7 +245,7 @@ class GalaxyCatalog:
         m = self.get_magnitudes(band)
         idx = np.where(np.isfinite(m))
         return GalaxyCatalog(data = self.data[idx], name = self.name+f'_valid_{band}_mags',
-                             supported_bands = [band])
+                             supported_bands = self.supported_bands)
 
     def apply_color_limit(self, band, cmin, cmax):
         if band == 'W1':
@@ -400,9 +400,8 @@ class OldStyleGLADE(OldStyleCatalog):
         super().__init__(catalog_file = catalog_file, name = 'Glade')
 
 class OldStyleDES(OldStyleCatalog):
-    supported_bands = {'G','I','R','Z'}
+    supported_bands = {'g','i','r','z'}
     def __init__(self, catalog_file = 'des.hdf5', band='G'):
         self.colnames = set(self.colnames).union([f'm_{b.lower()}' for b in self.supported_bands])
-        print(self.colnames)
         super().__init__(catalog_file = catalog_file, name = 'DES')
 
