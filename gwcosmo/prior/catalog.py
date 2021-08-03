@@ -15,8 +15,12 @@ from ..utilities.cache import get_cachedir
 from ..utilities.calc_kcor import calc_kcor
 
 DEG2RAD = math.pi/180.0
+
 color_names = {'B': None, 'K': None, 'u': 'u - r', 'g': 'g - r', 'r': 'g - r',
                'i': 'g - i', 'z': 'r - z', 'W1': None}
+
+# Taken from limits of K corrections from fig 4 of
+# https://ui.adsabs.harvard.edu/abs/2010MNRAS.405.1409C/abstract
 color_limits = {'u - r': [-0.1, 2.9], 'g - r': [-0.1, 1.9], 'g - i': [0, 3],
                 'r - z': [0, 1.5], None : [-np.inf, np.inf]}
 
@@ -248,6 +252,10 @@ class GalaxyCatalog:
                              supported_bands = self.supported_bands)
 
     def apply_color_limit(self, band, cmin, cmax):
+        """
+        Apply the given color limits to the given band.
+        Will filter out any galaxies whose magnitude is missing in given band.
+        """
         if band == 'W1':
             print('Not applying color limits for W1 band, as we use the z-dependent k-correction')
             return self
@@ -299,45 +307,6 @@ def pixelate(cat, nside, allowed_pixels=None, nested=True):
         pixlists[k]=np.sort(v)
     return pixlists
 
-class DESI(GalaxyCatalog):
-    """
-    DESI data from data release 8
-    This class is not used / tested yet
-    """
-    supported_bands = {'G', 'R', 'Z', 'W1', 'W2'}
-    def __init__(self,
-                  catalog_file='LS_DR8_total_csp.fits',
-                     band='G'
-                ):
-        super().__init__(band = band, name = "DESI")
-
-        self.band = band
-
-        assert band in self.supported_bands
-
-        self.filename = catalog_file
-
-        self.OmegaG = 1.0
-        self.px_OmegaG = 1.0
-
-        #self.gal_indices_per_pixel = self.pixelate()
-        self.populate()
-
-    def populate(self):
-        from astropy.io.fits import open
-        with open(self.filename, 'readonly', memmap=True) as desifile:
-            names = desifile[1].data.names
-            self.data = np.rec.fromarrays([desifile[1].data[n] if (n!='ra' and n!='dec') else desifile[1].data[n]*DEG2RAD for n in names], names)
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state['data']
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__ = state
-        self.populate()
-
 
 class OldStyleCatalog(GalaxyCatalog):
     """
@@ -350,9 +319,6 @@ class OldStyleCatalog(GalaxyCatalog):
                      name = None):
 
         self.filename = get_catalogfile(catalog_file)
-
-        self.OmegaG = 1.0
-        self.px_OmegaG = 1.0
 
         super().__init__(supported_bands = self.supported_bands, name = name)
         self.populate()
@@ -382,7 +348,7 @@ class OldStyleCatalog(GalaxyCatalog):
 
 
 class OldStyleDESI(OldStyleCatalog):
-    supported_bands = {'g', 'W1'}
+    supported_bands = {'W1'}
     def __init__(self, catalog_file = 'DESI.hdf5', band='W1'):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
         super().__init__(catalog_file = catalog_file, name = 'DESI')
