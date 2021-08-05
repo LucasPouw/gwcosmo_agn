@@ -149,7 +149,9 @@ outputfile = str(opts.outputfile)
 
 combine_pixels = str2bool(opts.combine_pixels)
 if combine_pixels:
-    pixels = np.genfromtxt(outputfile+'_indices.txt',dtype=int)
+    low_res_nside = np.genfromtxt(outputfile+'_indices.txt',dtype=int,max_rows=1)[1]
+    opts.low_res_nside = low_res_nside
+    pixels = np.genfromtxt(outputfile+'_indices.txt',dtype=int, skip_header=1)
     H0 = np.load(outputfile+'_pixel_{}.npz'.format(pixels[0]),allow_pickle=True)['arr_0'][0]
     dH0 = H0[1] - H0[0]
     min_H0 = np.amin(H0)
@@ -320,12 +322,19 @@ else:
 
         min_pixels = int(opts.min_pixels)
         pixelated_samples = gwcosmo.likelihood.posterior_samples.make_pixel_px_function(samples, skymap, npixels=min_pixels, thresh=sky_area)
+        
+        nside_low_res = pixelated_samples.nside
+
+        if nside_low_res > nside:
+            raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels or increasing nside.')
 
         if return_skymap_indices:
-            np.savetxt(outputfile+'_indices.txt',pixelated_samples.indices,fmt='%i')
+            with open(outputfile+f'_indices.txt','w') as file:
+                file.write(f'nside: {nside_low_res}\n')
+                for i in pixelated_samples.indices:
+                    file.write(f'{i}\n')
             exit()
 
-        nside_low_res = pixelated_samples.nside
         # Select the coarse pixel from the skymap that we will use
         catalog = catalog.select_pixel(nside_low_res, pixel_index, nested=skymap.nested)
 
