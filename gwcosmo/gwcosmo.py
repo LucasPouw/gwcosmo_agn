@@ -475,7 +475,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(x|B,H0)
         """
-
+        
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
@@ -646,10 +646,10 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(x|B,H0)
         """
-
+        
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
-
+        
         z_grid = np.linspace(0.,zcut,2500)
         dz = z_grid[1]-z_grid[0]
 
@@ -663,7 +663,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         if zcut < self.zmax:
 
             z_grid = np.linspace(zcut,self.zmax,2500)
-            dz = z_grid[0]-z_grid[0]
+            dz = z_grid[1]-z_grid[0]
 
             M_grid_len = 1000
             M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
