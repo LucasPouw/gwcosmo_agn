@@ -142,8 +142,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     mth : float, optional
         Specify an apparent magnitude threshold for the galaxy catalogue
         (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
     zmax : float, optional
         The upper redshift limit for integrals (default=10.). Should be well
         beyond the highest redshift reachable by GW data or selection effects.
@@ -245,7 +243,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             numerator and denominator
         """
 
-        # TODO: Move into the catalog class
         if self.Kcorr:
             Kcorr = self.full_catalog.get_k_correction(self.band, sampz, color_names[self.band], sampcolor)
         else:
@@ -550,11 +547,26 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.full_catalog = galaxy_catalog
         self.path = outputfile+'_'+str(pixel_index)+'_checkpoint.p'
         # Set redshift and colour limits based on whether Kcorrections are applied
+                # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
-                                                                    *color_limits[color_names[observation_band]])
+                                                          *color_limits[color_names[observation_band]])
         else:
             if zcut is None:
                 self.zcut = self.zmax
@@ -728,7 +740,10 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 dec = subcatalog['dec']
                 m = subcatalog.get_magnitudes(self.band)
                 sigmaz = subcatalog['sigmaz']
-                color = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+                if self.Kcorr:
+                    color = subcatalog.get_color(self.band)
+                else:
+                    color = np.zeros(len(m))
 
                 if len(subcatalog)==0:
                     self.pxG[:,i] = np.zeros(len(H0))
@@ -823,7 +838,21 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
@@ -917,7 +946,11 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         galdec = subcatalog['dec']
         galm = subcatalog.get_magnitudes(self.band)
         galsigmaz = subcatalog['sigmaz']
-        galcolor = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+        if self.Kcorr:
+            color = subcatalog.get_color(self.band)
+        else:
+            color = np.zeros(len(galm))
+        
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0, galz, galsigmaz, galm, galra,
                                                 galdec, galcolor, nfine=self.nfine,
