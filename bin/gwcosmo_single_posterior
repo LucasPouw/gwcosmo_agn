@@ -314,8 +314,6 @@ else:
 
     if opts.method == 'statistical':
 
-        #catalog = gwcosmo.prior.catalog.galaxyCatalog(catalog_file=catalog_path,skymap=skymap,band=band,thresh=sky_area,Kcorr=Kcorr,nside=nside)
-
         me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
 
     if opts.method == 'pixel':
@@ -329,10 +327,15 @@ else:
             raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels or increasing nside.')
 
         if return_skymap_indices:
+            # Make the catalog cache file
+            if not catalog.read_pixel_index_cache(nside_low_res):
+                print(f'No pixel index found for nside {nside_low_res}, generating now.')
+                catalog.build_pixel_index_file(nside_low_res)
             with open(outputfile+f'_indices.txt','w') as file:
                 file.write(f'nside: {nside_low_res}\n')
                 for i in pixelated_samples.indices:
                     file.write(f'{i}\n')
+
             exit()
 
         # Select the coarse pixel from the skymap that we will use
