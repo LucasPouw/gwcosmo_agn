@@ -350,6 +350,7 @@ class OldStyleCatalog(GalaxyCatalog):
 class OldStyleDESI(OldStyleCatalog):
     supported_bands = {'W1'}
     def __init__(self, catalog_file = 'DESI.hdf5', band='W1'):
+        print('WARNING: DESI catalog is not fully supported yet')
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
         super().__init__(catalog_file = catalog_file, name = 'DESI')
 
