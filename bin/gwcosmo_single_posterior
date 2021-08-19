@@ -340,7 +340,9 @@ else:
 
     if opts.method == 'statistical':
 
+
         me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, sp, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
+
 
 
     if opts.method == 'pixel':
