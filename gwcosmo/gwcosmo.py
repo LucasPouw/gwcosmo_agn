@@ -133,6 +133,8 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     ----------
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -150,7 +152,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
     """
 
-    def __init__(self, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
+    def __init__(self, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
         """
         Parameters
         ----------
@@ -187,7 +189,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         self.Kcorr = Kcorr
         self.band = observation_band
-        sp = SchechterParams(self.band)
         self.Mmin_obs = sp.Mmin
         self.Mmax_obs = sp.Mmax
 
@@ -478,6 +479,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         The galaxy catalogue
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -497,7 +500,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     """
 
-    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
         """
         Parameters
         ----------
@@ -540,7 +543,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The high-resolution value of nside to subdivide the current pixel into
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         self.nside_low_res = nside_low_res
         self.zcut = zcut
         self.complete_catalog = complete_catalog
@@ -786,7 +789,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
+    def __init__(self, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
         """
         Parameters
         ----------
@@ -796,6 +799,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The GW skymap
         observation_band : str
             Observation band (eg. 'B', 'K', 'u', 'g')
+        sp : gwcosmo.utilities.schechter_params.SchechterParams class
+            Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
         fast_cosmology : object
             Fast cosmology
         px_zH0 : object
@@ -828,7 +833,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         TODO: UPDATE this for new catalog classes
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
 
         self.mth = mth
         self.zcut = zcut
