@@ -151,7 +151,7 @@ class gwcosmoLikelihood(object):
             p(x|O,H0)
         """
 
-        z_grid = np.linspace(0.,self.zmax,2500)
+        z_grid = np.linspace(0.,self.zmax,2000)
         dz = z_grid[1]-z_grid[0]
 
         integral = self.integrate_1d(self.px_zH0_times_pz_times_ps_z,z_grid,dz,H0)
@@ -599,7 +599,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        z_grid = np.linspace(0.,zcut,1000)
+        z_grid = np.linspace(0.,zcut,1500)
         dz = z_grid[1]-z_grid[0]
 
         M_grid_len = 1000
@@ -608,7 +608,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         num = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
 
-        z_grid = np.linspace(0.,self.zmax,1000)
+        z_grid = np.linspace(0.,self.zmax,4000)
         dz = z_grid[1]-z_grid[0]
 
         M_grid_len = 1000
@@ -650,7 +650,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
         
-        z_grid = np.linspace(0.,zcut,2500)
+        z_grid = np.linspace(0.,zcut,1500)
         dz = z_grid[1]-z_grid[0]
 
         M_grid_len = 1000
@@ -662,7 +662,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         above_zcut_integral = 0.
         if zcut < self.zmax:
 
-            z_grid = np.linspace(zcut,self.zmax,2500)
+            z_grid = np.linspace(zcut,self.zmax,4000)
             dz = z_grid[1]-z_grid[0]
 
             M_grid_len = 1000
@@ -703,7 +703,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
-        z_grid = np.linspace(0.,zcut,1000)
+        z_grid = np.linspace(0.,zcut,1500)
         dz = z_grid[1]-z_grid[0]
 
         M_grid_len = 1000
@@ -715,7 +715,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         above_zcut_integral = 0.
         if zcut < self.zmax:
 
-            z_grid = np.linspace(zcut,self.zmax,1000)
+            z_grid = np.linspace(zcut,self.zmax,4000)
             dz = z_grid[1]-z_grid[0]
 
             M_grid_len = 1000
