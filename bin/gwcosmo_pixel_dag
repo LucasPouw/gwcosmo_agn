@@ -54,6 +54,14 @@ parser = OptionParser(
             help="Hard redshift cut to apply to the galaxy catalogue (default=None)"),
         Option("--mth", default=None,
             help="Override the apparent magnitude threshold of the catalogue, if provided (default=None)"),
+        Option("--schech_alpha", default=None,
+            help="Override the default value for slope of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mstar", default=None,
+            help="Override the default value for Mstar of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mmin", default=None,
+            help="Override the default value for Mmin of schechter function for given band, if provided (default=None)"),
+        Option("--schech_Mmax", default=None,
+            help="Override the default value for Mmax of schechter function for given band, if provided (default=None)"),
         Option("--nside", default='32', type=int,
             help="skymap nside choice for reading in galaxies from the overlap of catalogue and skymap (default=32)"),
         Option("--sky_area", default='0.999', type=float,
@@ -90,6 +98,26 @@ if opts.mth is None:
     mth_str = ""
 else:
     mth_str = f"--mth {opts.mth}"
+
+if opts.schech_alpha is None:
+    schech_alpha_str = ""
+else:
+    schech_alpha_str = f"--schech_alpha {opts.schech_alpha}"
+
+if opts.schech_Mstar is None:
+    schech_Mstar_str = ""
+else:
+    schech_Mstar_str = f"--schech_Mstar {opts.schech_Mstar}"
+
+if opts.schech_Mmin is None:
+    schech_Mmin_str = ""
+else:
+    schech_Mmin_str = f"--schech_Mmin {opts.schech_Mmin}"
+
+if opts.schech_Mmax is None:
+    schech_Mmax_str = ""
+else:
+    schech_Mmax_str = f"--schech_Mmax {opts.schech_Mmax}"
 
 if opts.zcut is None:
     zcut_str = ""
@@ -151,6 +179,10 @@ common_args  = f"\
     --zmax {opts.zmax} \
     {zcut_str} \
     {mth_str} \
+    {schech_alpha_str} \
+    {schech_Mstar_str} \
+    {schech_Mmin_str} \
+    {schech_Mmax_str} \
     --nside {opts.nside} \
     --sky_area {opts.sky_area} \
     --min_pixels {opts.min_pixels} \

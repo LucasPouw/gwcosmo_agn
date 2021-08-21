@@ -190,6 +190,8 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     ----------
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -199,8 +201,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
     mth : float, optional
         Specify an apparent magnitude threshold for the galaxy catalogue
         (default=None). If none, mth is estimated from the galaxy catalogue.
-    zcut : float, optional
-        An artificial redshift cut to the galaxy catalogue (default=None)
     zmax : float, optional
         The upper redshift limit for integrals (default=10.). Should be well
         beyond the highest redshift reachable by GW data or selection effects.
@@ -209,7 +209,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
     """
 
-    def __init__(self, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
+    def __init__(self, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, zmax=10.):
         """
         Parameters
         ----------
@@ -246,7 +246,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         self.Kcorr = Kcorr
         self.band = observation_band
-        sp = SchechterParams(self.band)
         self.Mmin_obs = sp.Mmin
         self.Mmax_obs = sp.Mmax
 
@@ -271,7 +270,6 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
             numerator and denominator
         """
 
-        # TODO: Move into the catalog class
         if self.Kcorr:
             Kcorr = self.full_catalog.get_k_correction(self.band, sampz, color_names[self.band], sampcolor)
         else:
@@ -742,6 +740,8 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         The galaxy catalogue
     skymap : gwcosmo.likelihood.skymap.skymap object
         provides p(x|Omega) and skymap properties
+    sp : gwcosmo.utilities.schechter_params.SchechterParams class
+        Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
     fast_cosmology : gwcosmo.utilities.standard_cosmology.fast_cosmology object
         Cosmological model
     Kcorr : bool, optional
@@ -761,7 +761,9 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     """
 
-    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None, numerical=True):
+
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None, numerical=True):
+
         """
         Parameters
         ----------
@@ -804,7 +806,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The high-resolution value of nside to subdivide the current pixel into
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
         self.nside_low_res = nside_low_res
         self.zcut = zcut
         self.complete_catalog = complete_catalog
@@ -812,11 +814,26 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.path = outputfile+'_'+str(pixel_index)+'_checkpoint.p'
         self.numerical = numerical
         # Set redshift and colour limits based on whether Kcorrections are applied
+                # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
-                                                                    *color_limits[color_names[observation_band]])
+                                                          *color_limits[color_names[observation_band]])
         else:
             if zcut is None:
                 self.zcut = self.zmax
@@ -994,7 +1011,10 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 dec = subcatalog['dec']
                 m = subcatalog.get_magnitudes(self.band)
                 sigmaz = subcatalog['sigmaz']
-                color = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+                if self.Kcorr:
+                    color = subcatalog.get_color(self.band)
+                else:
+                    color = np.zeros(len(m))
 
                 if len(subcatalog)==0:
                     self.pxG[:,i] = np.zeros(len(H0))
@@ -1037,7 +1057,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32, numerical=True):
+    def __init__(self, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32, numerical=True):
+
         """
         Parameters
         ----------
@@ -1047,6 +1068,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             The GW skymap
         observation_band : str
             Observation band (eg. 'B', 'K', 'u', 'g')
+        sp : gwcosmo.utilities.schechter_params.SchechterParams class
+            Class that stores the schechter function parameters alpha, Mstar, Mmin, Mmax
         fast_cosmology : object
             Fast cosmology
         px_zH0 : object
@@ -1079,7 +1102,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         TODO: UPDATE this for new catalog classes
         """
 
-        super().__init__(skymap, observation_band, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
+        super().__init__(skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=Kcorr, zmax=zmax)
 
         self.mth = mth
         self.zcut = zcut
@@ -1089,7 +1112,21 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
-                self.zcut = 0.5
+                if observation_band == 'W1':
+                    # Polynomial k corrections out to z=1
+                    self.zcut = 1.0
+                else:
+                    # color-based k corrections valid to z=0.5
+                    self.zcut = 0.5
+            else:
+                if observation_band == 'W1' and zcut > 1.0:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (1.0) for W1-band k corrections")
+                elif zcut > 0.5:
+                    print(f"Warning, your requested zcut {zcut} is greater than the valid range (0.5) for k corrections")
+                else:
+                    # zcut is < valid for k-corr, do nothing
+                    pass
+            
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
@@ -1188,7 +1225,11 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         galdec = subcatalog['dec']
         galm = subcatalog.get_magnitudes(self.band)
         galsigmaz = subcatalog['sigmaz']
-        galcolor = subcatalog.get_color(self.band) # TODO: Fix based on Kcorr
+        if self.Kcorr:
+            color = subcatalog.get_color(self.band)
+        else:
+            color = np.zeros(len(galm))
+        
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0, galz, galsigmaz, galm, galra,
                                                 galdec, galcolor, nfine=self.nfine,
