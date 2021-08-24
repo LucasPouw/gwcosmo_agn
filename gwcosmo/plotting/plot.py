@@ -44,19 +44,19 @@ def mth2hpx(ra, dec, m, nside):
     # conver to theta, phi
     theta = np.pi/2.0 - dec
     phi = ra
-    
+
     # convert to HEALPix indices (each galaxy is assigned to a single healpy pixel)
     indices = hp.ang2pix(nside, theta, phi)
-    
+
     # sort the indices into ascending order
     idx_sort = np.argsort(indices)
     sorted_indices = indices[idx_sort]
-    
+
     # idx: the healpy index of each pixel containing a galaxy (arranged in ascending order)
     # idx_start: the index of 'sorted_indices' corresponding to each new pixel
     # count: the number of galaxies in each pixel
     idx, idx_start,count = np.unique(sorted_indices,return_counts=True,return_index=True)
-    
+
     # splits indices into arrays - 1 per pixel
     res = np.split(idx_sort, idx_start[1:])
 
@@ -71,24 +71,24 @@ def mth2hpx(ra, dec, m, nside):
             count += 1
             # find the median apparent magnitude within this pixel (mth stays as zero if no galaxies are present)
             mths[i] = np.median(ms)
-    
+
     # fill the fullsky map
     hpx_map = np.zeros(npix)
     hpx_map[range(npix)] = mths
 
     return hpx_map
 
-def overdensity_given_skypos(galaxy_cat,band,ra,dec,zproxy,nside=64,h0=67.7
+def overdensity_given_skypos(galaxy_cat,Schparam,ra,dec,zproxy,nside=64,h0=67.7
                              ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
-    
+
     Parameters
     ----------
     galaxy_cat: galaxy catalog from gwcosmo
-    band: str
-        Name of the band you want for doing this plot
+    Schparam: str
+        Schechter class for the parameters
     ra: float
         right ascension in radiants where to compute the priors
     dec: float
@@ -104,7 +104,7 @@ def overdensity_given_skypos(galaxy_cat,band,ra,dec,zproxy,nside=64,h0=67.7
     lweight: bool
         If to use luminosity weightening or not
     """
-    
+
     to_return = np.zeros_like(zproxy)
     # The number of pixels based on the chosen value of nside
     npix = hp.nside2npix(nside)
@@ -113,35 +113,35 @@ def overdensity_given_skypos(galaxy_cat,band,ra,dec,zproxy,nside=64,h0=67.7
     indices = hp.ang2pix(nside, theta, phi)
     index_point = hp.ang2pix(nside, np.pi/2.0 - dec, ra)
     gal_index = np.where(indices==index_point)[0]
-    
+
     if not gal_index.size:
         print('No galaxy overlapping with ra={:.2f} and dec={:.2f}'.format(ra,dec))
         return to_return
-    
+
     allm=galaxy_cat.data['m_'+band][gal_index]
     allra=galaxy_cat.data['ra'][gal_index]
     alldec=galaxy_cat.data['dec'][gal_index]
     allz=galaxy_cat.data['z'][gal_index]
     allsigmaz=galaxy_cat.data['sigmaz'][gal_index]
-    
+
     mth = np.median(allm)
     selected_galaxies = np.where(allm<mth)[0]
-    
+
     allm=allm[selected_galaxies]
     allra=allra[selected_galaxies]
     alldec=alldec[selected_galaxies]
     allz=allz[selected_galaxies]
     allsigmaz=allsigmaz[selected_galaxies]
     gal_index=gal_index[selected_galaxies]
-    
+
     Kcorr = galaxy_cat.get_k_correction(band,allz,color_names[band],color_value=allm)
     lweights = gwcosmo.utilities.standard_cosmology.L_mdl(allm, cosmo.dl_zH0(allz, h0),Kcorr=Kcorr)
-    
-    alpha,Mstar_obs,Mmin_source,Mmax_source = schechter_params.SchechterParams(band=band).values(band=band)
-    
+
+    alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
+
     Lmax=gwcosmo.utilities.standard_cosmology.L_M(Mmin_source)
     Lmin=gwcosmo.utilities.standard_cosmology.L_M(Mmax_source)
-    
+
     index_lum = np.where((lweights<Lmax) & (lweights>Lmin))[0]
     allm=allm[index_lum]
     allra=allra[index_lum]
@@ -151,38 +151,38 @@ def overdensity_given_skypos(galaxy_cat,band,ra,dec,zproxy,nside=64,h0=67.7
     lweights=lweights[index_lum]
     gal_index=gal_index[index_lum]
     zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
-    
+
     for i in range(len(allz)):
-        
+
         zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
         priordens=zprior.p_z(zcut)
         zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
         zl /=np.trapz(zl,zcut)
         interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
-        
-        if lweight: 
+
+        if lweight:
             to_return+=interpo(zproxy)*lweights[i]
         else:
             to_return+=interpo(zproxy)
-    
+
     priordens=zprior.p_z(zproxy)
     priordens/=np.trapz(priordens,zproxy)
     galdens= to_return/np.trapz(to_return,zproxy)
-    
+
     return galdens,priordens,gal_index
 
 
-def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7,nside=None
+def overdensity_given_GWskyarea(galaxy_cat,Schparam,fits_file,CL,zproxy,h0=67.7,nside=None
                              ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
-    
+
     Parameters
     ----------
     galaxy_cat: galaxy catalog from gwcosmo
-    band: str
-        Name of the band you want for doing this plot
+    Schparam: str
+        Schechter class for the parameters
     fits_file: string
         path to the GWskymap
     CL: float
@@ -195,8 +195,8 @@ def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7,nsid
         GWcosmo fast cosmology class
     lweight: bool
         If to use luminosity weightening or not
-    """        
-    
+    """
+
     skymap_gwcosmo = gwcosmo.likelihood.skymap.skymap(fits_file)
     gal_index = np.where(skymap_gwcosmo.samples_within_region(galaxy_cat.data['ra'],galaxy_cat.data['dec'],CL,nside=nside))[0]
     to_return = np.zeros_like(zproxy)
@@ -204,32 +204,32 @@ def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7,nsid
     if not gal_index.size:
         print('No galaxy overlapping')
         return to_return
-    
+
     allm=galaxy_cat.data['m_'+band][gal_index]
     allra=galaxy_cat.data['ra'][gal_index]
     alldec=galaxy_cat.data['dec'][gal_index]
     allz=galaxy_cat.data['z'][gal_index]
     allsigmaz=galaxy_cat.data['sigmaz'][gal_index]
-    
+
     mth = np.median(allm)
     selected_galaxies = np.where(allm<mth)[0]
-    
+
     allm=allm[selected_galaxies]
     allra=allra[selected_galaxies]
     alldec=alldec[selected_galaxies]
     allz=allz[selected_galaxies]
     allsigmaz=allsigmaz[selected_galaxies]
     gal_index=gal_index[selected_galaxies]
-    
-                
+
+
     Kcorr = galaxy_cat.get_k_correction(band,allz,color_names[band],color_value=allm)
     lweights = gwcosmo.utilities.standard_cosmology.L_mdl(allm, cosmo.dl_zH0(allz, h0),Kcorr=Kcorr)
-    
-    alpha,Mstar_obs,Mmin_source,Mmax_source = schechter_params.SchechterParams(band=band).values(band=band)
-    
+
+    alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
+
     Lmax=gwcosmo.utilities.standard_cosmology.L_M(Mmin_source)
     Lmin=gwcosmo.utilities.standard_cosmology.L_M(Mmax_source)
-    
+
     index_lum = np.where((lweights<Lmax) & (lweights>Lmin))[0]
     allm=allm[index_lum]
     allra=allra[index_lum]
@@ -239,27 +239,27 @@ def overdensity_given_GWskyarea(galaxy_cat,band,fits_file,CL,zproxy,h0=67.7,nsid
     lweights=lweights[index_lum]
     gal_index=gal_index[index_lum]
     zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
-        
+
     for i in range(len(allz)):
         zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
         priordens=zprior.p_z(zcut)
         zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
         zl /=np.trapz(zl,zcut)
         interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
-        
-        if lweight: 
+
+        if lweight:
             to_return+=interpo(zproxy)*lweights[i]*skymap_gwcosmo.skyprob(allra[i],alldec[i])
         else:
             to_return+=interpo(zproxy)*skymap_gwcosmo.skyprob(allra[i],alldec[i])
-    
+
     priordens=zprior.p_z(zproxy)
     priordens/=np.trapz(priordens,zproxy)
     galdens= to_return/np.trapz(to_return,zproxy)
-    
-    return galdens,priordens,gal_index
-    
 
-def Completeness(H0,z_array,mth,band,weighted=True):
+    return galdens,priordens,gal_index
+
+
+def Completeness(H0,z_array,mth,Schparam,weighted=True):
     """
     Returns p(G|H0,z)
     The probability that the host galaxy is in the catalogue given detection and H0.
@@ -272,8 +272,8 @@ def Completeness(H0,z_array,mth,band,weighted=True):
         An array of redshifts
     mth : float
         The apparent magnitude threshold of the galaxy catalog under consideration
-    band: str
-        Either 'B' or 'K'
+    Schparam: str
+        Schechter class for the parameters
     pdet_path: str
         path to pdet
     weighted : bool, optional
@@ -282,14 +282,14 @@ def Completeness(H0,z_array,mth,band,weighted=True):
     Returns
     -------
     float or array_like
-        p(G|H0,z) 
-    """  
-    
-    alpha,Mstar_obs,Mmin_source,Mmax_source = schechter_params.SchechterParams(band=band).values(band=band)
-    
+        p(G|H0,z)
+    """
+
+    alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
+
     zprior = standard_cosmology.redshift_prior()
     cosmo = standard_cosmology.fast_cosmology()
-    num = np.zeros(len(z_array)) 
+    num = np.zeros(len(z_array))
     den = np.zeros(len(z_array))
 
     for i in range(len(z_array)):
@@ -318,7 +318,7 @@ def Completeness(H0,z_array,mth,band,weighted=True):
 def plot_skymap(map_plot,mask=None,ax=None,**kwargs):
     """
     Plot a skymap using contourf of an HEALPY array:
-    
+
     Parameters
     ----------
     map_plot: healpy array
@@ -329,25 +329,25 @@ def plot_skymap(map_plot,mask=None,ax=None,**kwargs):
         Axes where to plot.
     **kwargs:
         Keyword argumets to pass to contourf
-        
+
     Returns
     -------
     axes handling, image handling for skymaps
     """
-    
+
     if ax is None:
-        ax = plt.axes(projection='astro hours mollweide')   
-        
+        ax = plt.axes(projection='astro hours mollweide')
+
     if mask is not None:
         indx0= np.where(mask)[0]
-        
+
     im=ax.contourf_hpx(map_plot,**kwargs)
     return ax,im
 
 def plot_loc_contour(fits_file,ax=None,**kwargs):
     """
     Plot the CL counters of a skymap
-    
+
     Parameters
     ----------
     fits_file: fits file for the GW skymap
@@ -367,4 +367,3 @@ def plot_loc_contour(fits_file,ax=None,**kwargs):
     cls = 100 * postprocess.find_greedy_credible_levels(skymap)
     cs = ax.contour_hpx((cls, 'ICRS'), nested=metadata['nest'],**kwargs)
     return ax, cs
-    
