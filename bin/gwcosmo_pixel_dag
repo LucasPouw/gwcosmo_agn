@@ -79,7 +79,7 @@ parser = OptionParser(
         Option("--run_on_ligo_cluster", default='True', type=str,
             help="Set to true if running on a LIGO cluster (default=True)"),
         Option("--seed", default=None, type=int, help="Random seed"),
-        Option("--numerical", default='True', type=str, 
+        Option("--numerical", default='True', type=str,
             help="If set to true numerical integration will be used for the calculation of integrals")
     ])
 
@@ -266,7 +266,7 @@ if opts.run_on_ligo_cluster=='True':
         priority = 10
     )
 
-pixels = np.genfromtxt('{}_indices.txt'.format(opts.outputfile),dtype=int)
+pixels = np.genfromtxt('{}_indices.txt'.format(opts.outputfile),dtype=int,skip_header=1)
 pixel_vars=[]
 for i,ind in enumerate(pixels):
     pixel_vars.append({'pixel_index':'{}'.format(ind)})
