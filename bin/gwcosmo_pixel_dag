@@ -78,7 +78,9 @@ parser = OptionParser(
             help="Search tag for the runs -- used in LIGO clusters (default=ligo.prod.o1.cbc.hubble.gwcosmo)"),
         Option("--run_on_ligo_cluster", default='True', type=str,
             help="Set to true if running on a LIGO cluster (default=True)"),
-        Option("--seed", default=None, type=int, help="Random seed")
+        Option("--seed", default=None, type=int, help="Random seed"),
+        Option("--numerical", default='True', type=str, 
+            help="If set to true numerical integration will be used for the calculation of integrals")
     ])
 
 catalog_option_group = OptionGroup(parser, "Galaxy Catalog Options","""
@@ -186,6 +188,7 @@ common_args  = f"\
     --min_pixels {opts.min_pixels} \
     --outputfile {opts.outputfile} \
     --seed {opts.seed} \
+    --numerical {opts.numerical} \
     "
 
 return_value = os.system(path +'/gwcosmo_single_posterior ' + common_args + ' --return_skymap_indices True')

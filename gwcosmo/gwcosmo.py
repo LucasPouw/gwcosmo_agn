@@ -82,7 +82,9 @@ class gwcosmoLikelihood(object):
         """
 
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)
-
+    
+    ##### functions of dlquad integration
+    
     def px_OH0(self, H0, skyprob=1.):
         """
         Evaluate p(x|O,H0).
@@ -121,6 +123,61 @@ class gwcosmoLikelihood(object):
         """
 
         integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
+        return integral * skyprob
+
+    
+    #####functions of numerical integration
+
+    def integrate_1d(self, function, z_grid, dz, H0):
+        values_function = function(z_grid, H0)
+
+        return np.sum(values_function[:-1]+values_function[1:])*dz/2
+
+
+    def px_OH0_numerical(self, H0, skyprob=1.):
+        """
+        Evaluate p(x|O,H0).
+
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        skyprob : float, optional
+            GW sky probability covered by area O (default=1.)
+
+        Returns
+        -------
+        float
+            p(x|O,H0)
+        """
+
+        z_grid = np.linspace(0.,self.zmax,2000)
+        dz = z_grid[1]-z_grid[0]
+
+        integral = self.integrate_1d(self.px_zH0_times_pz_times_ps_z,z_grid,dz,H0)
+        return integral * skyprob
+
+    def pD_OH0_numerical(self, H0, skyprob=1.):
+        """
+        Evaluate p(D|O,H0).
+
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        skyprob : float, optional
+            pdet probability covered by area O (default=1.)
+
+        Returns
+        -------
+        float
+            p(D|O,H0)
+        """
+
+        z_grid = np.linspace(0.,self.zmax,2000)
+        dz = z_grid[1]-z_grid[0]
+
+        integral = self.integrate_1d(self.pD_zH0_times_pz_times_ps_z,z_grid,dz,H0)
         return integral * skyprob
 
 
@@ -193,38 +250,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         self.Mmax_obs = sp.Mmax
 
 
-    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
-        """
-        p(x|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
-
-        Parameters
-        ----------
-        M : float
-            absolute magnitude
-        z : float
-            redshift
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        """
-
-        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-
-    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
-        """
-        p(D|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
-
-        Parameters
-        ----------
-        M : float
-            absolute magnitude
-        z : float
-            redshift
-        H0 : float
-            Hubble constant value in kms-1Mpc-1
-        """
-
-        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
-
+   
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
         """
         Evaluate p(x|G,H0) and p(D|G,H0) using galaxy samples.
@@ -349,7 +375,43 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         den = np.sum(tempden,axis=0)/nGal
 
         return num,den
+    
+    ##### functions of dlquad integration
+    
+    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
+        """
+        p(x|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
 
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+
+        return self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+
+    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
+        """
+        p(D|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
+
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+
+        return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
+
+
+    
     def pGB_DH0(self, H0, mth, skyprob, zcut=10.):
         """
         Evaluate p(G|D,H0) and p(B|D,H0).
@@ -411,7 +473,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(x|B,H0)
         """
-
+        
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
@@ -467,6 +529,205 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         return integral * skyprob
 
 
+    ##### functions of numerical integration
+
+    def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical(self, M, z, H0):
+        """
+        p(x|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
+
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+
+        return (self.px_zH0(z,H0)*self.zprior(z)*self.zrates(z)*(self.luminosity_prior(M,H0)*self.luminosity_weights(M)).T).T
+
+    def pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical(self, M, z, H0):
+        """
+        p(D|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
+
+        Parameters
+        ----------
+        M : float
+            absolute magnitude
+        z : float
+            redshift
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        """
+
+        return (self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*(self.luminosity_prior(M,H0)*self.luminosity_weights(M)).T).T
+
+    def integrate_2d(self, function, z_grid, dz, M_grid, dM, H0):
+        values_function = function(M_grid, z_grid, H0)
+
+        return np.sum(((values_function[:-1,:-1]+values_function[:-1,1:])*dM[:-1]+(values_function[1:,:-1]+values_function[1:,1:])*dM[1:])*dz)/4
+
+    
+    def pGB_DH0_numerical(self, H0, mth, skyprob, zcut=10.):
+        """
+        Evaluate p(G|D,H0) and p(B|D,H0).
+
+        The probability that the host galaxy of a detected GW event is inside
+        or beyond the galaxy catalogue.
+
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        skyprob : float, optional
+            pdet probability covered by area G(B) (default=1.)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+
+        Returns
+        -------
+        floats
+            p(G|D,H0), p(B|D,H0), num, den
+            where (num/den)*skyprob = p(G|D,H0)
+        """
+
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+
+        z_grid = np.linspace(0.,zcut,1500)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid = np.linspace(Mmin, np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        num = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+        z_grid = np.linspace(0.,self.zmax,4000)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        den = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+        integral = num/den
+
+        pG = integral*skyprob
+        pB = (1.-integral)*skyprob
+        return pG, pB, num, den
+
+    def px_BH0_numerical(self, H0, mth, skyprob ,zcut=10.):
+        """
+        Evaluate p(x|B,H0).
+
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed.
+
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        skyprob : float, optional
+            GW sky probability covered by area G(B) (default=1.)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+
+        Returns
+        -------
+        float
+            p(x|B,H0)
+        """
+        
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+        
+        z_grid = np.linspace(0.,zcut,1500)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid = np.linspace(np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),Mmax,M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        below_zcut_integral = self.integrate_2d(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+        above_zcut_integral = 0.
+        if zcut < self.zmax:
+
+            z_grid = np.linspace(zcut,self.zmax,4000)
+            dz = z_grid[1]-z_grid[0]
+
+            M_grid_len = 1000
+            M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+            dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+            above_zcut_integral = self.integrate_2d(self.px_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * skyprob
+
+    def pD_BH0_numerical(self, H0, mth, skyprob, zcut=10.):
+        """
+        Evaluate p(D|B,H0).
+
+        If zcut >= zmax then a single integral is performed.
+        If zcut < zmax then an additional integral is performed.
+
+        Parameters
+        ----------
+        H0 : float
+            Hubble constant value in kms-1Mpc-1
+        mth : float
+            Apparent magnitude threshold
+        skyprob : float, optional
+            pdet probability covered by area G(B) (default=1.)
+        zcut : float, optional
+            An artificial redshift cut to the galaxy catalogue (default=10.)
+
+        Returns
+        -------
+        float
+            p(D|B,H0)
+        """
+        
+        Mmin = M_Mobs(H0,self.Mmin_obs)
+        Mmax = M_Mobs(H0,self.Mmax_obs)
+
+        z_grid = np.linspace(0.,zcut,1500)
+        dz = z_grid[1]-z_grid[0]
+
+        M_grid_len = 1000
+        M_grid = np.linspace(np.minimum(np.maximum(M_mdl(mth,self.cosmo.dl_zH0(z_grid,H0)),Mmin),Mmax),Mmax,M_grid_len).T
+        dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+        below_zcut_integral = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+        above_zcut_integral = 0.
+        if zcut < self.zmax:
+
+            z_grid = np.linspace(zcut,self.zmax,4000)
+            dz = z_grid[1]-z_grid[0]
+
+            M_grid_len = 1000
+            M_grid, _ = np.meshgrid(np.linspace(Mmin,Mmax,M_grid_len),z_grid)
+            dM = (M_grid[:,1]-M_grid[:,0]).reshape(len(z_grid),1)
+
+            above_zcut_integral = self.integrate_2d(self.pD_zH0_times_pz_times_ps_z_times_pM_times_ps_M_numerical, z_grid, dz, M_grid, dM, H0)
+
+
+        integral = below_zcut_integral + above_zcut_integral
+
+        return integral * skyprob
+
+
 class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     """
     Calculate the likelihood of H0 from one GW event, using the galaxy
@@ -500,7 +761,9 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
     """
 
-    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None):
+
+    def __init__(self, pixel_index, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, outputfile, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, nside=32, nside_low_res = None, numerical=True):
+
         """
         Parameters
         ----------
@@ -549,6 +812,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.complete_catalog = complete_catalog
         self.full_catalog = galaxy_catalog
         self.path = outputfile+'_'+str(pixel_index)+'_checkpoint.p'
+        self.numerical = numerical
         # Set redshift and colour limits based on whether Kcorrections are applied
                 # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
@@ -638,21 +902,25 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-
+        
+        pGB_DH0, px_BH0, pD_BH0 = self.pGB_DH0, self.px_BH0, self.pD_BH0
+        if self.numerical:
+            pGB_DH0, px_BH0, pD_BH0 = self.pGB_DH0_numerical, self.px_BH0_numerical, self.pD_BH0_numerical
+           
         print(f'Computing the in-catalogue part with {len(m)} galaxies')
         pxG, pDG = self.pxD_GH0_multi(H0, z, sigmaz, m, ra, dec, color, nfine=self.nfine, ncoarse=self.ncoarse, zcut=self.zcut)
 
         if not self.complete_catalog:
             print('Computing the beyond catalogue part')
             for i,h in enumerate(H0):
-                pG[i], pB[i], num[i], den[i] = self.pGB_DH0(h, mth, pOmega, zcut=self.zcut)
-                pxB[i] = self.px_BH0(h, mth, px_Omega, zcut=self.zcut)
+                pG[i], pB[i], num[i], den[i] = pGB_DH0(h, mth, pOmega, zcut=self.zcut)
+                pxB[i] = px_BH0(h, mth, px_Omega, zcut=self.zcut)
             if self.zcut == self.zmax:
                 pDB = (den - num) * pOmega
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
-                    pDB[i] = self.pD_BH0(h, mth, pOmega, zcut=self.zcut)
+                    pDB[i] = pD_BH0(h, mth, pOmega, zcut=self.zcut)
 
         likelihood = (pxG / pDG) * pG + (pxB / pDB) * pB
         return pxG, pDG, pG, pxB, pDB, pB
@@ -686,7 +954,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             self.pDO = pdet_checkpoint['pDO']
             self.pO = pdet_checkpoint['pO']
             checkpoint_idx = pdet_checkpoint['checkpoint_idx']+1
-            
+
         else:
             self.pxG = np.zeros([len(H0),len(self.sub_pixel_indices)])
             self.pDG = np.zeros([len(H0),len(self.sub_pixel_indices)])
@@ -755,13 +1023,13 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 self.pxO[:,i] = np.zeros(len(H0))
                 self.pDO[:,i] = np.ones(len(H0))
                 self.pO[i] = 0.
-                
+
             if os.path.isfile(self.path):
                 os.remove(self.path)
             checkpoint = {'checkpoint_idx':i,'pxG':self.pxG,'pDG':self.pDG,'pG':self.pG,'pxB':self.pxB,
                           'pDB':self.pDB,'pB':self.pB,'pxO':self.pxO,'pDO':self.pDO,'pO':self.pO}
             pickle.dump(checkpoint, open(self.path, "wb" ))
-        
+
         if os.path.isfile(self.path):
                 os.remove(self.path)
         sub_likelihood = np.zeros([len(H0),len(self.sub_pixel_indices)])
@@ -789,7 +1057,8 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
     catalogue method.
     """
 
-    def __init__(self, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32):
+    def __init__(self, galaxy_catalog, skymap, observation_band, sp, fast_cosmology, px_zH0, pD_zH0, zprior, zrates, luminosity_prior, luminosity_weights, Kcorr=False, mth=None, zcut=None, zmax=10.,zuncert=True, complete_catalog=False, sky_thresh = 0.999, nside=32, numerical=True):
+
         """
         Parameters
         ----------
@@ -839,7 +1108,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.zcut = zcut
         self.complete_catalog = complete_catalog
         self.full_catalog = galaxy_catalog
-
+        self.numerical = numerical
         # Set redshift and colour limits based on whether Kcorrections are applied
         if Kcorr == True:
             if zcut is None:
@@ -931,7 +1200,12 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pxO = np.zeros(len(H0))
         self.pDO = np.ones(len(H0))
         self.pO = 0.
-
+        
+        pGB_DH0, px_BH0, pD_BH0, px_OH0, pD_OH0 = self.pGB_DH0, self.px_BH0, self.pD_BH0, self.px_OH0, self.pD_OH0
+        
+        if self.numerical:
+            pGB_DH0, px_BH0, pD_BH0, px_OH0, pD_OH0 = self.pGB_DH0_numerical, self.px_BH0_numerical, self.pD_BH0_numerical, self.px_OH0_numerical, self.pD_OH0_numerical
+        
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
 
@@ -964,22 +1238,22 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         if not self.complete_catalog:
             print('Computing the beyond catalogue part')
             for i,h in enumerate(H0):
-                self.pG[i], self.pB[i], num[i], den[i] = self.pGB_DH0(h, self.mth, self.OmegaG,zcut=self.zcut)
-                self.pxB[i] = self.px_BH0(h, self.mth, self.px_OmegaG, zcut=self.zcut)
+                self.pG[i], self.pB[i], num[i], den[i] = pGB_DH0(h, self.mth, self.OmegaG,zcut=self.zcut)
+                self.pxB[i] = px_BH0(h, self.mth, self.px_OmegaG, zcut=self.zcut)
             if self.zcut == self.zmax:
                 self.pDB = (den - num) * self.OmegaG
             else:
                 print('Computing all integrals explicitly as zcut < zmax: this will take a little longer')
                 for i,h in enumerate(H0):
-                    self.pDB[i] = self.pD_BH0(h, self.mth, self.OmegaG, zcut=self.zcut)
+                    self.pDB[i] = pD_BH0(h, self.mth, self.OmegaG, zcut=self.zcut)
             print("{}% of this event's sky area appears to have galaxy catalogue support".format(self.px_OmegaG*100))
             if self.px_OmegaG < 0.999:
                 self.pO = self.OmegaO
                 #self.pDO = den * self.OmegaO ### alternative to calculating pDO directly below, but requires both px_OH0 and pD_OH0 to use dblquad (not quad) ###
                 print('Computing the contribution outside the catalogue footprint')
                 for i,h in enumerate(H0):
-                    self.pxO[i] = self.px_OH0(h, skyprob=self.px_OmegaO)
-                    self.pDO[i] = self.pD_OH0(h, skyprob=self.OmegaO)
+                    self.pxO[i] = px_OH0(h, skyprob=self.px_OmegaO)
+                    self.pDO[i] = pD_OH0(h, skyprob=self.OmegaO)
 
         likelihood = (self.pxG / self.pDG) * self.pG + (self.pxB / self.pDB) * self.pB + (self.pxO / self.pDO) * self.pO
         return likelihood
@@ -1103,7 +1377,7 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
     require an integral over either sky or absolute magnitude, only redshift.
     """
 
-    def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10.):
+    def __init__(self, px_zH0, pD_zH0, zprior, zrates, zmax=10., numerical=True):
         """
         Parameters
         ----------
@@ -1123,6 +1397,7 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
 
         self.px = None
         self.pD = None
+        self.numerical = numerical
 
     def likelihood(self,H0):
         """
@@ -1141,9 +1416,12 @@ class EmptyCatalogLikelihood(gwcosmoLikelihood):
 
         px = np.zeros(len(H0))
         pD = np.zeros(len(H0))
+        px_OH0, pD_OH0 = self.px_OH0, self.pD_OH0
+        if self.numerical:
+            px_OH0, pD_OH0 = self.px_OH0_numerical, self.pD_OH0_numerical
         for i,h in enumerate(H0):
-            px[i] = self.px_OH0(h, skyprob=1.)
-            pD[i] = self.pD_OH0(h, skyprob=1.)
+            px[i] = px_OH0(h, skyprob=1.)
+            pD[i] = pD_OH0(h, skyprob=1.)
         likelihood = px/pD
         self.px = px
         self.pD = pD
@@ -1460,5 +1738,3 @@ def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     count = count[ind]
 
     return sampz, sampm, sampra, sampdec, sampcolor, count
-
-

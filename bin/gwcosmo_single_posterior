@@ -129,7 +129,9 @@ parser = OptionParser(
             help="combine multiple pixels to make the full likelihood for an event. Folder must contain pixel likelihoods and pixel indices file. (for use with pixel method only)"),
         Option("--outputfile", default='Posterior',
             help="Name of output file"),
-        Option("--seed", default=None, type=int, help="Random seed")
+        Option("--seed", default=None, type=int, help="Random seed"),
+        Option("--numerical", default='True', type=str, 
+            help="If set to true numerical integration will be used for the calculation of integrals")
     ])
 
 catalog_option_group = OptionGroup(parser, "Galaxy Catalog Options","""
@@ -203,7 +205,7 @@ else:
     outputfile = str(opts.outputfile)
     pdet_path = str(opts.Pdet)
     zmax = float(opts.zmax)
-
+    numerical = str2bool(opts.numerical)
     return_skymap_indices = str2bool(opts.return_skymap_indices)
     pixel_index = int(opts.pixel_index)
 
@@ -290,7 +292,7 @@ else:
 
     if opts.method == 'population':
 
-        me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,zmax=zmax)
+        me = gwcosmo.gwcosmo.EmptyCatalogLikelihood(px_zH0,pdet.pD_zH0_eval,zprior,ps_z,zmax=zmax, numerical=numerical)
 
     if opts.method == 'statistical' or opts.method == 'pixel':
 
@@ -341,7 +343,9 @@ else:
     if opts.method == 'statistical':
 
 
-        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, sp, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside)
+
+        me = gwcosmo.gwcosmo.WholeSkyGalaxyCatalogLikelihood(catalog, skymap, band, sp, cosmo, px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, ps_M, Kcorr=Kcorr, mth=mth, zcut=zcut, zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, sky_thresh = opts.sky_area, nside=opts.nside, numerical=numerical )
+
 
 
 
@@ -378,7 +382,7 @@ else:
                                                               px_zH0, pdet.pD_zH0_eval, zprior, ps_z, p_M, \
                                                               ps_M, outputfile, Kcorr=Kcorr, mth=mth, zcut=zcut, \
                                                               zmax=zmax,zuncert=zuncert, complete_catalog=complete_catalog, \
-                                                              nside=nside, nside_low_res = nside_low_res )
+                                                              nside=nside, nside_low_res = nside_low_res, numerical=numerical )
 
     likelihood = me(H0)
     pxG, pDG, pG, pxB, pDB, pB, pxO, pDO, pO = me.return_components()
