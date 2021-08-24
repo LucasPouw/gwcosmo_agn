@@ -18,7 +18,7 @@ import lal
 
 c = lal.C_SI/1000.  # 2.99792458e+05 # in km/s
 
-def h(z, Omega_m=0.308):
+def h(z, Omega_m=0.3065):
     """
     Returns dimensionless redshift-dependent hubble parameter.
 
@@ -35,7 +35,7 @@ def h(z, Omega_m=0.308):
     return np.sqrt(Omega_m*(1+z)**3 + Omega_Lambda)
 
 
-def dcH0overc(z, Omega_m=0.308):
+def dcH0overc(z, Omega_m=0.3065):
     """
     Returns dimensionless combination dc*H0/c
     given redshift and matter fraction.
@@ -54,7 +54,7 @@ def dcH0overc(z, Omega_m=0.308):
     return integrate.quad(integrand, 0, z)[0]  # in km/s
 
 
-def dLH0overc(z, Omega_m=0.308):
+def dLH0overc(z, Omega_m=0.3065):
     """
     Returns dimensionless combination dL*H0/c
     given redshift and matter fraction.
@@ -71,7 +71,7 @@ def dLH0overc(z, Omega_m=0.308):
     return (1+z)*dcH0overc(z, Omega_m)
 
 
-def volume_z(z, Omega_m=0.308):
+def volume_z(z, Omega_m=0.3065):
     """
     Returns the cosmological volume at the given redshift.
 
@@ -87,7 +87,7 @@ def volume_z(z, Omega_m=0.308):
     return dcH0overc(z, Omega_m)**2/h(z, Omega_m)
 
 
-def volume_time_z(z, Omega_m=0.308):
+def volume_time_z(z, Omega_m=0.3065):
     """
     Returns the cosmological volume time element at a given redshift.
 
@@ -103,7 +103,7 @@ def volume_time_z(z, Omega_m=0.308):
     return volume_z(z, Omega_m=Omega_m)/(1.0+z)
 
 
-def prefactor_volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
+def prefactor_volume_dHoc(dHoc, Omega_m=0.3065, tolerance_z=1e-06, z=None):
     """
     Returns the prefactor modifying dL^2*ddL
     for the cosmological volume element.
@@ -124,7 +124,7 @@ def prefactor_volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
     return (1+z)**(-3.) * (1 - 1. / (1 + (1+z)**2/(dHoc*h(z, Omega_m))))
 
 
-def volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
+def volume_dHoc(dHoc, Omega_m=0.3065, tolerance_z=1e-06, z=None):
     """
     Returns cosmological volume at the given dL*H0/c.
 
@@ -142,7 +142,7 @@ def volume_dHoc(dHoc, Omega_m=0.308, tolerance_z=1e-06, z=None):
     return dHoc**2*prefactor_volume_dHoc(dHoc, Omega_m, tolerance_z, z=z)
 
 
-def redshift(dHoc, Omega_m=0.308, tolerance_z=1e-06):
+def redshift(dHoc, Omega_m=0.3065, tolerance_z=1e-06):
     """
     Returns redshift given dimensionless combination dL*H0/c
     and matter fraction.
@@ -212,7 +212,7 @@ def dl_mM(m, M, Kcorr=0.):
 def L_M(M):
     """
     Returns luminosity when given an absolute magnitude.
-    The constant used here corresponds to the conversion between bolometric mangitude and luminosity. 
+    The constant used here corresponds to the conversion between bolometric mangitude and luminosity.
     It does not matter for the H0 inference, so please use with care when using with band specific magnitudes.
 
     Parameters
@@ -271,7 +271,7 @@ def L_mdl(m, dl, Kcorr=0.):
 
 
 # Rachel: I've put dl_zH0 and z_dlH0 in as place holders.
-def dl_zH0(z, H0=70., Omega_m=0.308, linear=False):
+def dl_zH0(z, H0=70., Omega_m=0.3065, linear=False):
     """
     Returns luminosity distance given distance and cosmological parameters
 
@@ -298,7 +298,7 @@ def dl_zH0(z, H0=70., Omega_m=0.308, linear=False):
         return dLH0overc(z, Omega_m=Omega_m)*c/H0
 
 
-def z_dlH0(dl, H0=70., Omega_m=0.308, linear=False):
+def z_dlH0(dl, H0=70., Omega_m=0.3065, linear=False):
     """
     Returns redshift given luminosity distance and cosmological parameters
 
@@ -328,12 +328,12 @@ class redshift_prior(object):
 
     Parameters
     ----------
-    Omega_m : matter fraction (default=0.308)
+    Omega_m : matter fraction (default=0.3065)
     zmax : upper limit for redshift (default=10.0)
     linear : assumes local cosmology and suppresses
     non-linear effects (default=False)
     """
-    def __init__(self, Omega_m=0.308, zmax=10.0, linear=False):
+    def __init__(self, Omega_m=0.3065, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
@@ -359,13 +359,13 @@ class fast_cosmology(object):
 
     Parameters
     ----------
-    Omega_m : matter fraction (default=0.308)
+    Omega_m : matter fraction (default=0.3065)
     zmax : upper limit for redshift (default=10.0)
     linear : assumes local cosmology and suppresses
     non-linear effects (default=False)
 
     """
-    def __init__(self, Omega_m=0.308, zmax=10.0, linear=False):
+    def __init__(self, Omega_m=0.3065, zmax=10.0, linear=False):
         self.Omega_m = Omega_m
         self.linear = linear
         self.zmax = zmax
