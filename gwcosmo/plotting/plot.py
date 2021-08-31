@@ -78,7 +78,7 @@ def mth2hpx(ra, dec, m, nside):
 
     return hpx_map
 
-def overdensity_given_skypos(galaxy_cat,Schparam,ra,dec,zproxy,nside=64,h0=67.7
+def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=67.7
                              ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
@@ -172,7 +172,7 @@ def overdensity_given_skypos(galaxy_cat,Schparam,ra,dec,zproxy,nside=64,h0=67.7
     return galdens,priordens,gal_index
 
 
-def overdensity_given_GWskyarea(galaxy_cat,Schparam,fits_file,CL,zproxy,h0=67.7,nside=None
+def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=67.7,nside=None
                              ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
