@@ -82,9 +82,9 @@ class gwcosmoLikelihood(object):
         """
 
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)
-    
+
     ##### functions of dlquad integration
-    
+
     def px_OH0(self, H0, skyprob=1.):
         """
         Evaluate p(x|O,H0).
@@ -125,7 +125,7 @@ class gwcosmoLikelihood(object):
         integral = quad(self.pD_zH0_times_pz_times_ps_z,0.,self.zmax,args=[H0],epsabs=0,epsrel=1.49e-4)[0]
         return integral * skyprob
 
-    
+
     #####functions of numerical integration
 
     def integrate_1d(self, function, z_grid, dz, H0):
@@ -250,7 +250,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         self.Mmax_obs = sp.Mmax
 
 
-   
+
     def pxD_GH0(self, H0, sampz, sampm, sampra, sampdec, sampcolor, count):
         """
         Evaluate p(x|G,H0) and p(D|G,H0) using galaxy samples.
@@ -375,9 +375,9 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         den = np.sum(tempden,axis=0)/nGal
 
         return num,den
-    
+
     ##### functions of dlquad integration
-    
+
     def px_zH0_times_pz_times_ps_z_times_pM_times_ps_M(self, M, z, H0):
         """
         p(x|z,H0)*p(z)*p(s|z)*p(M|H0)*p(s|M)
@@ -411,7 +411,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         return self.pD_zH0(z,H0)*self.zprior(z)*self.zrates(z)*self.luminosity_prior(M,H0)*self.luminosity_weights(M)
 
 
-    
+
     def pGB_DH0(self, H0, mth, skyprob, zcut=10.):
         """
         Evaluate p(G|D,H0) and p(B|D,H0).
@@ -473,7 +473,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(x|B,H0)
         """
-        
+
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
@@ -568,7 +568,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
 
         return np.sum(((values_function[:-1,:-1]+values_function[:-1,1:])*dM[:-1]+(values_function[1:,:-1]+values_function[1:,1:])*dM[1:])*dz)/4
 
-    
+
     def pGB_DH0_numerical(self, H0, mth, skyprob, zcut=10.):
         """
         Evaluate p(G|D,H0) and p(B|D,H0).
@@ -644,10 +644,10 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(x|B,H0)
         """
-        
+
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
-        
+
         z_grid = np.linspace(0.,zcut,1500)
         dz = z_grid[1]-z_grid[0]
 
@@ -697,7 +697,7 @@ class GalaxyCatalogLikelihood(gwcosmoLikelihood):
         float
             p(D|B,H0)
         """
-        
+
         Mmin = M_Mobs(H0,self.Mmin_obs)
         Mmax = M_Mobs(H0,self.Mmax_obs)
 
@@ -831,7 +831,7 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 else:
                     # zcut is < valid for k-corr, do nothing
                     pass
-            
+
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
@@ -902,11 +902,11 @@ class SinglePixelGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
-        
+
         pGB_DH0, px_BH0, pD_BH0 = self.pGB_DH0, self.px_BH0, self.pD_BH0
         if self.numerical:
             pGB_DH0, px_BH0, pD_BH0 = self.pGB_DH0_numerical, self.px_BH0_numerical, self.pD_BH0_numerical
-           
+
         print(f'Computing the in-catalogue part with {len(m)} galaxies')
         pxG, pDG = self.pxD_GH0_multi(H0, z, sigmaz, m, ra, dec, color, nfine=self.nfine, ncoarse=self.ncoarse, zcut=self.zcut)
 
@@ -1126,7 +1126,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                 else:
                     # zcut is < valid for k-corr, do nothing
                     pass
-            
+
             self.full_catalog = self.full_catalog.apply_color_limit(observation_band,
                                                           *color_limits[color_names[observation_band]])
         else:
@@ -1154,8 +1154,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
                                                 nside=nside)
         subcatalog = GalaxyCatalog(data = self.full_catalog[keep_idx],
                                    name = self.full_catalog.name+'_subsky',
-                                   supported_bands = self.full_catalog.supported_bands,
-                                   Kcorr = self.full_catalog.Kcorr)
+                                   supported_bands = self.full_catalog.supported_bands)
 
         self.full_catalog = subcatalog
         if mth is None:
@@ -1200,12 +1199,12 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
         self.pxO = np.zeros(len(H0))
         self.pDO = np.ones(len(H0))
         self.pO = 0.
-        
+
         pGB_DH0, px_BH0, pD_BH0, px_OH0, pD_OH0 = self.pGB_DH0, self.px_BH0, self.pD_BH0, self.px_OH0, self.pD_OH0
-        
+
         if self.numerical:
             pGB_DH0, px_BH0, pD_BH0, px_OH0, pD_OH0 = self.pGB_DH0_numerical, self.px_BH0_numerical, self.pD_BH0_numerical, self.px_OH0_numerical, self.pD_OH0_numerical
-        
+
         num = np.zeros(len(H0))
         den = np.zeros(len(H0))
 
@@ -1229,7 +1228,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
             color = subcatalog.get_color(self.band)
         else:
             color = np.zeros(len(galm))
-        
+
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0, galz, galsigmaz, galm, galra,
                                                 galdec, galcolor, nfine=self.nfine,
