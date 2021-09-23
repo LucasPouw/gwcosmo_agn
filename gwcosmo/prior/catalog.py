@@ -17,7 +17,7 @@ from ..utilities.calc_kcor import calc_kcor
 DEG2RAD = math.pi/180.0
 
 color_names = {'B': None, 'K': None, 'u': 'u - r', 'g': 'g - r', 'r': 'g - r',
-               'i': 'g - i', 'z': 'r - z', 'W1': None}
+               'i': 'g - i', 'z': 'r - z', 'W1': None,'bJ': None}
 
 # Taken from limits of K corrections from fig 4 of
 # https://ui.adsabs.harvard.edu/abs/2010MNRAS.405.1409C/abstract
@@ -77,7 +77,7 @@ catalog_options = [
     make_option("--catalog", default=None, metavar="NAME",
                help="""Specify a galaxy catalog by name. Known catalogs are: DESI, DES, GLADE, GLADE+"""),
     make_option("--catalog_band", default='B', type=str,
-            help = "Observation band of galaxy catalog (B,K,u,g,r,i,z) (must be compatible with the catalogue provided)"),
+            help = "Observation band of galaxy catalog (B,K,W1,bJ,u,g,r,i,z) (must be compatible with the catalogue provided)"),
 ]
 
 def load_catalog(name, band):
@@ -274,6 +274,12 @@ class GalaxyCatalog:
         if band == 'W1':
             k_corr = -1*(4.44e-2+2.67*z+1.33*(z**2.)-1.59*(z**3.)) #From Maciej email
             return k_corr
+        elif band == 'K':
+             # https://iopscience.iop.org/article/10.1086/322488/pdf 4th page lhs
+            return -6.0*np.log10(1+z)
+        elif band == 'bJ':
+            # Fig 5 caption from https://arxiv.org/pdf/astro-ph/0111011.pdf
+            return (z+6*np.power(z,2.))/(1+15*np.power(z,3.))
         else:
             try:
                 kcor = calc_kcor(band, z, color_name, color_value)
@@ -355,8 +361,8 @@ class OldStyleDESI(OldStyleCatalog):
         super().__init__(catalog_file = catalog_file, name = 'DESI')
 
 class OldStyleGLADEPlus(OldStyleCatalog):
-    supported_bands = {'B', 'K', 'W1'}
-    def __init__(self, catalog_file = 'glade+.hdf5', band='W1'):
+    supported_bands = {'B', 'K', 'W1','bJ'}
+    def __init__(self, catalog_file = 'glade+.hdf5', band='bJ'):
         self.colnames = set(self.colnames).union([f'm_{b}' for b in self.supported_bands])
         super().__init__(catalog_file = catalog_file, name = 'GladePlus')
 

@@ -20,7 +20,7 @@ class SchechterParams():
         """
         Parameters
         ----------
-        band : observation band (B,K,u,g,r,i,z)
+        band : observation band (B,K,bJ,u,g,r,i,z)
         """
 
         self.Mstar = None
@@ -42,8 +42,14 @@ class SchechterParams():
     def default_values(self, band): 
         if band == 'B':
             return -1.21, -19.70, -22.96, -12.96
+        elif band =='bJ':
+            # From https://arxiv.org/pdf/astro-ph/0111011.pdf
+            # Mmax from Abstract, of the paper above, valid for fit.
+            return -1.21, -19.66, -22.96, -16.5
         elif band == 'K':
-            return -1.02, -23.55, -27.0, -12.96
+            # https://iopscience.iop.org/article/10.1086/322488/pdf
+            # Mmax from  Fig 3 of the above reference
+            return -1.09, -23.39, -27.0, -19.5
         elif band == 'u':                            #These values are actually u', g', r', i', zi, a.k.a. redshifted to the median redshift (0.1) of SDSS.
             return -0.92, -17.93, -21.93, -15.54 
         elif band == 'g':
