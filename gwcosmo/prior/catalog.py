@@ -276,9 +276,12 @@ class GalaxyCatalog:
             return k_corr
         elif band == 'K':
              # https://iopscience.iop.org/article/10.1086/322488/pdf 4th page lhs
+            to_ret=-6.0*np.log10(1+z)
+            to_ret[z>0.3]=-6.0*np.log10(1+0.3)
             return -6.0*np.log10(1+z)
         elif band == 'bJ':
             # Fig 5 caption from https://arxiv.org/pdf/astro-ph/0111011.pdf
+            # Note that these corrections also includes evolution corrections
             return (z+6*np.power(z,2.))/(1+15*np.power(z,3.))
         else:
             try:

@@ -45,11 +45,11 @@ class SchechterParams():
         elif band =='bJ':
             # From https://arxiv.org/pdf/astro-ph/0111011.pdf
             # Mmax from Abstract, of the paper above, valid for fit.
-            return -1.21, -19.66, -22.96, -16.5
+            return -1.21, -19.66, -22.00, -16.5
         elif band == 'K':
             # https://iopscience.iop.org/article/10.1086/322488/pdf
             # Mmax from  Fig 3 of the above reference
-            return -1.09, -23.39, -27.0, -19.5
+            return -1.09, -23.39, -27.0, -19.0
         elif band == 'u':                            #These values are actually u', g', r', i', zi, a.k.a. redshifted to the median redshift (0.1) of SDSS.
             return -0.92, -17.93, -21.93, -15.54 
         elif band == 'g':
