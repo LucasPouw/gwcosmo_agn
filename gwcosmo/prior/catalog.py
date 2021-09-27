@@ -229,8 +229,8 @@ class GalaxyCatalog:
         """
         Return color index for K corrections
         """
-        Kcorr_bands = {'B': 'B', 'K': 'K', 'u': 'r', 'g': 'r', 'r': 'g', 'i': 'g', 'z': 'r'}
-        Kcorr_signs = {'B': 1, 'K': 1, 'u': 1, 'g': 1, 'r': -1, 'i': -1, 'z': -1}
+        Kcorr_bands = {'B': 'B', 'K': 'K','bJ':'bJ','u': 'r', 'g': 'r', 'r': 'g', 'i': 'g', 'z': 'r'}
+        Kcorr_signs = {'B': 1, 'K': 1,'bJ':1 ,'u': 1, 'g': 1, 'r': -1, 'i': -1, 'z': -1}
         if not band in Kcorr_bands.keys():
             print('Band {band} not supported for color-based K corrections')
             color = np.zeros(len(self))
