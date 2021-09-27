@@ -1231,7 +1231,7 @@ class WholeSkyGalaxyCatalogLikelihood(GalaxyCatalogLikelihood):
 
         print('Computing the in-catalogue part')
         self.pxG, self.pDG = self.pxD_GH0_multi(H0, galz, galsigmaz, galm, galra,
-                                                galdec, galcolor, nfine=self.nfine,
+                                                galdec, color, nfine=self.nfine,
                                                 ncoarse=self.ncoarse, zcut=self.zcut)
 
         if not self.complete_catalog:
