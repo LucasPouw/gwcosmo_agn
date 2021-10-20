@@ -79,7 +79,7 @@ def mth2hpx(ra, dec, m, nside):
     return hpx_map
 
 def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=67.7
-                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
+                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True,redunc=False):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
@@ -103,6 +103,9 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
         GWcosmo fast cosmology class
     lweight: bool
         If to use luminosity weightening or not
+    redunc: bool
+        False if you dont want redshift uncertainties. Note that using redshift uncertainties will only generate a proxy figure (true distribution)
+        convoluted with error function.
     """
 
     to_return = np.zeros_like(zproxy)
@@ -152,28 +155,36 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
     gal_index=gal_index[index_lum]
     zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
 
-    for i in range(len(allz)):
+    if redunc:
+        for i in range(len(allz)):
+            zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
+            priordens=zprior.p_z(zcut)
+            zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
+            zl /=np.trapz(zl,zcut)
+            interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
 
-        zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
-        priordens=zprior.p_z(zcut)
-        zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
-        zl /=np.trapz(zl,zcut)
-        interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
-
+            if lweight:
+                to_return+=interpo(zproxy)*lweights[i]*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+            else:
+                to_return+=interpo(zproxy)*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+        galdens= to_return/np.trapz(to_return,zproxy)
+    else:
+        edges=zproxy-0.5*(zproxy[1]-zproxy[0])
+        edges=np.append(edges,zproxy[-1]+0.5*(zproxy[1]-zproxy[0]))
+        
         if lweight:
-            to_return+=interpo(zproxy)*lweights[i]
+            to_return, edged = np.histogram(allz,bins=edges,weights=lweights/(1+allz))
         else:
-            to_return+=interpo(zproxy)
+            to_return, edged = np.histogram(allz,bins=edges,weights=1/(1+allz))
+        galdens= to_return/np.sum(to_return*(zproxy[1]-zproxy[0]))    
 
     priordens=zprior.p_z(zproxy)
     priordens/=np.trapz(priordens,zproxy)
-    galdens= to_return/np.trapz(to_return,zproxy)
-
     return galdens,priordens,gal_index
 
 
 def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=67.7,nside=None
-                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True):
+                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True,redunc=False):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
@@ -195,6 +206,9 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
         GWcosmo fast cosmology class
     lweight: bool
         If to use luminosity weightening or not
+    redunc: bool
+        False if you dont want redshift uncertainties. Note that using redshift uncertainties will only generate a proxy figure (true distribution)
+        convoluted with error function.
     """
 
     skymap_gwcosmo = gwcosmo.likelihood.skymap.skymap(fits_file)
@@ -239,23 +253,32 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
     lweights=lweights[index_lum]
     gal_index=gal_index[index_lum]
     zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
+    
+    if redunc:
+        for i in range(len(allz)):
+            zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
+            priordens=zprior.p_z(zcut)
+            zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
+            zl /=np.trapz(zl,zcut)
+            interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
 
-    for i in range(len(allz)):
-        zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
-        priordens=zprior.p_z(zcut)
-        zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
-        zl /=np.trapz(zl,zcut)
-        interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
-
+            if lweight:
+                to_return+=interpo(zproxy)*lweights[i]*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+            else:
+                to_return+=interpo(zproxy)*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+        galdens= to_return/np.trapz(to_return,zproxy)
+    else:
+        edges=zproxy-0.5*(zproxy[1]-zproxy[0])
+        edges=np.append(edges,zproxy[-1]+0.5*(zproxy[1]-zproxy[0]))
+        
         if lweight:
-            to_return+=interpo(zproxy)*lweights[i]*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+            to_return, edged = np.histogram(allz,bins=edges,weights=lweights/(1+allz))
         else:
-            to_return+=interpo(zproxy)*skymap_gwcosmo.skyprob(allra[i],alldec[i])
+            to_return, edged = np.histogram(allz,bins=edges,weights=1/(1+allz))
+        galdens= to_return/np.sum(to_return*(zproxy[1]-zproxy[0]))    
 
     priordens=zprior.p_z(zproxy)
     priordens/=np.trapz(priordens,zproxy)
-    galdens= to_return/np.trapz(to_return,zproxy)
-
     return galdens,priordens,gal_index
 
 
