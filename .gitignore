@@ -1,3 +1,4 @@
+*.ipynb
 *~
 *.egg-info
 *.pyc

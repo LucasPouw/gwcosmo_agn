@@ -1,12 +1,12 @@
 import numpy as np
 import astropy.constants as const
 
-speed_of_light = const.c.to('km/s').value
 
 def sph2vec(ra, dec):
     return np.array([np.sin(np.pi/2.-dec)*np.cos(ra),np.sin(np.pi/2.-dec)*np.sin(ra),np.cos(np.pi/2.-dec)])
 
 def zhelio_to_zcmb(ra, dec, z_helio):
+    speed_of_light = const.c.to('km/s').value
     ra_cmb = 167.99
     dec_cmb = -7.22
     v_cmb = 369.

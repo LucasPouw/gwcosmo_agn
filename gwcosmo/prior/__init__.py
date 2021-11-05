@@ -1,2 +1,1 @@
-import gwcosmo.prior.catalog
-import gwcosmo.prior.priors
+from . import catalog, priors, custom_math_priors
