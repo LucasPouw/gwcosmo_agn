@@ -333,7 +333,7 @@ class gwcosmoLikelihood(object):
                 tempdist = np.zeros([len(H0),len(zsmear)])
                 if len(zsmear)>0:
                     for k in range(len(H0)):
-                        tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)
+                        tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/(1.+zsmear)
                     for n in range(len(zsmear)):
                         if self.weighted:
                             if self.Kcorr == True:
@@ -404,7 +404,7 @@ class gwcosmoLikelihood(object):
                         prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
                     else:
                         prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
-                    deninner += prob*weight*self.ps_z(zsmear[n])
+                    deninner += prob*weight*self.ps_z(zsmear[n])/(1.+zsmear[n])
             normdeninner = deninner/nsmear
             den += normdeninner
 
@@ -867,7 +867,7 @@ class gwcosmoLikelihood(object):
             tempdist = np.zeros([len(H0),len(zsmear)])
             if len(zsmear)>0:
                 for k in range(len(H0)):
-                    tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)
+                    tempdist[k,:] = self.norms[k]*self.pz_xH0(zsmear,self.temps[k])*self.ps_z(zsmear)/(1.+zsmear)
             # loop over random draws from galaxies
                 for n in range(len(zsmear)):
                     if self.weighted:
@@ -885,7 +885,7 @@ class gwcosmoLikelihood(object):
                         prob = self.pdet.pD_dl_eval_basic(self.cosmo.dl_zH0(zsmear[n],H0)).flatten()
                     else:
                         prob = self.pdet.pD_zH0_eval(zsmear[n],H0).flatten()
-                    deninner += prob*weight*self.ps_z(zsmear[n])
+                    deninner += prob*weight*self.ps_z(zsmear[n])/(1.+zsmear[n])
             normnuminner = numinner/nsmear
             num += normnuminner
             normdeninner = deninner/nsmear
