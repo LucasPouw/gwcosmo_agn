@@ -1737,4 +1737,3 @@ def gal_nsmear(z, sigmaz, m, ra, dec, color, nsmear, zcut=10.):
     count = count[ind]
 
     return sampz, sampm, sampra, sampdec, sampcolor, count
-
