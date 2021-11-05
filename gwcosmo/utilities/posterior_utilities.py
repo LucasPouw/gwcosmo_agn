@@ -1,12 +1,8 @@
 # Global Imports
 import numpy as np
-import gwcosmo
 from scipy.integrate import cumtrapz
 from scipy.optimize import fmin
-from scipy.interpolate import splev, splrep, interp1d
-from scipy.stats import gaussian_kde, norm
 from scipy.interpolate import interp1d, UnivariateSpline
-from scipy.optimize import leastsq
 
 
 class confidence_interval(object):
