@@ -6,7 +6,6 @@ import numpy as _np
 from scipy.stats import truncnorm as _truncnorm
 import copy as _copy
 from scipy.interpolate import interp1d as _interp1d
-import bilby as _bilby
 from scipy.special import erf as _erf
 from scipy.special import logsumexp as _logsumexp
 from scipy.integrate import cumtrapz as _cumtrapz

@@ -12,6 +12,9 @@ def readme():
     with open('README.md') as f:
         return f.read()
 
+with open('requirements.txt') as f:
+    reqs = f.read()
+
 setup(name='gwcosmo',
       version='0.1.0',
       description='A package to estimate cosmological parameters using gravitational-wave observations',
@@ -23,12 +26,7 @@ setup(name='gwcosmo',
       package_dir={'gwcosmo': 'gwcosmo'},
       scripts=['bin/gwcosmo_single_posterior', 'bin/gwcosmo_combined_posterior', 'bin/gwcosmo_compute_pdet', 'bin/gwcosmo_pixel_dag'],
       include_package_data=True,
-      install_requires=[
-          'numpy>=1.9',
-          'matplotlib>=2.0',
-          'pandas',
-          'scipy',
-          'tqdm'],
+      install_requires=reqs,
       setup_requires=setup_requires,
       zip_safe=False)
 
