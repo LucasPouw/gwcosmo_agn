@@ -16,9 +16,9 @@ with open('requirements.txt') as f:
     reqs = f.read()
 
 setup(name='gwcosmo',
-      version='0.1.0',
+      version='1.0.0',
       description='A package to estimate cosmological parameters using gravitational-wave observations',
-      url='https://git.ligo.org/cbc-cosmo/gwcosmo',
+      url='https://git.ligo.org/lscsoft/gwcosmo',
       author='Cosmology R&D Group',
       author_email='cbc+cosmo@ligo.org',
       license='GNU',

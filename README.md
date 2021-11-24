@@ -1,37 +1,25 @@
-# GWcosmo
+# gwcosmo
 
-A package to estimate cosmological parameters using gravitational-wave observations. If you use GWcosmo in a scientific publication, please cite 
+A package to estimate cosmological parameters using gravitational-wave observations. 
 
-```
-@article{Gray:2019ksv,
-    author = "Gray, Rachel and others",
-    title = "{Cosmological inference using gravitational wave standard sirens: A mock data analysis}",
-    eprint = "1908.06050",
-    archivePrefix = "arXiv",
-    primaryClass = "gr-qc",
-    reportNumber = "LIGO-P1900017",
-    doi = "10.1103/PhysRevD.101.122001",
-    journal = "Phys. Rev. D",
-    volume = "101",
-    number = "12",
-    pages = "122001",
-    year = "2020"
-}
-```
+If you use gwcosmo in a scientific publication, please cite [R. Gray et al. Phys. Rev. D 101, 122001](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.101.122001) and [R.Gray et al. arXiv:2111.04629 [astro-ph.CO]](https://arxiv.org/abs/2111.04629), and include the following statement in your manuscript: "This work makes use of gwcosmo which is available at https://git.ligo.org/lscsoft/gwcosmo".
 
 ## How-to install
+
+* Clone the `gwcosmo` repository with 
+    ```
+    git clone <repository>
+    ```
+    the name of the repository can be copied from the git interface (top right button). If you do not have ssh key on git, please use the `https` protocol
+* Complete the install by following one of the options below:
+
+### Installing with Anaconda
 
 You will need an [Anaconda distribution](https://www.anaconda.com/). The conda distribution is correctly initialized when, if you open your terminal, you will see the name of the python environment used. The default name is `(base)`.
 
 Once the conda distribution is installed and activated on your machine, please follow these steps:
 
-* Clone the gwcosmo repository with 
-    ```
-    git clone <repository>
-    ```
-    the name of the repository can be copied from the git interface (top right button). If you do not have ssh key on git, please use the `https` protocol
-
-* Enter in the cloned directory
+* Enter the cloned gwcosmo directory.
 
 * Create a conda virtual environment to host gwcosmo. Use
 ```
@@ -40,10 +28,6 @@ conda create -n gwcosmo python=3.6
 * When the virtual environment is ready, activate it with (your python distribution will change to `gwcosmo`)
 ```
 conda activate gwcosmo
-```
-* Run the following line to install all the python packages required by `gwcosmo`
-```
-pip install -r requirements
 ```
 * Install `gwcosmo` by running 
 ```
@@ -54,4 +38,25 @@ python setup.py install
 python setup.py install --force
 ```
 
+### Installing with pip and venv
 
+Venv is included in Python for versions >=3.3.
+
+* Create a virtual environment to host gwcosmo. Use
+```
+python -m venv env
+```
+* When the virtual environment is ready, activate it with
+```
+source env/bin/activate
+```
+* Enter the cloned gwcosmo directory.
+* Install `gwcosmo` by running 
+```
+pip install .
+```
+* Alternatively, if you are planning to modify `gwcosmo` run the following instead:
+```
+pip install -e .
+```
+The `-e` stands for "editable" and means that your installation will automatically update when you make changes to the code.
