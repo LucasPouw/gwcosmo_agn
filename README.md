@@ -40,7 +40,7 @@ python setup.py install --force
 
 ### Installing with pip and venv
 
-Venv is included in Python for versions >=3.3.
+`venv` is included in Python for versions >=3.3.
 
 * Create a virtual environment to host gwcosmo. Use
 ```
