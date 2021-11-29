@@ -2,7 +2,7 @@
 
 A package to estimate cosmological parameters using gravitational-wave observations. 
 
-If you use gwcosmo in a scientific publication, please cite [R. Gray et al. Phys. Rev. D 101, 122001](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.101.122001) and [R.Gray et al. arXiv:2111.04629 [astro-ph.CO]](https://arxiv.org/abs/2111.04629), and include the following statement in your manuscript: "This work makes use of gwcosmo which is available at https://git.ligo.org/lscsoft/gwcosmo".
+If you use gwcosmo in a scientific publication, please cite [R. Gray et al. Phys. Rev. D 101, 122001](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.101.122001) and [R. Gray et al. arXiv:2111.04629](https://arxiv.org/abs/2111.04629), and include the following statement in your manuscript: "This work makes use of gwcosmo which is available at https://git.ligo.org/lscsoft/gwcosmo".
 
 ## How-to install
 
@@ -10,8 +10,8 @@ If you use gwcosmo in a scientific publication, please cite [R. Gray et al. Phys
     ```
     git clone <repository>
     ```
-    the name of the repository can be copied from the git interface (top right button). If you do not have ssh key on git, please use the `https` protocol
-* Complete the install by following one of the options below:
+    The name of the repository can be copied from the git interface (top right button). If you do not have ssh key on git, please use the `https` protocol
+* Complete the install by following one of the options below. Note that `gwcosmo` requires Python version 3.7-3.9 to run.
 
 ### Installing with Anaconda
 
@@ -23,7 +23,7 @@ Once the conda distribution is installed and activated on your machine, please f
 
 * Create a conda virtual environment to host gwcosmo. Use
 ```
-conda create -n gwcosmo python=3.6
+conda create -n gwcosmo
 ```
 * When the virtual environment is ready, activate it with (your python distribution will change to `gwcosmo`)
 ```
