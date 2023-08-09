@@ -82,25 +82,6 @@ class skymap(object):
         """
         return hp.ang2pix(self.nside, np.pi/2.0-dec, ra, nest=self.nested)
 
-    def marginalized_distance(self):
-        mu = self.distmu[(self.distmu < np.inf) & (self.distmu > 0)]
-        distmin = 0.5*min(mu)
-        distmax = 2*max(mu)
-        dl = np.linspace(distmin, distmax, 200)
-        dp_dr = [np.sum(self.prob * r**2 * self.distnorm *
-                        scipy.stats.norm(self.distmu, self.distsigma).pdf(r))
-                 for r in dl]
-        return dl, dp_dr
-
-    def lineofsight_distance(self, ra, dec):
-        ipix = ipix_from_ra_dec(self.nside, ra, dec, nest=self.nested)
-        mu = self.distmu[(self.distmu < np.inf) & (self.distmu > 0)]
-        distmin = 0.5*min(mu)
-        distmax = 2*max(mu)
-        r = np.linspace(distmin, distmax, 200)
-        dp_dr = r**2 * self.distnorm[ipix] * \
-            scipy.stats.norm(self.distmu[ipix], self.distsigma[ipix]).pdf(r)
-        return r, dp_dr
 
     def above_percentile(self, thresh, nside):
         """Returns indices of array within the given threshold
@@ -195,3 +176,28 @@ class skymap(object):
 
         return dicts
 
+    def lineofsight_posterior_dl (self, ra, dec) :
+        """
+        Estimating distance posterior from gw skymap for a given ra nad dec
+
+        Parameters
+        ----------
+        ra, dec : (float, float)
+            Sky coordinates of the source in radians.
+
+        Return
+        ------
+        distmin, distmax, distance posterior
+            minimum and maximum distance correspond to 5 sigma interval
+            distance posterior (scipy.stats.norm)
+
+        """
+
+        pix_los = ipix_from_ra_dec (self.nside, ra, dec, nest=self.nested)
+        mu = self.distmu[(self.distmu < np.inf) & (self.distmu > 0)]
+        distmu_los = self.distmu [pix_los]
+        distsigma_los = self.distsigma [pix_los]
+        distmin = distmu_los - 5*distsigma_los
+        distmax = distmu_los + 5*distsigma_los
+        posterior_dl = scipy.stats.norm (distmu_los, distsigma_los)
+        return distmin, distmax, posterior_dl

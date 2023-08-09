@@ -1,0 +1,122 @@
+{
+    "H0": {
+        "value" : [20, 140, 100],
+        "description" : "The Hubble constant (km s-1 Mpc-1). [start, stop [, bins]] or single value",
+        "prior" : "Uniform",
+        "label" : "$H_0$"
+    },
+    "Xi0": {
+        "value" : 1,
+        "description" : "Parameter of the Xi0_n gravity model.",
+        "prior" : "Uniform",
+        "label" : "$\\Xi_0$"
+    },
+    "n": {
+        "value" : 1.91,
+        "description" : "Parameter of the Xi0_n gravity model.",
+        "prior" : "Uniform",
+        "label" : "$H_0$"
+    },
+    "gamma": {
+        "value" : 4.59, 
+        "description" : "Powerlaw slope (PowerLaw), or low-z slope (Madau) for merger rate evolution with redshift.",
+        "prior" : "Uniform",
+        "label" : "$\\gamma$"
+    },
+    "Madau_zp": {
+        "value": 2.47, 
+        "description" : "Break-point for merger rate evolution with redshift (Madau).",
+        "prior" : "Uniform",
+        "label" : "$z_p$"
+    },
+    "Madau_k": {
+        "value": 2.86,
+        "description" : "High-z slope for merger rate evolution with redshift (Madau).",
+        "prior" : "Uniform",
+        "label" : "$k$"
+    },
+    "mminbh": {
+        "value": 4.98, 
+        "description" : "Minimum mass for BH mass distributions (solar masses).",
+        "prior" : "Uniform",
+        "label" : "$M_{minBH}$"
+    },
+    "mmaxbh": {
+        "value": 112.5,
+        "description" : "Maximum mass for BH mass distributions (solar masses).",
+        "prior" : "Uniform",
+        "label" : "$M_{maxBH}$"
+    },
+    "alpha": {
+        "value" : 3.78,
+        "description" : "Slope of the primary powerlaw or powerlaw-gaussian BH mass distribution",
+        "prior" : "Uniform",
+        "label" : "$\\alpha$"
+    },
+    "mu_g": {
+        "value": 32.27,
+        "description" : "Mean of the gaussian peak of the primary powerlaw-gaussian BH mass distribution.",
+        "prior" : "Uniform",
+        "label" : "$\\mu_g$"
+    },
+    "sigma_g": {
+        "value" : 3.88, 
+        "description" : "Width of the gaussian component of the primary powerlaw-gaussian BH mass distribution (solar masses).",
+        "prior" : "Uniform",
+        "label" : "$\\sigma_g$"
+    },
+    "lambda_peak": {
+        "value": 0.03, 
+        "description" : "Relative weighting between the powerlaw and gaussian component of the primary powerlaw-gaussian BH mass distribution.",
+        "prior" : "Uniform",
+        "label" : "$\\lambda_g$"
+    },
+    "alpha_1": {
+        "value" : 1.05, 
+        "description" : "Slope of the primary broken-powerlaw BH mass distribution before the break point.",
+        "prior" : "Uniform",
+        "label" : "$\\alpha_1$"
+    },
+    "alpha_2": {
+        "value" : 5.17, 
+        "description" : "Slope of the primary broken-powerlaw BH mass distribution after the break point.",
+        "prior" : "Uniform",
+        "label" : "$\\alpha_2$"
+    },
+    "b": {
+        "value" : 0.41, 
+        "description" : "Fraction of the way between mminbh and mmaxbh that the powerlaw break occurs in the primary broken-powerlaw BH mass distribution.",
+        "prior" : "Uniform",
+        "label" : "$b$"
+    },
+    "beta": {
+        "value" : 0.81,
+        "description" : "Slope of secondary BH mass distribution.",
+        "prior" : "Uniform",
+        "label" : "$\\beta$"
+    },
+    "delta_m": {
+        "value" : 4.8,
+        "description" : "Turn on of the minimum mass.",
+        "prior" : "Uniform",
+        "label" : "$\\delta_m$"
+    },
+    "mminns": {
+        "value": 1.0, 
+        "description" : "Minimum mass for NS mass distributions (solar masses).",
+        "prior" : "Uniform",
+        "label" : "$M_{minNS}$"
+    },
+    "mmaxns": {
+        "value": 3.0,
+        "description" : "Maximum mass for NS mass distribution (solar masses).",
+        "prior" : "Uniform",
+        "label" : "$M_{maxNS}$"
+    },
+    "alphans": {
+        "value" : 0.0,
+        "description" : "Slope of the powerlaw BNS mass distributions",
+        "prior" : "Uniform",
+        "label" : "$\\alphans$"
+    }
+}

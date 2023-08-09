@@ -4,11 +4,11 @@ import pickle
 import math
 import array
 import numpy as np
-from optparse import make_option
 
 import h5py
 import pkg_resources
 import healpy as hp
+import warnings
 
 from ..likelihood.skymap import ipix_from_ra_dec
 from ..utilities.cache import get_cachedir
@@ -67,18 +67,6 @@ def istarmap(self, func, iterable, chunksize=1):
 
 
 mpp.Pool.istarmap = istarmap
-
-
-"""
-These are the command line options to control the catalog
-"""
-
-catalog_options = [
-    make_option("--catalog", default=None, metavar="NAME",
-               help="""Specify a galaxy catalog by name. Known catalogs are: DESI, DES, GLADE, GLADE+"""),
-    make_option("--catalog_band", default='B', type=str,
-            help = "Observation band of galaxy catalog (B,K,W1,bJ,u,g,r,i,z) (must be compatible with the catalogue provided)"),
-]
 
 def load_catalog(name, band):
     # Load raw catalog
@@ -174,22 +162,27 @@ class GalaxyCatalog:
                 # Here in case a parallel job has removed the file
                 pass
 
-    def magnitude_thresh(self, band, ra=None, dec=None):
+    def magnitude_thresh(self, band, ra=None, dec=None, min_gals=10, method="median"):
         """
         Return the magnitude threshold for a specific
-        sky position if specified. If fewer than 10 galaxies
-        exist then return inf
+        sky position if specified. The magnitude threshold is
+        estimated as the median of the observed magnitudes
+        If fewer than min_gals galaxies exist then return inf
         TODO: Currently this doesn't select based on ra,dec
         """
         assert (ra is None and dec is None) or (ra is not None and dec is not None)
 
-        print(f'Computing magnitude threshold for {ra},{dec}')
-        print(f'Ngal = {len(self)}')
-        if len(self) < 10:
+        if len(self) < min_gals:
             mth = np.inf
         else:
-            m = self.get_magnitudes(band)
-            mth = np.median(m[np.isfinite(m)])
+            if method == "median":
+                m = self.get_magnitudes(band)
+                mth = np.median(m[np.isfinite(m)])
+            #TODO other methods
+            else:
+                warnings.warn(f"Method {method} not recognized, using median method")
+                m = self.get_magnitudes(band)
+                mth = np.median(m[np.isfinite(m)])
         return mth
 
     def select_pixel(self, nside, pixel_index, nested=True):

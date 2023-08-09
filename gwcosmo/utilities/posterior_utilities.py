@@ -6,9 +6,9 @@ from scipy.interpolate import interp1d, UnivariateSpline
 
 
 class confidence_interval(object):
-    def __init__(self, posterior, H0, level=0.683, verbose=False):
+    def __init__(self, posterior, param, level=0.683, verbose=False):
         self.posterior = posterior
-        self.H0 = H0
+        self.param = param
         self.level = level
         self.verbose = verbose
         self.lower_level, self.upper_level = self.HDI()
@@ -16,9 +16,9 @@ class confidence_interval(object):
         self.map = self.MAP()
         
     def HDI(self):
-        cdfvals = cumtrapz(self.posterior, self.H0)
+        cdfvals = cumtrapz(self.posterior, self.param)
         sel = cdfvals > 0.
-        x = self.H0[1:][sel]
+        x = self.param[1:][sel]
         cdfvals = cdfvals[sel]
         ppf = interp1d(cdfvals, x, fill_value=0., bounds_error=False)
 
@@ -33,7 +33,15 @@ class confidence_interval(object):
 
 
     def MAP(self):
-        sp = UnivariateSpline(self.H0, self.posterior, s=0.)
-        x_highres = np.linspace(self.H0[0], self.H0[-1], 100000)
+        sp = UnivariateSpline(self.param, self.posterior, s=0.)
+        x_highres = np.linspace(self.param[0], self.param[-1], 100000)
         y_highres = sp(x_highres)
         return x_highres[np.argmax(y_highres)]
+        
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')

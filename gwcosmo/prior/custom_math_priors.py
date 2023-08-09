@@ -128,12 +128,9 @@ class SmoothedProb(object):
 
         x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
         cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
-        self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='cubic')
+        self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='linear')
 
-        x_eval = _np.logspace(_np.log10(bottom),_np.log10(bottom+bottom_smooth),1000)
-        cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
-        self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='cubic')
-
+        
     def prob(self,x):
         """
         Returns the probability density function normalized
@@ -184,7 +181,13 @@ class SmoothedProb(object):
         # Find the new normalization in the new interval
         new_norm = self.cdf(b)-self.cdf(a)
         # Apply the new normalization and put to zero all the values above/below the interval
-        to_ret-=_np.log(new_norm)
+        wok = _np.where(new_norm > 0)[0]
+        if len(wok)>0: # the pdf can be normalized
+            to_ret[wok] -= _np.log(new_norm[wok])
+        wnull = _np.where(new_norm <= 0)[0]
+        if len(wnull)>0:            
+            to_ret[wnull] = -_np.inf
+
         to_ret[(x<a) | (x>b)] = -_np.inf
 
         return to_ret
