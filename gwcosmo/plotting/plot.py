@@ -7,8 +7,8 @@ from scipy.stats import norm
 from scipy.interpolate import interp1d
 
 from gwcosmo.utilities import schechter_params
-from gwcosmo.utilities import standard_cosmology
-from gwcosmo.utilities import schechter_function, calc_kcor
+from gwcosmo.utilities import cosmology
+from gwcosmo.utilities import luminosity_function, calc_kcor
 from gwcosmo.prior.catalog import color_names
 
 from ligo.skymap.io import fits
@@ -79,7 +79,7 @@ def mth2hpx(ra, dec, m, nside):
     return hpx_map
 
 def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=67.7
-                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True,redunc=False):
+                             ,cosmo=cosmology.standard_cosmology(Omega_m=0.308, w0=-1., wa=0., zmax=10.0),lweight=True,redunc=False):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
@@ -99,8 +99,8 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
         Nside parameter for the sky division in pixels by HEALPY, must be power of 2
     h0: float
         Hubble constant
-    cosmo: gwcosmo fast cosmology
-        GWcosmo fast cosmology class
+    cosmo: gwcosmo standard cosmology
+        GWcosmo standard cosmology class
     lweight: bool
         If to use luminosity weightening or not
     redunc: bool
@@ -108,6 +108,7 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
         convoluted with error function.
     """
 
+    cosmo.H0 = h0
     to_return = np.zeros_like(zproxy)
     # The number of pixels based on the chosen value of nside
     npix = hp.nside2npix(nside)
@@ -138,12 +139,12 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
     gal_index=gal_index[selected_galaxies]
 
     Kcorr = galaxy_cat.get_k_correction(band,allz,color_names[band],color_value=allm)
-    lweights = gwcosmo.utilities.standard_cosmology.L_mdl(allm, cosmo.dl_zH0(allz, h0),Kcorr=Kcorr)
+    lweights = gwcosmo.utilities.luminosity_function.L_mdl(allm, cosmo.dl_zH0(allz),Kcorr=Kcorr)
 
     alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
 
-    Lmax=gwcosmo.utilities.standard_cosmology.L_M(Mmin_source)
-    Lmin=gwcosmo.utilities.standard_cosmology.L_M(Mmax_source)
+    Lmax=gwcosmo.utilities.luminosity_function.L_M(Mmin_source)
+    Lmin=gwcosmo.utilities.luminosity_function.L_M(Mmax_source)
 
     index_lum = np.where((lweights<Lmax) & (lweights>Lmin))[0]
     allm=allm[index_lum]
@@ -153,12 +154,12 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
     allsigmaz=allsigmaz[index_lum]
     lweights=lweights[index_lum]
     gal_index=gal_index[index_lum]
-    zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
-
+    zprior = cosmo.p_z
+    
     if redunc:
         for i in range(len(allz)):
             zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
-            priordens=zprior.p_z(zcut)
+            priordens=zprior(zcut)
             zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
             zl /=np.trapz(zl,zcut)
             interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
@@ -178,13 +179,13 @@ def overdensity_given_skypos(galaxy_cat,band,Schparam,ra,dec,zproxy,nside=64,h0=
             to_return, edged = np.histogram(allz,bins=edges,weights=1/(1+allz))
         galdens= to_return/np.sum(to_return*(zproxy[1]-zproxy[0]))    
 
-    priordens=zprior.p_z(zproxy)
+    priordens=zprior(zproxy)
     priordens/=np.trapz(priordens,zproxy)
     return galdens,priordens,gal_index
 
 
 def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=67.7,nside=None
-                             ,cosmo=gwcosmo.utilities.standard_cosmology.fast_cosmology(Omega_m=0.308, zmax=10.0, linear=False),lweight=True,redunc=False):
+                             ,cosmo=cosmology.standard_cosmology(Omega_m=0.308, w0=-1., wa=0., zmax=10.0),lweight=True,redunc=False):
     """
     This function returns the redshift prior from the galaxy catalog, from the empty-catalog case and the
     index corresponsing to galaxies in the pixel corresponding to a given sky location.
@@ -202,14 +203,16 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
         Redshift at which to calculate the overdensity
     h0: float
         Hubble constant
-    cosmo: gwcosmo fast cosmology
-        GWcosmo fast cosmology class
+    cosmo: gwcosmo standard cosmology
+        GWcosmo standard cosmology class
     lweight: bool
         If to use luminosity weightening or not
     redunc: bool
         False if you dont want redshift uncertainties. Note that using redshift uncertainties will only generate a proxy figure (true distribution)
         convoluted with error function.
     """
+
+    cosmo.H0 = h0
 
     skymap_gwcosmo = gwcosmo.likelihood.skymap.skymap(fits_file)
     gal_index = np.where(skymap_gwcosmo.samples_within_region(galaxy_cat.data['ra'],galaxy_cat.data['dec'],CL,nside=nside))[0]
@@ -237,12 +240,12 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
 
 
     Kcorr = galaxy_cat.get_k_correction(band,allz,color_names[band],color_value=allm)
-    lweights = gwcosmo.utilities.standard_cosmology.L_mdl(allm, cosmo.dl_zH0(allz, h0),Kcorr=Kcorr)
+    lweights = gwcosmo.utilities.luminosity_function.L_mdl(allm, cosmo.dl_zH0(allz),Kcorr=Kcorr)
 
     alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
 
-    Lmax=gwcosmo.utilities.standard_cosmology.L_M(Mmin_source)
-    Lmin=gwcosmo.utilities.standard_cosmology.L_M(Mmax_source)
+    Lmax=gwcosmo.utilities.luminosity_function.L_M(Mmin_source)
+    Lmin=gwcosmo.utilities.luminosity_function.L_M(Mmax_source)
 
     index_lum = np.where((lweights<Lmax) & (lweights>Lmin))[0]
     allm=allm[index_lum]
@@ -252,12 +255,12 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
     allsigmaz=allsigmaz[index_lum]
     lweights=lweights[index_lum]
     gal_index=gal_index[index_lum]
-    zprior = gwcosmo.utilities.standard_cosmology.redshift_prior(Omega_m=cosmo.Omega_m, zmax=cosmo.zmax, linear=cosmo.linear)
+    zprior = cosmo.p_z
     
     if redunc:
         for i in range(len(allz)):
             zcut = np.linspace(0,allz[i]+9*allsigmaz[i],5000)
-            priordens=zprior.p_z(zcut)
+            priordens=zprior(zcut)
             zl = (1./(1+zcut))*priordens*norm.pdf(zcut,allz[i],allsigmaz[i])
             zl /=np.trapz(zl,zcut)
             interpo = interp1d(zcut,zl,bounds_error=False,fill_value=0.)
@@ -277,7 +280,7 @@ def overdensity_given_GWskyarea(galaxy_cat,band,Schparam,fits_file,CL,zproxy,h0=
             to_return, edged = np.histogram(allz,bins=edges,weights=1/(1+allz))
         galdens= to_return/np.sum(to_return*(zproxy[1]-zproxy[0]))    
 
-    priordens=zprior.p_z(zproxy)
+    priordens=zprior(zproxy)
     priordens/=np.trapz(priordens,zproxy)
     return galdens,priordens,gal_index
 
@@ -310,23 +313,23 @@ def Completeness(H0,z_array,mth,Schparam,weighted=True):
 
     alpha,Mstar_obs,Mmin_source,Mmax_source = Schparam.alpha,Schparam.Mstar,Schparam.Mmin,Schparam.Mmax
 
-    zprior = standard_cosmology.redshift_prior()
-    cosmo = standard_cosmology.fast_cosmology()
+    cosmo = cosmology.standard_cosmology(H0=H0)
+    zprior = cosmo.p_z
     num = np.zeros(len(z_array))
     den = np.zeros(len(z_array))
 
     for i in range(len(z_array)):
 
         def I(M):
-            temp = schechter_function.SchechterMagFunction(alpha=alpha,Mstar_obs=Mstar_obs)(M,H0)
+            temp = luminosity_function.SchechterMagFunction(alpha=alpha,Mstar_obs=Mstar_obs)(M,H0)
             if weighted:
-                return temp*standard_cosmology.L_M(M)
+                return temp*luminosity_function.L_M(M)
             else:
                 return temp
 
-        Mmin = schechter_function.M_Mobs(H0,Mmin_source)
-        Mmax = schechter_function.M_Mobs(H0,Mmax_source)
-        lim = standard_cosmology.M_mdl(mth,cosmo.dl_zH0(z_array[i],H0))
+        Mmin = luminosity_function.M_Mobs(H0,Mmin_source)
+        Mmax = luminosity_function.M_Mobs(H0,Mmax_source)
+        lim = luminosity_function.M_mdl(mth,cosmo.dl_zH0(z_array[i]))
         if lim > Mmax:
             num[i]=1.0
             den[i]=1.0

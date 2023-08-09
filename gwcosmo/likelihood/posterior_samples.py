@@ -6,38 +6,30 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from astropy import units as u
 import h5py
-from ..utilities.standard_cosmology import z_dlH0, fast_cosmology
 from .skymap import ra_dec_from_ipix
-from ..prior.priors import distance_distribution, mass_prior
+from ..prior.priors import distance_distribution
 import json
 import healpy as hp
 import copy
+import sys
 
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import RegularGridInterpolator
 
-class posterior_samples(object):
+class load_posterior_samples(object):
     """
     Posterior samples class and methods.
 
     Parameters
     ----------
-    cosmo : Fast cosmology class
     posterior_samples : Path to posterior samples file to be loaded.
     field : Internal field of the json or the h5 file
     """
     
-    def __init__(self,cosmo, posterior_samples,field=None):
+    def __init__(self,posterior_samples,field=None):
         self.posterior_samples = posterior_samples
-        
-        self.cosmo=cosmo
+
         self.field=field
         self.load_posterior_samples()
-
-    def jacobian_times_prior(self,z,H0):
-        
-        jacobian = np.power(1+z,2)*self.cosmo.dL_by_z_H0(z,H0)
-        dl = self.cosmo.dl_zH0(z, H0)
-        return jacobian*(dl**2)
 
     def load_posterior_samples(self):
         """
@@ -92,14 +84,14 @@ class posterior_samples(object):
             self.mass_2 = np.array(PE_struct['samples'])[:,m2_ind].reshape(-1)
             self.nsamples = len(self.distance)
 
-
         if self.posterior_samples[-2:] == 'h5':
             file = h5py.File(self.posterior_samples, 'r')
 
             if self.field is None:
-                approximants = ['C01:PhenomPNRT-HS', 'C01:NRSur7dq4',
-                                'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
-                                'C01:IMRPhenomD']
+                approximants = ['PublicationSamples','C01:Mixed','C01:PhenomPNRT-HS', 
+                                'C01:NRSur7dq4', 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
+                                'C01:IMRPhenomD', 'C01:IMRPhenomPv2_NRTidal:LowSpin', 
+                                'C01:IMRPhenomPv2_NRTidal:HighSpin']
                 for approximant in approximants:
                     try:
                         data = file[approximant]
@@ -134,111 +126,109 @@ class posterior_samples(object):
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
-    def compute_source_frame_samples(self, H0):
-        
-        zmin = 0.0001
-        zmax = 10
-        zs = np.linspace(zmin, zmax, 10000)
-        dLs = self.cosmo.dl_zH0(zs,H0)
-        z_at_dL = interp1d(dLs,zs)
-        redshift = z_at_dL(self.distance)
-        mass_1_source = self.mass_1/(1+redshift)
-        mass_2_source = self.mass_2/(1+redshift)
-        return redshift, mass_1_source, mass_2_source
 
-
-    def marginalized_redshift_reweight(self, H0, hyper_params_dict, name):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        # Prior distribution used in this work
-        new_prior = mass_prior(name=name, hyper_params_dict=hyper_params_dict)
-
-        # Get source frame masses
-        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
-
-        # Re-weight
-        weights = new_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift,H0)
-
-        if len(np.argwhere(weights==0.))>0.999*len(weights):
-            norm = 0.
-            weights = np.ones(len(weights))
-        else:
-            norm = np.sum(weights)/len(weights)
-
-        return gaussian_kde(redshift,weights=weights), norm
-
-    def marginalized_redshift(self, H0):
-        """
-        Computes the marginalized distance posterior KDE.
-        """
-        
-        # Get source frame masses
-        redshift, mass_1_source, mass_2_source = self.compute_source_frame_samples(H0)
-
-        # remove dl^2 prior and include dz/ddL jacobian
-        weights = 1/(self.cosmo.dL_by_z_H0(redshift,H0)*self.cosmo.dl_zH0(redshift,H0)**2)
-        norm = np.sum(weights)/len(weights)
-
-        return gaussian_kde(redshift,weights=weights), norm
-
-
-
-class make_px_function(object):
+class reweight_posterior_samples(object):
     """
-    Make a line of sight, or sky-marginalised, function of the GW data in
-    redshift and H0.
+    Posterior samples class and methods.
+
+    Parameters
+    ----------
+    cosmo : Fast cosmology class
+    mass_priors: Fast mass_distributions class
     """
     
-    def __init__(self, samples,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
+    def __init__(self,cosmo,mass_priors):
+        self.cosmo = cosmo
+        # Prior distribution used in this work
+        self.source_frame_mass_prior = mass_priors
+    def jacobian_times_prior(self,z):
         """
+        (1+z)^2 * ddL/dz * dL^2
+        """
+        jacobian = np.power(1+z,2)*self.cosmo.ddgw_dz(z)
+        dgw = self.cosmo.dgw_z(z)
+
+        return jacobian*(dgw**2)
+        
+    def compute_source_frame_samples(self, GW_distance, det_mass_1, det_mass_2):
+        """
+        Posterior samples class and methods.
+
         Parameters
         ----------
-        samples : posterior_samples object
-            The GW samples
-        H0 : array of floats
-            Hubble constant values in kms-1Mpc-1
-        hyper_params_dict : dictionary
-            dictionary defining mass distribution parameters 'alpha', 'alpha_2',
-             'mmin', 'mmax', 'beta', 'sigma_g', 'lambda_peak', 'mu_g', 'delta_m', 'b'
-        name : str, optional
-            Mass distribution (default='BBH-powerlaw')
-        reweight_samples : bool, optional
-            Should the samples be reweighted to the same source-frame mass prior
-            as used in the selection effects? (Default=True)
+        GW_distance: GW distance samples in Mpc
+        det_mass_1, det_mass_2 : detector frame mass samples in Msolar
+        H0 : Hubble constant value in kms-1Mpc-1
         """
-        
-        redshift_bins = 500
-        vals = np.zeros((len(H0),redshift_bins))
-        zmin = z_dlH0(np.amin(samples.distance),H0[0])*0.5
-        zmax = z_dlH0(np.amax(samples.distance),H0[-1])*2.
-        for i,H in enumerate(H0):
-            if reweight_samples == True:
-                zkernel, norm = samples.marginalized_redshift_reweight(H, hyper_params_dict,name=name)
+        redshift = self.cosmo.z_dgw(GW_distance)
+
+        mass_1_source = det_mass_1/(1+redshift)
+        mass_2_source = det_mass_2/(1+redshift)
+        return redshift, mass_1_source, mass_2_source
+
+    def get_kde(self, data, weights):
+        # deal first with the weights
+        weights, norm, neff = self.check_weights(weights)
+        if norm != 0:
+            try:
+                kde = gaussian_kde(data, weights=weights)
+            except:
+                print("KDE problem! create a default KDE with norm=0")
+                print("norm: {} -> 0, neff: {}".format(norm,neff))
+                norm = 0
+                kde = gaussian_kde(data)
+        else:
+            kde = gaussian_kde(data)
+            
+        return kde, norm
+                    
+    def ignore_weights(self, weights):
+
+        weights = np.ones(len(weights))
+        norm = 0
+        return weights, norm
+
+    def check_weights(self, weights):
+        """
+        Check the weights values to prevent gaussian_kde crash when Neff <= 1,
+        where Neff is an internal variable of gaussian_kde
+        defined by Neff = sum(weights)^2/sum(weights^2)
+        careful, cases with Neff = 1+2e-16 = 1.0000000000000002
+        have been seen and give crash: set Neff limit to >= 2
+        """
+        neff = 0
+        if np.isclose(max(weights),0,atol=1e-50):
+            weights, norm = self.ignore_weights(weights)
+        else:
+            neff = sum(weights)**2/sum(weights**2)
+            if neff<2:
+                weights, norm = self.ignore_weights(weights)
             else:
-                zkernel, norm = samples.marginalized_redshift(H)
-            z_array = np.linspace(zmin, zmax, redshift_bins)
-            vals[i,:] = zkernel(z_array)*norm
-        self.temps = interp2d(z_array,H0,vals,bounds_error=False, fill_value=0)
-        
-    def px_zH0(self,z,H0):
+                norm = np.sum(weights)/len(weights)
+        return weights, norm, neff
+    
+    def marginalized_redshift_reweight(self, redshift, mass_1_source, mass_2_source):
         """
-        Returns p(x|z,H0)
-        BE CAREFUL ABOUT THE ORDERING OF z and H0! 
-        Interp2d returns results corresponding to an ordered input array
+        Computes the marginalized distance posterior KDE.
         """
-        return self.temps(z,H0)
-        
-    def __call__(self, z,H0):
-        return self.px_zH0(z,H0)
+        # Re-weight
+        weights = self.source_frame_mass_prior.joint_prob(mass_1_source,mass_2_source)/self.jacobian_times_prior(redshift)
+
+        return self.get_kde(redshift,weights)
+
+    def marginalized_redshift(self, redshift):
+        """
+        Computes the marginalized distance posterior KDE.
+        """
+        # remove dgw^2 prior and include dz/ddgw jacobian
+        weights = 1/(self.cosmo.ddgw_dz(redshift)*self.cosmo.dgw(redshift)**2)
+        return self.get_kde(redshift,weights)
 
 
 class make_pixel_px_function(object):
     """
-    Make a line of sight function of the GW data in redshift and H0.
-    
-    Identifies samples within a certain angular radius of the centre of a
-    healpy pixel, and uses these to construct p(x|z,Omega,H0)
+    Identify the posterior samples which lie within some angular radius
+    (depends on skymap pixel size) of the centre of each pixel
     """
     
     def __init__(self, samples, skymap, npixels=30, thresh=0.999):
@@ -258,7 +248,7 @@ class make_pixel_px_function(object):
         
         self.skymap = skymap
         self.samples = samples
-        nside=4
+        nside=1
         indices,prob = skymap.above_percentile(thresh, nside=nside)
     
         while len(indices) < npixels:
@@ -273,10 +263,6 @@ class make_pixel_px_function(object):
             dicts[idx] = prob[i]
         self.indices = indices
         self.prob = dicts # dictionary - given a pixel index, returns skymap prob
-        
-    def px_zH0(self,z,H0):
-        print('Has not been initialised yet')
-        pass
 
         
     def identify_samples(self, idx, minsamps=100):
@@ -311,24 +297,43 @@ class make_pixel_px_function(object):
         print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
             
         return sel
+
         
-    def make_los_px_function(self, idx,H0,hyper_params_dict,name='BBH-powerlaw',reweight_samples=True):
-        """Make line of sight z,H0 function of GW data, using samples
-        selected with idx"""
+
+def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
+    """
+    Find the angular separation between all posterior samples and a specific
+    LOS. Return the indices of the nsamps closest samples, as well as the 
+    maxiumum separation of those samples.
+    
+    Parameters
+    ----------
+    ra_los : float
+        right ascension of the line-of-sight (radians)
+    dec_los : float
+        declination of the line-of-sight (radians)
+    ra : array of floats
+        right ascensions of a set of samples (radians)
+    dec : array of floats
+        declinations of a set of samples (radians)
+    nsamps : int, optional
+        The number of samples to select (default=1000)
         
-        samples = copy.deepcopy(self.samples)
-        samples.distance = samples.distance[idx]
-        samples.mass_1 = samples.mass_1[idx]
-        samples.mass_2 = samples.mass_2[idx]
-        
-        self.px_zH0 = make_px_function(samples,H0,hyper_params_dict,name=name,reweight_samples=reweight_samples)
-        
-        return self.px_zH0
-        
-    def __call__(self,z,H0):
-        return self.px_zH0(z,H0)
-        
-        
+    Return
+    ------
+    index : array of ints
+        The indices of of the nsamps samples
+    ang_rad_max : float
+        The maximum angular radius between the selected samples and the LOS
+    """
+
+    separations = angular_sep(ra_los,dec_los,ra,dec)
+    sep_argsort = np.argsort(separations)
+    index = sep_argsort [:nsamps]
+    ang_rad_max = separations [nsamps-1]
+
+    return index, ang_rad_max
+
         
     
 def angular_sep(ra1,dec1,ra2,dec2):
@@ -338,4 +343,3 @@ def angular_sep(ra1,dec1,ra2,dec2):
     cos_angle = np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)
     angle = np.arccos(cos_angle)
     return angle
-

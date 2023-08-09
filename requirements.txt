@@ -1,5 +1,6 @@
 argparse
 astropy
+bilby
 h5py
 healpy
 importlib-resources
@@ -9,7 +10,7 @@ ligo-segments
 ligo.skymap
 lscsoft-glue
 matplotlib>=2.0
-numpy>=1.19
+numpy>=1.19,<=1.23.5
 pandas
 progressbar
 scipy
