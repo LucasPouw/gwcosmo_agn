@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+# code to generate a .dag file for submitting jobs to the cluster
+import os
+import numpy as np
+import htcondor
+from htcondor import dags
+from optparse import Option, OptionParser, OptionGroup
+import gwcosmo
+
+
+dag=dags.DAG()
+
+from gwcosmo.utilities.arguments import create_parser
+
+parser = create_parser("--cpus",
+                       "--ram",
+                       "--disk",
+                       "--search_tag",
+                       "--nruns",
+                       "--detectors",
+                       "--asd_path",
+                       "--psd",
+                       "--O4sensitivity",
+                       "--priors_file",
+                       "--Nsamps",
+                       "--days_of_O1",
+                       "--days_of_O2",
+                       "--days_of_O3",
+                       "--days_of_O4",
+                       "--duty_factor_O4_H1",
+                       "--duty_factor_O4_L1",
+                       "--duty_factor_O4_V1",
+                       "--duty_factor_O3_H1",
+                       "--duty_factor_O3_L1",
+                       "--duty_factor_O3_V1",
+                       "--duty_factor_O2_H1",
+                       "--duty_factor_O2_L1",
+                       "--duty_factor_O2_V1",
+                       "--duty_factor_O1_H1",
+                       "--duty_factor_O1_L1",
+                       "--frame",
+                       "--snr",
+                       "--fmin",
+                       "--sampling_frequency",
+                       "--approximant",
+                       "--output_dir",
+                       "--combine",
+                       "--output_combine",
+                       "--path_combine",
+                       "--dLmax_depends_on_m1")
+
+opts = parser.parse_args()
+
+cpus = str(opts.cpus)
+if opts.ram < 3000: opts.ram = 3000
+ram = str(opts.ram)
+search_tag = opts.search_tag
+disk = str(opts.disk)
+path = os.path.abspath(os.path.dirname(__file__))
+
+if not os.path.isdir(opts.output_dir): os.mkdir(opts.output_dir)
+if not os.path.isdir(opts.output_dir+'/log'): os.mkdir(opts.output_dir+'/log')
+variables = []
+for i in range(1,opts.nruns+1):
+    variables.append({'run':'{}'.format(i)})
+
+args  = f"\
+    --output_dir {'injection_files'}\
+    --detectors {opts.detectors}\
+    --asd_path {opts.asd_path}\
+    --psd {opts.psd}\
+    --O4sensitivity {opts.O4sensitivity}\
+    --priors_file {opts.priors_file}\
+    --Nsamps {opts.Nsamps}\
+    --days_of_O1 {opts.days_of_O1}\
+    --days_of_O2 {opts.days_of_O2}\
+    --days_of_O3 {opts.days_of_O3}\
+    --days_of_O4 {opts.days_of_O4}\
+    --duty_factor_O4_H1 {opts.duty_factor_O4_H1}\
+    --duty_factor_O4_L1 {opts.duty_factor_O4_L1}\
+    --duty_factor_O4_V1 {opts.duty_factor_O4_V1}\
+    --duty_factor_O3_H1 {opts.duty_factor_O3_H1}\
+    --duty_factor_O3_L1 {opts.duty_factor_O3_L1}\
+    --duty_factor_O3_V1 {opts.duty_factor_O3_V1}\
+    --duty_factor_O2_H1 {opts.duty_factor_O2_H1}\
+    --duty_factor_O2_L1 {opts.duty_factor_O2_L1}\
+    --duty_factor_O2_V1 {opts.duty_factor_O2_V1}\
+    --duty_factor_O1_H1 {opts.duty_factor_O1_H1}\
+    --duty_factor_O1_L1 {opts.duty_factor_O1_L1}\
+    --snr {opts.snr}\
+    --fmin {opts.fmin}\
+    --approximant {opts.approximant}\
+    --sampling_frequency {opts.sampling_frequency}\
+    --frame {opts.frame}\
+    --combine False\
+    --cpus {opts.cpus}\
+    --dLmax_depends_on_m1 {opts.dLmax_depends_on_m1}\
+    "
+
+injections_dag = htcondor.Submit(
+    Executable = path+'/gwcosmo_create_injections',
+    Universe   = 'vanilla',
+    arguments  = args + " --run $(run)",
+    output     = 'log/output_event_$(run).out',
+    error      = 'log/output_event_$(run).err',
+    Log        = 'log/output_event_$(run).log',
+    getenv     = 'True',
+    request_cpus = cpus,
+    request_disk = disk,
+    accounting_group = search_tag,
+    accounting_group_user = os.environ['USER'],
+    request_memory = ram,)
+
+single_pixel_layer = dag.layer(
+    name = 'run',
+    submit_description = injections_dag,
+    vars = variables,)
+
+dags.write_dag(dag,opts.output_dir)
+
+
+
+
