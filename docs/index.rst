@@ -4,7 +4,7 @@ Welcome to gwcosmo's documentation!
 
 Gwcosmo is a package to estimate cosmological parameters using gravitational-wave observations. 
 
-The code is available at: https://git.ligo.org/lscsoft/gwcosmo
+The code is available at: https://git.ligo.org/lscsoft/gwcosmo.
 
 .. toctree::
    :maxdepth: 1
@@ -27,7 +27,7 @@ The code is available at: https://git.ligo.org/lscsoft/gwcosmo
 Citing gwcosmo
 ==============
 
-If you find gwcosmo useful in your work please include the following citations, as well as the following statement "This work makes use of gwcosmo which is available at https://git.ligo.org/lscsoft/gwcosmo".
+If you use gwcosmo in a scientific publication, please cite the following publications, and include the following statement in your manuscript: "This work makes use of gwcosmo which is available at https://git.ligo.org/lscsoft/gwcosmo".
 
 .. code-block:: bibtex
 

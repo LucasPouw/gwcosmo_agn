@@ -1,23 +1,7 @@
 image: python:3.9
 
-#test:
-#  stage: test
-#  script:
-#  - pip install .
-#  - pip install -U sphinx
-#  - pip install myst-parser
-#  - pip install sphinx-rtd-theme
-#  - sphinx-build -b html docs/ public
-#  artifacts:
-#    paths:
-#    - public
-#  only:
-#  - branches
-#  except:
-#  - master
-
-pages:
-  stage: deploy
+test:
+  stage: test
   script:
   - pip install .
   - pip install -U sphinx
@@ -31,4 +15,18 @@ pages:
   - branches
   except:
   - master
+
+pages:
+  stage: deploy
+  script:
+  - pip install .
+  - pip install -U sphinx
+  - pip install myst-parser
+  - pip install sphinx-rtd-theme
+  - sphinx-build -b html docs/ public
+  artifacts:
+    paths:
+    - public
+#  only:
+#  - master
 
