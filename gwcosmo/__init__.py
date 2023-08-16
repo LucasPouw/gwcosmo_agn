@@ -6,3 +6,10 @@ from .prior import catalog, priors
 from .plotting import plot
 from .maps import create_mth_map, create_norm_map
 
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("gwcosmo")
+except PackageNotFoundError:
+    # package is not installed
+    pass

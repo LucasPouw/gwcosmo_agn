@@ -19,7 +19,7 @@ import sys
 import time
 import copy
 import tempfile
-from gwcosmo.utilities.standard_cosmology import fast_cosmology
+from gwcosmo.utilities.cosmology import standard_cosmology
 import random
 import string
 import scipy.integrate as integrate
@@ -1152,7 +1152,7 @@ class Create_injections(object):
                 dict_detected['H0_ref'] = dict_detected['H0_ref'][0]
                 dict_detected['Om0_ref'] = dict_detected['Om0_ref'][0]
 
-            cosmo_ref = fast_cosmology(Omega_m=dict_detected['Om0_ref'])
+            cosmo_ref = standard_cosmology(Omega_m=dict_detected['Om0_ref'])
             detected = injections_at_source(cosmo_ref=cosmo_ref,
                                             H0_ref=dict_detected['H0_ref'],
                                             m1s=dict_detected['mass_1'],
