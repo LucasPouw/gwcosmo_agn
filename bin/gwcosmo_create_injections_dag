@@ -99,7 +99,7 @@ args  = f"\
     "
 
 injections_dag = htcondor.Submit(
-    Executable = path+'/create_injections',
+    Executable = path+'/gwcosmo_create_injections',
     Universe   = 'vanilla',
     arguments  = args + " --run $(run)",
     output     = 'log/output_event_$(run).out',

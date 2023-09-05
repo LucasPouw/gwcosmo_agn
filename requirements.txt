@@ -1,13 +1,11 @@
-argparse
 astropy
 bilby
 h5py
 healpy
-importlib-resources
 lalsuite
 ligo-gracedb
 ligo-segments
-ligo.skymap
+ligo.skymap <=1.0.7
 lscsoft-glue
 matplotlib>=2.0
 numpy>=1.19,<=1.23.5
@@ -16,4 +14,3 @@ progressbar
 scipy
 seaborn
 tqdm
-

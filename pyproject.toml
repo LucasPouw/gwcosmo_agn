@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gwcosmo"
+authors = [
+  { name="Rachel Gray", email="rachel.gray@ligo.org" },
+]
+description = "A package to estimate cosmological parameters using gravitational-wave observations"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies", "version"]
+
+[project.urls]
+Homepage = "https://git.ligo.org/lscsoft/gwcosmo"
+Documentation = "https://lscsoft.docs.ligo.org/gwcosmo/"
+
+[tool.setuptools_scm]
+
+[tool.setuptools]
+script-files = ['bin/gwcosmo_compute_redshift_prior', 'bin/gwcosmo_dark_siren_posterior', 'bin/gwcosmo_bright_siren_posterior', 'bin/gwcosmo_create_injections', 'bin/gwcosmo_create_injections_dag']
+
+[tool.setuptools.packages.find]
+include = ['gwcosmo*']
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

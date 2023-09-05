@@ -12,3 +12,6 @@ build
 dist
 htmlcov
 .ipynb_checkpoints
+docs/source
+docs/_build
+public
