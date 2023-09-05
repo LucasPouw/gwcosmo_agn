@@ -19,6 +19,7 @@ dynamic = ["dependencies", "version"]
 
 [project.urls]
 Homepage = "https://git.ligo.org/lscsoft/gwcosmo"
+Documentation = "https://lscsoft.docs.ligo.org/gwcosmo/"
 
 [tool.setuptools_scm]
 

@@ -8,9 +8,6 @@ test:
   - pip install myst-parser
   - pip install sphinx-rtd-theme
   - sphinx-build -b html docs/ public
-  artifacts:
-    paths:
-    - public
   only:
   - branches
   except:
@@ -27,6 +24,6 @@ pages:
   artifacts:
     paths:
     - public
-#  only:
-#  - master
+  only:
+  - master
 
