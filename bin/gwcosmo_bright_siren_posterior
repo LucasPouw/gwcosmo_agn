@@ -394,7 +394,8 @@ elif method == "gridded" :
 	
     param_values = [parameter_grid[k] for k in names]
 
-    np.savez(outputfile+'.npz',[names,param_values,likelihood,opts,parameter_dict])
+    mylist = np.array([names,param_values,likelihood,opts,parameter_dict],dtype=object)
+    np.savez(outputfile+'.npz',mylist)
 
     if plot:
         no_params = len(names)
