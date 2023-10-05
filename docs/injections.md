@@ -2,7 +2,7 @@
 Generating injections
 =====================
 
-**User guide for injections (as of 20230418):**
+**User guide for injections (as of 202310):**
 
 The injections are computed in the detector frame. By defaut, when the SNR is set to 9, the luminosity distance dL is drawn in a reduced parameter space where dL depends on m1. This prevents computing injections we know by advance won't pass the SNR threshold. If one want to draw dL independently of m1, or for an SNR != 9, we must use the argument `--dLmax_depends_on_m1 0` (which is `1` by default). Using the reduced parameter space with any SNR is possible and easy but it's not available in the current version of the code.
 
