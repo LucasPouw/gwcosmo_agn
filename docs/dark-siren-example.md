@@ -11,7 +11,7 @@ The script `job.sub` below must be given to `condor` with the command `condor_su
 
 environment = "HOME='/home/albert.einstein/' OMP_NUM_THREADS=1 PATH='/home/albert.einstein/.conda/envs/gwcosmo/bin'"
 
-executable = /home/albert.einstein/gwcosmo.test/bin/gwcosmo_dark_siren_posterior
+executable = gwcosmo_dark_siren_posterior # should be in your PATH!!!
 arguments = --method sampling
 --posterior_samples /home/albert.einstein/posterior_samples.json
 --skymap /home/albert.einstein/skymaps_dict.json
@@ -74,6 +74,6 @@ The file: `/home/albert.einstein/GLADE+_LOS_redshift_prior_K_band_luminosity_wei
 
 ## The injection file for the selection effect
 
-The denominator of Eq. 
+The denominator of Eq. 2.2 (see arXiv:2308.02281) take properly into account the selection effects, i.e. the bias due to the fact that our detectors only detect GW above a SNR threshold. For details on the computation of the selection effect, refer to section 2.3 of arXiv:2308.02281. We compute this effect using a large set of 'injections' i.e. simulated compact binaries
 
 ## The parameters you want to estimate
