@@ -130,7 +130,7 @@ else:
     # it's not possible to set it on the cmdline
     # the paramaters a0, a1, a2, a3 (in this order) are those of the empirical function obtained for SNR = 9
     # dLmax(m1) = (a0+a1 m1)exp(-(m1+a2)^2/(2*a3^2))
-
+    dLmax_m1_params = None
     if opts.dLmax_depends_on_m1 == True:
         if ((opts.snr != 9) and ((opts.snr != 10) and (opts.snr != 11) and (opts.snr != 12)) ):
             print("The dLmax(m1) case is usable only for SNR = 9, 10, 11 or 12. Exiting.")
