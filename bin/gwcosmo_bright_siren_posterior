@@ -325,21 +325,24 @@ if method == "sampling" :
                 raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'.")
         else:
             priors[key] = float(parameter_dict[key]['value'])
-          
+
+    sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
+    
     bilbyresult = bilby.run_sampler(
     likelihood=me,
     priors=priors,
     outdir=f"{opts.outputfile}",     # the directory to output the results to
     label=f"{opts.outputfile}",      # a label to apply to the output file
     plot=plot,         # by default this is True and a corner plot will be produced
-    #injection_parameters={"m": m, "c": c},  # (optional) true values for adding to plots
     sampler=sampler,  # set the name of the sampler
     nlive=nlive,         # add in any keyword arguments used by that sampler
     dlogz=dlogz,
     nwalkers=nwalkers,   # add in any keyword arguments used by that sampler
     walks=walks,
     nsteps=nsteps,
-    npool=npool
+    npool=npool,
+    sample=sampling_method
+    #injection_parameters={"m": m, "c": c},  # (optional) true values for adding to plots
     )
 
 
