@@ -74,6 +74,37 @@ The file: `/home/albert.einstein/GLADE+_LOS_redshift_prior_K_band_luminosity_wei
 
 ## The injection file for the selection effect
 
-The denominator of Eq. 2.2 (see arXiv:2308.02281) take properly into account the selection effects, i.e. the bias due to the fact that our detectors only detect GW above a SNR threshold. For details on the computation of the selection effect, refer to section 2.3 of arXiv:2308.02281. We compute this effect using a large set of 'injections' i.e. simulated compact binaries
+The denominator of Eq. 2.2 (see arXiv:2308.02281) take properly into account the selection effects, i.e. the bias due to the fact that our detectors only detect GW above a SNR threshold. For details on the computation of the selection effect, refer to section 2.3 of arXiv:2308.02281. We compute this effect using a large set of 'injections' i.e. simulated compact binaries signals that would be detected in the same instrumental configuration than the one existing to create your actual dataset. For more details, please refer to the dedicated documentation page for Injections.
 
 ## The parameters you want to estimate
+
+The file: `/home/albert.einstein/parameter_dict_BBH_powerlaw_peak.json` contains the configuration of the parameters to estimate in the analysis. It is a json file and the expected format is:
+```
+{
+
+    "H0": {
+        "value" : [10, 200, 100],
+        "description" : "The Hubble constant (km s-1 Mpc-1). [start, stop [, bins]] or single value",
+        "prior" : "Uniform",
+        "label" : "$H_0$"
+    },
+    "gamma": {
+        "value" : [0, 12, 100],
+        "description" : "Powerlaw slope (PowerLaw), or low-z slope (Madau) for merger rate evolution with redshift.",
+        "prior" : "Uniform",
+        "label" : "$\\gamma$"
+    },
+    "Madau_zp": {
+        "value": [0, 4, 100],
+        "description" : "Break-point for merger rate evolution with redshift (Madau).",
+        ...
+```
+In case you want to fix some parameters, you simply have to write in the json file:
+```
+    "mu_g": {
+        "value": 32.27,
+        "description" : "Mean of the gaussian peak of the primary powerlaw-gaussian BH mass distribution.",
+        "prior" : "Uniform",
+        "label" : "$\\mu_g$"
+    },
+```
