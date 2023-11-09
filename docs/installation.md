@@ -1,4 +1,3 @@
-
 Installation
 ==============
 
@@ -28,17 +27,8 @@ You may choose to install gwcosmo from source instead. Gwcosmo can be found at [
     ```
     pip install .
     ```
-* Alternatively, if you are planning to modify gwcosmo run the following instead:
-    ```
-    pip install -e .
-    ```
-    The `-e` stands for "editable" and means that your installation will automatically update when you make changes to the code, including checking out a different branch.
-    If you have not installed gwcosmo in this fashion and later need to update your installation, simply rerun
-    ```
-    pip install .
-    ```
-    in the relevant directory.
-
+ It is also possible to modify your installation of gwcosmo. Should you wish to do this, you can update your installation by simply re-running the above in the relevant directory.
+   
 ## Setting up a virtual environment
 
 ### Using venv
