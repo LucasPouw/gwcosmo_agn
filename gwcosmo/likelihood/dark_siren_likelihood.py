@@ -27,7 +27,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     Class for preparing and carrying out the computation of the likelihood on 
     H0 for a single GW event
     """
-    def __init__(self, posterior_samples_dictionary, skymap_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, posterior_samples_field=None, network_snr_threshold=11.):
+    def __init__(self, posterior_samples_dictionary, skymap_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, posterior_samples_field=None, network_snr_threshold=11., pe_prior = None):
 
         """
         Parameters
@@ -62,11 +62,11 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.pixel_indices_dictionary = {}
         self.samples_dictionary = {}
         self.samples_indices_dictionary = {}
-        
+        self.pe_prior = pe_prior
         self.keys = []
                     
         for key, value in posterior_samples_dictionary.items():
-            samples = load_posterior_samples(posterior_samples_dictionary[key],field=posterior_samples_field[key])
+            samples = load_posterior_samples(posterior_samples_dictionary[key],pe_prior = self.pe_prior,field=posterior_samples_field[key])
             skymap = gwcosmo.likelihood.skymap.skymap(skymap_dictionary[key])
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
@@ -119,13 +119,15 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         px_zOmegaparam = np.zeros((len(pixel_indices),len(self.z_array)))
         for i,pixel_index in enumerate(pixel_indices):
 
-            z_samps,m1_samps,m2_samps = self.reweight_samps.compute_source_frame_samples(samples.distance[samp_ind[pixel_index]], samples.mass_1[samp_ind[pixel_index]], samples.mass_2[samp_ind[pixel_index]])
-
+            z_samps,m1_samps,m2_samps = self.reweight_samps.compute_source_frame_samples(samples.distance[samp_ind[pixel_index]],
+                                                                                         samples.mass_1[samp_ind[pixel_index]],
+                                                                                         samples.mass_2[samp_ind[pixel_index]])
+            PEprior = samples.pe_priors[samp_ind[pixel_index]]
             zmin_temp = np.min(z_samps)*0.5
             zmax_temp = np.max(z_samps)*2.
             z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
-
-            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps)
+            
+            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
 
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
