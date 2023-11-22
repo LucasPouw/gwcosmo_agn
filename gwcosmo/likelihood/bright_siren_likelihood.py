@@ -21,7 +21,7 @@ import sys
    
 class MultipleEventLikelihoodEM(bilby.Likelihood):
 
-    def __init__(self, counterpart_dictionary, injections, zrates, cosmo, mass_priors, posterior_samples_dictionary=None, posterior_samples_field=None, skymap_dictionary=None,  network_snr_threshold=12., post_los_dictionary=None, nsamps=1000, skymap_prior_distance="dlSquare", skymap_H0=70, skymap_Omega_m=0.3065):
+    def __init__(self, counterpart_dictionary, injections, zrates, cosmo, mass_priors, posterior_samples_dictionary=None, posterior_samples_field=None, skymap_dictionary=None,  network_snr_threshold=12., post_los_dictionary=None, nsamps=1000, skymap_prior_distance="dlSquare", skymap_H0=70, skymap_Omega_m=0.3065, pe_prior=None):
 
         """
         Class to calculate log-likelihood on cosmological and population hyper-parameters.
@@ -98,7 +98,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
         self.samples_dictionary = {}
 
-
+        self.pe_prior = pe_prior
         self.keys = []
 
         # likelihood in distance from skymap for em counterpart
@@ -128,7 +128,9 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
                 self.keys.append(key)
 
-                samples = load_posterior_samples(posterior_samples_dictionary[key],field=posterior_samples_field[key])
+                samples = load_posterior_samples(posterior_samples_dictionary[key],
+                                                 pe_prior = self.pe_prior,
+                                                 field=posterior_samples_field[key])
                 self.samples_dictionary[key] = samples
                 if self.post_los_dictionary[key] is False:
                     ra_los, dec_los = self.counterpart_dictionary[key]["ra_dec"]
@@ -169,12 +171,14 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 	
         samples = self.samples_dictionary[event_name]
         z_samps,m1_samps,m2_samps = self.reweight_samps.compute_source_frame_samples(samples.distance, samples.mass_1, samples.mass_2)
+        PEprior = samples.pe_priors
         if self.post_los_dictionary[event_name]:
-            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps)		
+            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
         else :
             sample_index = self.sample_index_dictionary [event_name]
-            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps[sample_index],m1_samps[sample_index],m2_samps[sample_index])
-            
+            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps[sample_index],m1_samps[sample_index],m2_samps[sample_index],
+                                                                          PEprior[sample_index])
+
         redshift_bins = 1000
         zmin = self.cosmo.z_dgw(np.amin(samples.distance))*0.5
         zmax = self.cosmo.z_dgw(np.amax(samples.distance))*2.
