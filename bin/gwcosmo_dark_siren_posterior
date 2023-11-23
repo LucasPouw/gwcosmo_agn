@@ -34,7 +34,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz", "--pe_prior")
+parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
 
 opts = parser.parse_args()
 
@@ -156,10 +156,10 @@ print(f'Assuming a {redshift_evolution} redshift evolution model')
 
 min_pixels = int(opts.min_pixels)
 sky_area = float(opts.sky_area)
-
+print(posterior_samples_dictionary)
 me = gwcosmo.likelihood.dark_siren_likelihood.PixelatedGalaxyCatalogMultipleEventLikelihood(posterior_samples_dictionary, \
                 skymaps_dictionary, injections, LOS_catalog_path, ps_z, cosmo, mass_priors, min_pixels=min_pixels, sky_area=sky_area, \
-                                                                                            posterior_samples_field=posterior_samples_field_dictionary, network_snr_threshold=opts.snr, pe_prior = opts.pe_prior)
+                                                                                            posterior_samples_field=posterior_samples_field_dictionary, network_snr_threshold=opts.snr)
 
 for key in parameter_dict:
     if key not in me.parameters.keys():
