@@ -155,13 +155,17 @@ class load_posterior_samples(object):
     field : Internal field of the json or the h5 file
     """
     
-    def __init__(self,posterior_samples, pe_prior=None,field=None):
-        self.posterior_samples = posterior_samples
+    def __init__(self,posterior_samples,field=None):
 
-        if pe_prior is not None: # PE prior file provided, load the code
-            print("Loading PE prior file {}".format(pe_prior))
+        self.PE_prior_file_key = "PEprior_file_path"
+        self.PE_prior_class_name = "PE_priors"
+        
+        self.posterior_samples = posterior_samples
+        print("\n\nTreating event: {}".format(posterior_samples))
+        if self.PE_prior_file_key in self.posterior_samples.keys():
+            print("PE prior file provided: {}".format(self.posterior_samples[self.PE_prior_file_key]))
             try:
-                spec = importlib.util.spec_from_file_location("PE_priors",pe_prior)
+                spec = importlib.util.spec_from_file_location(self.PE_prior_class_name,self.posterior_samples[self.PE_prior_file_key])
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 self.pe_priors_object = module.PE_priors()
@@ -170,6 +174,7 @@ class load_posterior_samples(object):
                 print("Could not find class named \"PE_priors\" in file {}. Exiting.".format(pe_prior))
                 sys.exit()
         else:
+            print("NO PE prior file user-provided.")
             self.pe_priors_object = None
 
         self.field = field
@@ -181,7 +186,8 @@ class load_posterior_samples(object):
         Currently it supports .dat (LALinference), .hdf5 (GWTC-1),
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
-        if self.posterior_samples[-3:] == 'dat':
+        posterior_file = self.posterior_samples["posterior_file_path"]
+        if posterior_file[-3:] == 'dat':
             samples = np.genfromtxt(self.posterior_samples, names = True)
            
             self.distance = np.array([var for var in samples['luminosity_distance']])
@@ -191,13 +197,13 @@ class load_posterior_samples(object):
             self.mass_2 =  np.array([var for var in samples['mass_2']])
             self.nsamples = len(self.distance)
 
-        if self.posterior_samples[-4:] == 'hdf5':
-            if self.posterior_samples[-11:] == 'GWTC-1.hdf5':
-                if self.posterior_samples[-20:] == 'GW170817_GWTC-1.hdf5':
+        if posterior_file[-4:] == 'hdf5':
+            if posterior_file[-11:] == 'GWTC-1.hdf5':
+                if posterior_file[-20:] == 'GW170817_GWTC-1.hdf5':
                     dataset_name = 'IMRPhenomPv2NRT_lowSpin_posterior'
                 else:
                     dataset_name = 'IMRPhenomPv2_posterior'
-                file = h5py.File(self.posterior_samples, 'r')
+                file = h5py.File(posterior_file,'r')
                 data = file[dataset_name]
                 self.distance = data['luminosity_distance_Mpc']
                 self.ra = data['right_ascension']
@@ -207,8 +213,8 @@ class load_posterior_samples(object):
                 self.nsamples = len(self.distance)
                 file.close()
 
-        if self.posterior_samples.endswith('.json'):
-            with open(self.posterior_samples) as f:
+        if posterior_file.endswith('.json'):
+            with open(posterior_file) as f:
                 data = json.load(f)
 
             PE_struct=data['posterior_samples'][self.field]
@@ -228,10 +234,10 @@ class load_posterior_samples(object):
             self.mass_2 = np.array(PE_struct['samples'])[:,m2_ind].reshape(-1)
             self.nsamples = len(self.distance)
 
-        if self.posterior_samples[-2:] == 'h5':
+        if posterior_file[-2:] == 'h5':
 
-            print(self.posterior_samples)
-            pes = read(self.posterior_samples,package="core")
+            print(posterior_file)
+            pes = read(posterior_file,package="core")
             print("Posterior file correctly read with pesummary.")
 
             if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict):
@@ -296,8 +302,8 @@ class load_posterior_samples(object):
                     self.pe_priors_object = default_PE_priors()
            
 
-        if self.posterior_samples[-3:] == 'hdf':
-            file = h5py.File(self.posterior_samples, 'r')
+        if posterior_file == 'hdf':
+            file = h5py.File(posterior_file,'r')
             self.distance = file['samples/distance'][:]
             self.ra = file['samples/ra'][:]
             self.dec = file['samples/dec'][:]
