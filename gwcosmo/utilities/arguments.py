@@ -28,8 +28,6 @@ def create_parser(*config):
             help="Path to LALinference posterior samples file in format (.dat or hdf5)"),
         "--posterior_samples_field": argument(None, default=None,
             help="Internal field of the posterior samples file, e.g. h5 or json field"),
-        "--pe_prior": argument(None, default=None,
-            help="Path to a file containing the user defined PE_priors class"),
         "--skymap": argument(None, default=None,
             help="Path to LALinference 3D skymap file in format (.fits or fits.gz)"),
         "--counterpart_ra": argument(None, default=None,
