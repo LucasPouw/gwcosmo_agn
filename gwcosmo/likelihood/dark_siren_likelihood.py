@@ -66,7 +66,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.keys = []
                     
         for key, value in posterior_samples_dictionary.items():
-            samples = load_posterior_samples(posterior_samples_dictionary[key],pe_prior = self.pe_prior,field=posterior_samples_field[key])
+            samples = load_posterior_samples(posterior_samples_dictionary[key],field=posterior_samples_field[key])
             skymap = gwcosmo.likelihood.skymap.skymap(skymap_dictionary[key])
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
