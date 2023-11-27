@@ -123,12 +123,13 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
             PEprior = samples.pe_priors[samp_ind[pixel_index]]
+            #print(PEprior,z_samps,m1_samps,m2_samps)
             zmin_temp = np.min(z_samps)*0.5
             zmax_temp = np.max(z_samps)*2.
             z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
             
             kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
-
+            print("norm:{}".format(norm))
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
                 px_zOmegaparam[i,:] = px_zOmegaparam_interp(self.z_array)*norm
@@ -137,8 +138,11 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
         
         Inum_vals = np.sum(px_zOmegaparam*zprior*ps_z_array,axis=0)
+        print("Inum:{}".format(Inum_vals))
+        for i in Inum_vals:
+            print(i)
         num = simpson(Inum_vals,self.z_array)
-
+        print("num:{}".format(num))
         return np.log(num)
         
     def log_likelihood_denominator_single_event(self):
@@ -197,7 +201,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
-        
+
         return self.log_combined_event_likelihood()
         
     def __call__(self):

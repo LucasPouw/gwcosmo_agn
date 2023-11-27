@@ -445,7 +445,7 @@ def get_dL_prior(dl_prior):
         print("dL prior is not an astropy object, no special treatment.")
         return eval(dl_prior),None
     
-    for c in thestr[fc+len(cosmostr):]:
+    for ic, c in enumerate(thestr[fc+len(cosmostr):]):
         keep += c
         if c == '(': # first parenthesis
             par_count += 1
@@ -453,6 +453,11 @@ def get_dL_prior(dl_prior):
         if c == ')':
             par_count -= 1
         if not first and par_count == 0:
+            break
+        if c == '\'' or c == '\"':
+            #print("found quote! {},{}".format(ic,c))
+            fc2 = thestr[fc+len(cosmostr)+ic+1:].find(c)
+            keep = thestr[fc+len(cosmostr)+ic:fc+len(cosmostr)+fc2+2]
             break
     cmod = copy.deepcopy(keep)
     cmod = cmod.replace(" km / (Mpc s)","")
