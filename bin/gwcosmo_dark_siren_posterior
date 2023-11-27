@@ -34,7 +34,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
+parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
 
 opts = parser.parse_args()
 
@@ -60,15 +60,18 @@ if opts.posterior_samples is not None:
 else:
     parser.error('Missing posterior samples')
 
-if opts.skymap is not None:
-    if str(opts.skymap).endswith('.json'):
-        with open(str(opts.skymap)) as json_file:
-            skymaps_dictionary = json.load(json_file)
-    else:
-        skymaps_dictionary = {}
-        skymaps_dictionary['event'] = str(opts.skymap)
-else:
-    parser.error('Missing skymap')
+
+print("\nGW events parameters are:\n")
+for evt_k, evt_v in posterior_samples_dictionary.items():
+    print("--- {}:--- ".format(evt_k))
+    if "skymap_path" not in evt_v.keys():
+        parser.error("GW event {} has not skymap. Exiting.".format(evt_k))
+    if "posterior_file_path" not in evt_v.keys():
+        parser.error("GW event {} has not PE samples. Exiting.".format(evt_k))
+    for k, v in evt_v.items():
+        print("           {} -> {}".format(k,v))
+    print("\n")
+
     
 if opts.parameter_dict is not None:
     with open(str(opts.parameter_dict)) as json_file:
@@ -76,24 +79,7 @@ if opts.parameter_dict is not None:
 else:
     parser.error('Missing parameters file')
 
-if opts.posterior_samples_field is not None:
-    if str(opts.posterior_samples_field).endswith('.json'):
-        with open(str(opts.posterior_samples_field)) as json_file:
-            posterior_samples_field_dictionary = json.load(json_file)
-        for key in posterior_samples_dictionary.keys():
-            if key in posterior_samples_field_dictionary.keys():
-                pass
-            else:
-                posterior_samples_field_dictionary[key] = None 
-    else:
-        posterior_samples_field_dictionary = {}
-        posterior_samples_field_dictionary['event'] = str(opts.posterior_samples_field)
-else:
-    posterior_samples_field_dictionary = {}
-    for key in posterior_samples_dictionary.keys():
-        posterior_samples_field_dictionary[key] = None 
 
-        
 try :
     injdata = h5py.File(opts.injections_path,'r')
 except OSError:
@@ -156,10 +142,11 @@ print(f'Assuming a {redshift_evolution} redshift evolution model')
 
 min_pixels = int(opts.min_pixels)
 sky_area = float(opts.sky_area)
-print(posterior_samples_dictionary)
+
 me = gwcosmo.likelihood.dark_siren_likelihood.PixelatedGalaxyCatalogMultipleEventLikelihood(posterior_samples_dictionary, \
-                skymaps_dictionary, injections, LOS_catalog_path, ps_z, cosmo, mass_priors, min_pixels=min_pixels, sky_area=sky_area, \
-                                                                                            posterior_samples_field=posterior_samples_field_dictionary, network_snr_threshold=opts.snr)
+                                                                                            injections, LOS_catalog_path, ps_z, cosmo, mass_priors,
+                                                                                            min_pixels=min_pixels, sky_area=sky_area, \
+                                                                                            network_snr_threshold=opts.snr)
 
 for key in parameter_dict:
     if key not in me.parameters.keys():
