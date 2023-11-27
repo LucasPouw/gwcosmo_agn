@@ -27,7 +27,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     Class for preparing and carrying out the computation of the likelihood on 
     H0 for a single GW event
     """
-    def __init__(self, posterior_samples_dictionary, skymap_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, posterior_samples_field=None, network_snr_threshold=11., pe_prior = None):
+    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, posterior_samples_field=None, network_snr_threshold=11., pe_prior = None):
 
         """
         Parameters
@@ -66,8 +66,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.keys = []
                     
         for key, value in posterior_samples_dictionary.items():
-            samples = load_posterior_samples(posterior_samples_dictionary[key],field=posterior_samples_field[key])
-            skymap = gwcosmo.likelihood.skymap.skymap(skymap_dictionary[key])
+            samples = load_posterior_samples(posterior_samples_dictionary[key])
+            skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
             
