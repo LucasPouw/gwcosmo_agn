@@ -34,7 +34,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
+parser = create_parser("--method", "--posterior_samples", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
 
 opts = parser.parse_args()
 
