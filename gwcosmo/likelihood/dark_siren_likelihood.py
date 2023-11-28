@@ -123,7 +123,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
             PEprior = samples.pe_priors[samp_ind[pixel_index]]
-            #print(PEprior,z_samps,m1_samps,m2_samps)
+
             zmin_temp = np.min(z_samps)*0.5
             zmax_temp = np.max(z_samps)*2.
             z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
@@ -138,11 +138,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
         
         Inum_vals = np.sum(px_zOmegaparam*zprior*ps_z_array,axis=0)
-        print("Inum:{}".format(Inum_vals))
-        for i in Inum_vals:
-            print(i)
         num = simpson(Inum_vals,self.z_array)
-        print("num:{}".format(num))
         return np.log(num)
         
     def log_likelihood_denominator_single_event(self):
