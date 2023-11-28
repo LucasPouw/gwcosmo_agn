@@ -27,7 +27,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     Class for preparing and carrying out the computation of the likelihood on 
     H0 for a single GW event
     """
-    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, posterior_samples_field=None, network_snr_threshold=11., pe_prior = None):
+    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, network_snr_threshold=11.):
 
         """
         Parameters
@@ -62,7 +62,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.pixel_indices_dictionary = {}
         self.samples_dictionary = {}
         self.samples_indices_dictionary = {}
-        self.pe_prior = pe_prior
         self.keys = []
                     
         for key, value in posterior_samples_dictionary.items():
