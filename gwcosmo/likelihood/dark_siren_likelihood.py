@@ -128,7 +128,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
             
             kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
-            print("norm:{}".format(norm))
+
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
                 px_zOmegaparam[i,:] = px_zOmegaparam_interp(self.z_array)*norm
