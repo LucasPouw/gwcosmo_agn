@@ -108,7 +108,7 @@ class analytic_PE_priors(object):
         sample_dict = self.prior.sample_subset(['chirp_mass','mass_ratio','mass_1','mass_2','luminosity_distance'],1) # sample only the subset of variable of interest
         thekeys = sample_dict.keys()
         #print("thekeys: {}".format(thekeys))
-        print("sample_dict:",sample_dict)
+        print("Check actual sampling parameters: ",sample_dict)
         if 'mass_1' in thekeys and 'mass_2' in thekeys:
             # check if it is a sampling key or a constrained key
             if 'Constraint' in str(self.prior['mass_1' ]) and 'Constraint' in str(self.prior['mass_2' ]):
@@ -210,7 +210,7 @@ class load_posterior_samples(object):
                 for approximant in approximants:
                     try:
                         data = pes.samples_dict[approximant]
-                        print("Using "+approximant+" posterior")
+                        print("No waveform field provided -> setting model: "+approximant)
                         self.field = approximant # record the approximant
                         break
                     except KeyError:
@@ -227,7 +227,7 @@ class load_posterior_samples(object):
         self.mass_2 = data['mass_2']
         self.nsamples = len(self.distance)
         show_keys = ['mass_1','mass_2','chirp_mass','mass_ratio','luminosity_distance']
-        print("Sample field: {}".format(self.field))
+        print("Searching for sample field: {}".format(self.field))
         # deal with PE prior values for each sample
         if self.pe_priors_object is None: # no prior file provided by the user so the prior object may be stored in the posterior file
             status, subdict, pdicts = get_priors(pes) # try to find a prior in the posterior file
@@ -248,15 +248,14 @@ class load_posterior_samples(object):
                     elif len(non_empty_dicts_keys) == 1:
                         ldict = pdicts[non_empty_dicts_keys[0]]
                         self.pe_priors_object = analytic_PE_priors(ldict)
-                        print("Sample field: {}".format(self.field))
-                        print("Found a single analytic prior dict, will use it for the analysis <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.")
-                        print("Dict characteristics")
+                        print("Found a single analytic prior dict with field: {} , will use it for the analysis <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
+                        print("Dict characteristics for masses and distance:")
                         for k in show_keys:
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
-                        print("PE sample field: {}".format(self.field))
+                        print("Required sample field: {}".format(self.field))
                         print("Available keys: {}".format(non_empty_dicts_keys.keys()))
                         if self.field in non_empty_dicts_keys.keys():
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
@@ -269,7 +268,7 @@ class load_posterior_samples(object):
                     print("Single analysis case.")
                     self.pe_priors_object = analytic_PE_priors(pdicts)
                     print("Found a single analytic prior dict, will use it for the analysis <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS!.")
-                    print("Dict characteristics")
+                    print("Dict characteristics for masses and distance:")
                     for k in show_keys:
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
@@ -354,11 +353,11 @@ class load_posterior_samples(object):
             # case where no prior has been found: neither user-provided nor in the posterior file
             print("WARNING !!!!!!!!!!! No PE-prior has been set. Using the default case: U(m1d, m2d) and p(dL) \propto dL^2")
             self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
-        print("Computing PE prior(m1d,m2d,dL) using object: {}".format(self.pe_priors_object))
+        
+        print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
+              .format(self.pe_priors_object,self.pe_priors_object.name))
         self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance)
         print("PE priors values for posterior samples are computed.")
-        #for i in range(len(self.pe_priors)):
-        #    print(self.mass_1[i],self.mass_2[i],self.distance[i],self.pe_priors[i])
 
             
     def marginalized_sky(self):
@@ -442,7 +441,7 @@ def get_dL_prior(dl_prior):
     first = True
     fc = thestr.find(cosmostr)
     if fc == -1: # it's not a prior using an astropy object, no need to go further
-        print("dL prior is not an astropy object, no special treatment.")
+        print("\tdL prior is not an astropy object, no special treatment.")
         return eval(dl_prior),None
     
     for ic, c in enumerate(thestr[fc+len(cosmostr):]):
@@ -454,9 +453,9 @@ def get_dL_prior(dl_prior):
             par_count -= 1
         if not first and par_count == 0:
             break
-        if c == '\'' or c == '\"':
+        if c == '\'' or c == '\"': # check if the astropy object is using an alias for cosmology, such as 'Planck15'
             #print("found quote! {},{}".format(ic,c))
-            fc2 = thestr[fc+len(cosmostr)+ic+1:].find(c)
+            fc2 = thestr[fc+len(cosmostr)+ic+1:].find(c) # find the closing ' or "
             keep = thestr[fc+len(cosmostr)+ic:fc+len(cosmostr)+fc2+2]
             break
     cmod = copy.deepcopy(keep)
