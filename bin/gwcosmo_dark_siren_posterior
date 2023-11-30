@@ -246,7 +246,7 @@ elif method == 'gridded':
             me.parameters[name] = value[n]
             n += 1
         likelihood[indices[i]] = me.log_likelihood()
-
+        
     # rescale values of the log-likelihood before exponentiating
     likelihood -= np.nanmax(likelihood[likelihood < np.inf])
     likelihood = np.exp(likelihood)
