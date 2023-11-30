@@ -138,6 +138,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         
         Inum_vals = np.sum(px_zOmegaparam*zprior*ps_z_array,axis=0)
         num = simpson(Inum_vals,self.z_array)
+
         return np.log(num)
         
     def log_likelihood_denominator_single_event(self):
@@ -160,7 +161,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             print("exit!")
             log_den = np.inf
             #sys.exit()
-            
+
         return log_den, np.log(z_prior_norm)
                        
     def log_combined_event_likelihood(self):
