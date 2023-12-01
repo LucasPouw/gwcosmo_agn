@@ -55,10 +55,19 @@ if opts.posterior_samples is not None:
         with open(str(opts.posterior_samples)) as json_file:
             posterior_samples_dictionary = json.load(json_file)
     else:
-        posterior_samples_dictionary = {}
-        posterior_samples_dictionary['event'] = str(opts.posterior_samples)
+        err_str = """Missing posterior samples. Expecting a json file with format:\n
+        {
+           "GW150914_095045":
+              {
+	         "posterior_file_path" : "/path/to/GW150914.h5",
+	         "samples_field" : "C01:Mixed",
+	         "skymap_path" : "/path/to/GW150914_skymap.fits"
+              }
+        }
+        """
+        parser.error(err_str)
 else:
-    parser.error('Missing posterior samples')
+    parser.error("Missing posterior samples")
 
 
 print("\nGW events parameters are:\n")
