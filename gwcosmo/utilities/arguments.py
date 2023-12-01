@@ -28,6 +28,8 @@ def create_parser(*config):
             help="Path to LALinference posterior samples file in format (.dat or hdf5)"),
         "--posterior_samples_field": argument(None, default=None,
             help="Internal field of the posterior samples file, e.g. h5 or json field"),
+        "--skymap": argument(None, default=None,
+            help="Path to LALinference 3D skymap file in format (.fits or fits.gz)"),
         "--counterpart_ra": argument(None, default=None,
             help="Right ascension of counterpart in radians"),
         "--counterpart_dec": argument(None, default=None,
@@ -168,8 +170,6 @@ def create_parser(*config):
             help="The duty factor of H1 for the O1 run (default=0.646)."),
         "--duty_factor_O1_L1": argument(None, default=0.574, type=float,
             help="The duty factor of L1 for the O1 run (default=0.574)."),
-        "--ifos_config": argument(None,default=None,type=str,
-            help="json file giving the probabilities of ifos configuration [H,L,V], [L,V]..."),
         "--frame": argument(None, default='detectors_frame', type=str,
             help="The frame of the injections(source or detectors) (default is 'detectors_frame')."),
         "--num_threads": argument(None, default=1, type=int,
@@ -202,8 +202,6 @@ def create_parser(*config):
             help="Combine all files listed in the filename into a unique dict file for injections."),
         "--dLmax_depends_on_m1": argument(None, default=1, type=int,
             help="Uses a max value of luminosity distance depending on m1 (defaut=1) ONLY for SNR in {9, 10, 11, 12}!!!!"),
-        "--nsbh": argument(None, default='False', type=str,
-            help="Set the computation of injection for NSBH where m2<min(10,m1)"),
         
         "--disk": argument(None, default=5000, type=int,
             help="Disk asked for each run (default=5000 MB)"),
@@ -242,5 +240,5 @@ def create_parser(*config):
 
 #### Full list of command line arguments (for ease of defining config in command line scripts)
 """
-"--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--counterpart_ra", "--counterpart_dec", "--counterpart_z", "--counterpart_sigmaz", "--counterpart_v", "--counterpart_sigmav", "--redshift_evolution", "--Kcorrections", "--reweight_posterior_samples", "--zmax", "--galaxy_weighting", "--assume_complete_catalog", "--zcut", "--mth", "--schech_alpha", "--schech_Mstar", "--schech_Mmin", "--schech_Mmax", "--H0", "--Omega_m", "--w0", "--wa", "--nside", "--coarse_nside", "--maps_path", "--sky_area", "--pixel_index", "--min_pixels", "--outputfile", "--seed", "--catalog", "--catalog_band", "--min_gals_for_threshold", "--LOS_catalog", "--cpus", "--ram", "--run_on_ligo_cluster", "--parameter_dict", "--plot", "--sampler", "--nwalkers", "--walks", "--npool", "--nsteps", "--nlive", "--dlogz", "--injections_path", "--mass_model", "--run", "--detectors", "--asd_path", "--psd", "--priors_file", "--Nsamps", "--days_of_O1", "--days_of_O2", "--days_of_O3", "--days_of_O4", "--O4sensitivity", "--duty_factor_O4_H1", "--duty_factor_O4_L1", "--duty_factor_O4_V1", "--duty_factor_O3_H1", "--duty_factor_O3_L1", "--duty_factor_O3_V1", "--duty_factor_O2_H1", "--duty_factor_O2_L1", "--duty_factor_O2_V1", "--duty_factor_O1_H1", "--duty_factor_O1_L1", "--frame", "--num_threads", "--snr", "--fmin", "--sampling_frequency", "--approximant", "--output_dir", "--offset", "--tmp_to_dict", "--tmp_to_stdout", "--Tobs", "--combine", "--output_combine", "--path_combine", "--merge_tmpfile_list", "--dLmax_depends_on_m1", "--disk", "--search_tag", "--nruns", "--gravity_model", "--counterpart_dictionary", "--post_los", "--nsamps", "--skymap_prior_distance", "--skymap_Omega_m"
+"--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--counterpart_ra", "--counterpart_dec", "--counterpart_z", "--counterpart_sigmaz", "--counterpart_v", "--counterpart_sigmav", "--redshift_evolution", "--Kcorrections", "--reweight_posterior_samples", "--zmax", "--galaxy_weighting", "--assume_complete_catalog", "--zcut", "--mth", "--schech_alpha", "--schech_Mstar", "--schech_Mmin", "--schech_Mmax", "--H0", "--Omega_m", "--w0", "--wa", "--nside", "--coarse_nside", "--maps_path", "--sky_area", "--pixel_index", "--min_pixels", "--outputfile", "--seed", "--catalog", "--catalog_band", "--min_gals_for_threshold", "--LOS_catalog", "--cpus", "--ram", "--run_on_ligo_cluster", "--parameter_dict", "--plot", "--sampler", "--nwalkers", "--walks", "--npool", "--nsteps", "--nlive", "--dlogz", "--injections_path", "--mass_model", "--run", "--detectors", "--asd_path", "--psd", "--priors_file", "--Nsamps", "--days_of_O1", "--days_of_O2", "--days_of_O3", "--days_of_O4", "--O4sensitivity", "--duty_factor_O4_H1", "--duty_factor_O4_L1", "--duty_factor_O4_V1", "--duty_factor_O3_H1", "--duty_factor_O3_L1", "--duty_factor_O3_V1", "--duty_factor_O2_H1", "--duty_factor_O2_L1", "--duty_factor_O2_V1", "--duty_factor_O1_H1", "--duty_factor_O1_L1", "--frame", "--num_threads", "--snr", "--fmin", "--sampling_frequency", "--approximant", "--output_dir", "--offset", "--tmp_to_dict", "--tmp_to_stdout", "--Tobs", "--combine", "--output_combine", "--path_combine", "--merge_tmpfile_list", "--dLmax_depends_on_m1", "--disk", "--search_tag", "--nruns", "--gravity_model", "--counterpart_dictionary", "--post_los", "--nsamps", "--skymap_prior_distance", "--skymap_H0", "--skymap_Omega_m"
 """
