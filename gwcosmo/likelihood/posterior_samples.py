@@ -101,7 +101,7 @@ class analytic_PE_priors(object):
     
     def __init__(self,analytic_dict):
         
-        self.name = "analytic_PE_prior"
+        self.name = "analytic_PE_prior_from_PE_file"
         # analytic_dict must be an objet having a .prob() function, like Bilby prior dicts
         self.prior = analytic_dict
         # determine if the prior is on m1d, m2d or Mc, q
