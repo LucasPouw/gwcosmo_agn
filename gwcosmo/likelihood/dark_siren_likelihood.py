@@ -27,7 +27,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     Class for preparing and carrying out the computation of the likelihood on 
     H0 for a single GW event
     """
-    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, network_snr_threshold=11.):
+    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, network_snr_threshold=11.,ifar_cut=0):
 
         """
         Parameters
@@ -55,7 +55,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.injections.Nobs = len(list(posterior_samples_dictionary.keys())) # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
         self.mass_priors = mass_priors
         #TODO: add check that the snr threshold is valid for this set of injections
-        self.injections.update_cut(snr_cut=network_snr_threshold)
+        self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut)
         self.cosmo = cosmo
 
         self.zprior_times_pxOmega_dict = {}
