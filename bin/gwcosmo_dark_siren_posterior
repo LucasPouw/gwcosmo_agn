@@ -34,7 +34,10 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
+parser = create_parser("--method", "--posterior_samples", "--redshift_evolution", "--reweight_posterior_samples",
+                       "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot",
+                       "--injections_path", "--mass_model", "--snr", "--ifar", "--gravity_model", '--sampler', "--nwalkers",
+                       "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
 
 opts = parser.parse_args()
 
@@ -94,14 +97,27 @@ try :
 except OSError:
     injdata = h5py.File(opts.injections_path,'r', locking=False)
 
+if 'ifar' in injdata.keys():
+    ifar = np.array(injdata['ifar'])
+else:
+    ifar = np.inf+0*np.array(injdata['m1d'])
+
+if opts.snr == None and opts.ifar != None:
+    opts.snr = 0
+elif opts.snr != None and opts.ifar == None:
+    opts.ifar = 0
+elif opts.snr == None and opts.ifar == None:
+    parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
+print("Analysis will be run with cuts on SNR: {} and IFAR: {}".format(opts.snr,opts.ifar))
+
 injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     m2d=np.array(injdata['m2d']),
                                     dl=np.array(injdata['dl']),
                                     prior_vals=np.array(injdata['pini']),
                                     snr_det=np.array(injdata['snr']),
-                                    snr_cut=0,
-                                    ifar=np.inf+0*np.array(injdata['m1d']),
-                                    ifar_cut=0,
+                                    snr_cut=opts.snr,
+                                    ifar=ifar,
+                                    ifar_cut=opts.ifar,
                                     ntotal=np.array(injdata['ntotal']),
                                     Tobs=np.array(injdata['Tobs']))
 injdata.close()
@@ -155,7 +171,8 @@ sky_area = float(opts.sky_area)
 me = gwcosmo.likelihood.dark_siren_likelihood.PixelatedGalaxyCatalogMultipleEventLikelihood(posterior_samples_dictionary, \
                                                                                             injections, LOS_catalog_path, ps_z, cosmo, mass_priors,
                                                                                             min_pixels=min_pixels, sky_area=sky_area, \
-                                                                                            network_snr_threshold=opts.snr)
+                                                                                            network_snr_threshold=opts.snr,
+                                                                                            ifar_cut=opts.ifar)
 
 for key in parameter_dict:
     if key not in me.parameters.keys():
