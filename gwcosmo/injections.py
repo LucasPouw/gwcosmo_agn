@@ -39,7 +39,7 @@ class Injections():
         snr_det: _np.arrray
             SNR of detected events (provide if file_injection is not provided)
         snr_cut: float
-            Set different to 0 if you wanto to apply a different SNR cut.
+            Set different to 0 if you want to apply a different SNR cut.
         ifar: _np.array
             IFAR of the detected events (IFAR = Inverse False Alarm Rate)
         ifar_cut: float
