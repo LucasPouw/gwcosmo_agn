@@ -8,8 +8,10 @@ ligo-segments
 ligo.skymap <=1.0.7
 lscsoft-glue
 matplotlib>=2.0
+multiprocess
 numpy>=1.19,<=1.23.5
 pandas
+pesummary
 progressbar
 scipy
 seaborn
