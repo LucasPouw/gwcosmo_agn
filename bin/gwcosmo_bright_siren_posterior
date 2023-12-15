@@ -115,9 +115,20 @@ if opts.posterior_samples is not None:
     if str(opts.posterior_samples).endswith('.json'):
         with open(str(opts.posterior_samples)) as json_file:
             posterior_samples_dictionary = json.load(json_file)
-    else :		
-        posterior_samples_dictionary = {}
-        posterior_samples_dictionary['event'] = str(opts.posterior_samples)
+    else: # a json file is required
+        err_str = """Missing posterior samples. Expecting a json file with format:\n
+        {
+           "GW170817":
+              {
+	         "posterior_file_path" : "/path/to/GW170817.h5",
+	         "samples_field" : "C01:Mixed",
+	         "skymap_path" : "/path/to/GW170817_skymap.fits"
+              }
+        }
+        """
+        parser.error(err_str)
+        # posterior_samples_dictionary = {}
+        # posterior_samples_dictionary['event'] = str(opts.posterior_samples)
         #if str2bool(opts.post_los_dictionary) is False: 
         #    if opts.counterpart_dictionary is None :
         #        if opts.counterpart_ra is None or opts.counterpart_dec is None:
