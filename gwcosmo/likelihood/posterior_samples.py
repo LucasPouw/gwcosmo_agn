@@ -187,8 +187,10 @@ class load_posterior_samples(object):
                 self.field = self.posterior_samples[self.samples_field_key]
 
         # deal with the skymap:
-        # in the bin file, we already checked that the key 'skymap_path' exists in the dictionary
-        self.skymap_path = self.posterior_samples[self.PE_skymap_file_key]
+        # for dark_siren: the key 'skymap_path' must exists in the dictionary => already check for that in bin/gwcosmo_dark...
+        # but the bright siren case can have no skymap
+        if self.PE_skymap_file_key in self.posterior_samples.keys():
+            self.skymap_path = self.posterior_samples[self.PE_skymap_file_key]
                 
         self.load_posterior_samples()
 
