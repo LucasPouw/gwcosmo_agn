@@ -128,9 +128,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
                 self.keys.append(key)
 
-                samples = load_posterior_samples(posterior_samples_dictionary[key],
-                                                 pe_prior = self.pe_prior,
-                                                 field=posterior_samples_field[key])
+                samples = load_posterior_samples(posterior_samples_dictionary[key])
                 self.samples_dictionary[key] = samples
                 if self.post_los_dictionary[key] is False:
                     ra_los, dec_los = self.counterpart_dictionary[key]["ra_dec"]
