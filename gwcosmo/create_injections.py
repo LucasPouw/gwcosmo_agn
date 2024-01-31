@@ -397,16 +397,29 @@ class Create_injections(object):
             self.psd_opts = 'low'
             
         nfiles_ok = 0
+        print(duty_factors,self.active_runs)
         for LVCrun in self.active_runs:
             print(LVCrun)
             for ifo in detectors:
+                if duty_factors[LVCrun][ifo] == 0:
+                    print("Skip ifo {} as its prob of run == 0".format(ifo))
+                    continue
                 try:
                     # load strain data, these files have 2 columns: frequency - ASD
-                    if LVCrun == 'O4':
-                        asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
+                    if LVCrun == 'O4': # there can be 3 psds for O4, 'actual', 'high' or 'low' sensitivities
+                        if self.psd_opts == 'high' or self.psd_opts == 'low':
+                            asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
+                        elif self.psd_opts == 'actual':
+                            if ifo == 'L1':
+                                asd_file = asd_path+'LLO_O4a.txt'
+                            elif ifo == 'H1':
+                                asd_file = asd_path+'LHO_O4a.txt'
+                            elif ifo == 'V1':
+                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
+                                sys.exit()
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
-                    print(asd_file)
+                    print("Using sentivity file: {}".format(asd_file))
                     data = np.genfromtxt(asd_file)
                     self.psd_dict[LVCrun][ifo] = {}
                     self.psd_dict[LVCrun][ifo]['frequency'] = data[:,0]
@@ -533,8 +546,10 @@ class Create_injections(object):
             else: # use the computed ones by simulation
                 dLmax_m1 = self.get_dLmax_params(self.SNR_th) # get params for all runs (O1, O2, O3, O4low, O4high)
                 if self.psd_opts == 'low': # rename the O4low or O4high as O4, keep the correct one
+                    print("Using 'O4low' sensitivity")
                     dLmax_m1['O4'] = dLmax_m1['O4low']
                 else:
+                    print("Using 'O4high' sensitivity")
                     dLmax_m1['O4'] = dLmax_m1['O4high']
                 for k in self.active_runs: # keep only active runs
                     self.dLmax_m1_params[k] = dLmax_m1[k]
