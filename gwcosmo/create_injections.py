@@ -75,24 +75,28 @@ def get_dLmax_params_bbh(snr):
         dLmax_m1['O3'] = [221.29342581, 346.4577848 , 144.79389356, 300.18233506]
         dLmax_m1['O4high'] = [506.13296326, 472.93122242, 132.38615963, 356.78473458]
         dLmax_m1['O4low'] = [404.0427499 , 539.12447378, 267.86710129, 380.22198988]
+        dLmax_m1['O4actual'] = [404.68120422, 734.50392847, 512.90612213, 421.30273413]
     elif snr == 10:
         dLmax_m1['O1'] = [100.23551329, 170.93163343, 132.2739466 , 284.22846187]
         dLmax_m1['O2'] = [169.88551387, 170.19039544,  32.31566023, 271.5215608 ]
         dLmax_m1['O3'] = [193.39220375, 274.73366595, 126.57766478, 294.86502435]
         dLmax_m1['O4high'] = [397.99068064, 402.51191324, 142.4032627 , 358.04799943]
         dLmax_m1['O4low'] = [330.62172027, 463.68052239, 290.81530559, 389.57811915]
+        dLmax_m1['O4actual'] = [289.55272772, 493.46708178, 406.46717933, 390.53290099]
     elif snr == 11:
         dLmax_m1['O1'] = [ 88.87764289, 147.99582589, 139.11492612, 287.09436018]
         dLmax_m1['O2'] = [141.87553348, 146.14830225,  37.87513397, 275.02126004]
         dLmax_m1['O3'] = [170.89759958, 238.21000121, 139.13885567, 300.18067038]
         dLmax_m1['O4high'] = [332.5166634 , 353.01041243, 160.2572857 , 364.94558151]
         dLmax_m1['O4low'] = [268.72371536, 386.22874466, 270.99617381, 381.97915148]
+        dLmax_m1['O4actual'] = [239.26238198, 402.92517163, 386.2662383,  385.22412433]
     elif snr == 12:
         dLmax_m1['O1'] = [ 79.66406436, 127.58171485, 132.67504191, 284.22116186]
         dLmax_m1['O2'] = [124.21537846, 125.74500718,  20.49070061, 265.74269184]
         dLmax_m1['O3'] = [150.09056948, 205.01138531, 131.76749229, 296.57518337]
         dLmax_m1['O4high'] = [299.9216596 , 312.34226974, 181.49196053, 377.80390419]
         dLmax_m1['O4low'] = [220.08277715, 324.77506694, 240.93653008, 368.43169707]
+        dLmax_m1['O4actual'] = [219.9698398,  380.77703764, 427.91543449, 398.47682656]
     else:
         print("dLmax(m1) parameters not available for snr {}.".format(snr))
     return dLmax_m1
@@ -545,12 +549,18 @@ class Create_injections(object):
               
             else: # use the computed ones by simulation
                 dLmax_m1 = self.get_dLmax_params(self.SNR_th) # get params for all runs (O1, O2, O3, O4low, O4high)
-                if self.psd_opts == 'low': # rename the O4low or O4high as O4, keep the correct one
+                if self.psd_opts == 'low': # rename the O4low or O4high or O4actual as O4, keep the correct one
                     print("Using 'O4low' sensitivity")
                     dLmax_m1['O4'] = dLmax_m1['O4low']
-                else:
+                elif self.psd_opts == 'high':
                     print("Using 'O4high' sensitivity")
                     dLmax_m1['O4'] = dLmax_m1['O4high']
+                elif self.psd_opts == 'actual':
+                    print("Using 'O4actual' sensitivity")
+                    dLmax_m1['O4'] = dLmax_m1['O4actual']
+                else:
+                    print("ERROR in psd_opts.")
+                    
                 for k in self.active_runs: # keep only active runs
                     self.dLmax_m1_params[k] = dLmax_m1[k]
                         
