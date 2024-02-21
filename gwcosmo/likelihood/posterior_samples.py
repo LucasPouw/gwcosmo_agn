@@ -178,11 +178,11 @@ class load_posterior_samples(object):
                 sys.exit()
         else:
             print("NO PE prior file user-provided.")
-            self.pe_priors_object = None
+            self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
 
         # deal with the field for the PE analysis (C01:Mixed etc.):
         self.field = None
-        if self.samples_field_key in self.posterior_samples.keys():
+        if self.samples_field_key in self.posterior_samples.keys(): # i.e. if the user specified the 'C01:...' waveform model
             if self.posterior_samples[self.samples_field_key].lower() != "none":
                 self.field = self.posterior_samples[self.samples_field_key]
 
@@ -200,10 +200,14 @@ class load_posterior_samples(object):
         This function is called when dealing with .h5 files and O4-.hdf5 files.
         '''
         print(posterior_file)
-        pes = read(posterior_file,package="core")
-        print("Posterior file correctly read with pesummary.")
+        try:
+            pes = read(posterior_file,package="core")
+            print("Posterior file correctly read with pesummary.")
+        except:
+            print("Could not read posterior file with pesummary. Check the file. Exiting.")
+            sys.exit()
 
-        if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict):
+        if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict): # check if we have a multianalysis file
             if self.field is None:
                 approximants = ['PublicationSamples','C01:Mixed','C01:PhenomPNRT-HS', 
                                 'C01:NRSur7dq4', 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
@@ -218,7 +222,12 @@ class load_posterior_samples(object):
                     except KeyError:
                         continue
             else:
-                data = pes.samples_dict[self.field]
+                if self.field in  pes.samples_dict.keys(): # check if required key exists
+                    data = pes.samples_dict[self.field]
+                else:
+                    print("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
+                          .format(self.field,pes.samples_dict.keys()))
+                    sys.exit()
         else: # single analysis in file
             data = pes.samples_dict
             
@@ -243,7 +252,7 @@ class load_posterior_samples(object):
                         if len(pdicts[k]) == 0: # this case should not happen, just in case
                             print("Empty dict")
                         else:
-                            non_empty_dicts_keys.append(k)
+                            non_empty_dicts_keys.append(k) # record existing dict keys
                     if len(non_empty_dicts_keys) == 0:
                         print("Problem: no dict with active keys available! Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.")
                         self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
@@ -358,7 +367,7 @@ class load_posterior_samples(object):
         
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
-        self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance)
+        self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance) # we compute all PE priors values -> pi(m1d,m2d,dL)
         print("PE priors values for posterior samples are computed.")
 
             
