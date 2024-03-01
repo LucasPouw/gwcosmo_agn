@@ -39,7 +39,7 @@ sns.set_palette('colorblind')
 speed_of_light = const.c.to('km/s').value
 
 
-parser = create_parser("--method", "--counterpart_dictionary", "--counterpart_z", "--counterpart_sigmaz", "--counterpart_v", "--counterpart_sigmav", "--counterpart_ra", "--counterpart_dec", "--posterior_samples", "--skymap", "--skymap_prior_distance", "--skymap_H0", "--skymap_Omega_m", "--post_los", "--redshift_evolution", "--parameter_dict", "--injections_path", "--mass_model", "--snr", "--plot", "--outputfile", "--posterior_samples_field", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz", "--nsamps")
+parser = create_parser("--method", "--counterpart_dictionary", "--counterpart_z", "--counterpart_sigmaz", "--counterpart_v", "--counterpart_sigmav", "--counterpart_ra", "--counterpart_dec", "--posterior_samples", "--skymap", "--skymap_prior_distance", "--skymap_H0", "--skymap_Omega_m", "--post_los", "--redshift_evolution", "--parameter_dict", "--injections_path", "--mass_model", "--snr", "--ifar", "--plot", "--outputfile", "--posterior_samples_field", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz", "--nsamps")
 
 opts = parser.parse_args()
 
@@ -224,15 +224,30 @@ try :
     injdata = h5py.File(opts.injections_path,'r')
 except OSError:
     injdata = h5py.File(opts.injections_path,'r', locking=False)
-        
+
+if 'ifar' in injdata.keys():
+    ifar = np.array(injdata['ifar'])
+else:
+    ifar = np.inf+0*np.array(injdata['m1d'])
+
+if opts.snr == None and opts.ifar != None:
+    opts.snr = 0
+elif opts.snr != None and opts.ifar == None:
+    opts.ifar = 0
+elif opts.snr == None and opts.ifar == None:
+    parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
+print("Analysis will be run with cuts on SNR: {} and IFAR: {}".format(opts.snr,opts.ifar))
+
+
+    
 injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     m2d=np.array(injdata['m2d']),
                                     dl=np.array(injdata['dl']),
                                     prior_vals=np.array(injdata['pini']),
                                     snr_det=np.array(injdata['snr']),
-                                    snr_cut=0,
-                                    ifar=np.inf+0*np.array(injdata['m1d']),
-                                    ifar_cut=0,
+                                    snr_cut=opts.snr,
+                                    ifar=ifar,
+                                    ifar_cut=opts.ifar,
                                     ntotal=np.array(injdata['ntotal']),
                                     Tobs=np.array(injdata['Tobs']))
 

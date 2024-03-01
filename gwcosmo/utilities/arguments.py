@@ -177,7 +177,7 @@ def create_parser(*config):
         "--snr": argument(None, default=None, type=float,
             help="The SNR threshold to claim detection of events (no default value)."),
         "--ifar": argument(None, default=None, type=float,
-            help="The IFAR threshold to claim detection of events (no default value but you must provide the value in years, i.e. FAR = 0.25/yr)."),
+            help="The IFAR threshold to claim detection of events (no default value but you must provide the value in years, i.e. 4 years for the inverse of FAR = 0.25/yr)."),
         "--fmin": argument(None, default=20, type=float,
             help="The minimum frequency of the waveforms in Hz (default is 20)."),
         "--sampling_frequency": argument(None, default=4096, type=int,
