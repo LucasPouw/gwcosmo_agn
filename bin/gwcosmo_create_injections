@@ -151,7 +151,7 @@ else:
     # luminosity distance unit is Mpc
     # the constant limit for dLmax is used in the case            
     priors_limits = {'Mmin_det':1.,
-                     'Mmax_det':500.,
+                     'Mmax_det':1000.,
                      'power_index_m1_det':-2.,
                      'power_index_m2_det':1.,
                      'Mmin_source':2.,
