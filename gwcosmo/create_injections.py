@@ -66,9 +66,48 @@ class Counter(object):
 def get_dLmax_params_bbh(snr):
     '''
     This function returns the values of the parameters of the function dLmax(m1) for snrs 9, 10, 11, 12.
-    Parameters are: a[0], a[1], a[2], a[3] with dLmax(m1) = (a[0]+a[1]*m1)*exp(-(m1+a[2])**2/(2*a[3]**2))    
+    There are 6 free parameters and the function is:
+    dLmax(m1) = (a[0]+a[1]*m1)*exp(-(a[2]*x+a[3])**2/(a[4]+a[5]*x))
     '''
+    # data from simulation
+    data_sim = {'O1': {9: np.array([ 2.04066927e+03,  4.49451916e+03,  9.36428505e-05,
+                                  -2.73318488e+02,  2.37776604e+04, -2.04580982e+01]),
+                       10: np.array([ 1.60705883e+03,  3.95333232e+03, -1.20975096e-04,
+                                   -2.31800903e+02,  1.68431401e+04, -1.44268218e+01]),
+                       11: np.array([ 1.37634967e+03,  3.44095311e+03, -1.86026103e-05,
+                                   -3.63472039e+02,  4.11833092e+04, -3.51712995e+01]),
+                       12: np.array([ 1.27536347e+03,  2.90389014e+03, -2.77072971e-05,
+                                   -3.54071305e+02,  3.94286118e+04, -3.37252981e+01])},
+                'O2': {9: np.array([ 2.15802638e+02,  3.09376835e+02, -1.51781889e-01,
+                                  -8.51524637e+01,  1.99551520e+04, -1.74670557e+01]),
+                       10: np.array([ 1.87996715e+02,  3.02590390e+02, -1.89878216e-01,
+                                   -1.47550193e+02,  4.28269025e+04, -3.82596806e+01]),
+                       11: np.array([ 1.87175131e+02,  2.91182557e+02, -9.56461603e-02,
+                                   -9.42680434e+01,  1.42508309e+04, -1.29381365e+01]),
+                       12: np.array([ 1.69569604e+02,  2.53950387e+02, -1.71699447e-01,
+                                   -1.73367436e+02,  4.79277018e+04, -4.38140882e+01])},
+                'O3': {9: np.array([ 2.40835838e+03,  3.94037749e+03,  1.31850035e-05,
+                                  -2.19009275e+02,  1.87719411e+04, -1.74208834e+01]),
+                       10: np.array([ 1.91087170e+03,  3.28304392e+03,  4.87640179e-07,
+                                   -1.99421860e+02,  1.55665911e+04, -1.44611754e+01]),
+                       11: np.array([ 1.53215909e+03,  2.74192848e+03, -9.51077463e-05,
+                                   -1.97159907e+02,  1.53870346e+04, -1.43452666e+01]),
+                       12: np.array([ 1.29806220e+03,  2.44664338e+03,  7.53270027e-06,
+                                   -2.31161468e+02,  2.10296468e+04, -1.95854594e+01])},
+                'O4actual': {9: np.array([ 4.23233131e+03,  4.91528542e+03, -1.09484832e-06,
+                                        -2.18188466e+02,  1.75019248e+04, -1.54155715e+01]),
+                             10: np.array([ 3.44683840e+03,  3.91988171e+03,  1.61782225e-05,
+                                         -2.05859789e+02,  1.57959196e+04, -1.39811527e+01]),
+                             11: np.array([ 3.04136624e+03,  3.50044363e+03, -3.16950360e-05,
+                                         -2.00775102e+02,  1.48264661e+04, -1.30584163e+01]),
+                             12: np.array([ 2.74298860e+03,  3.18482483e+03, -5.43501242e-06,
+                                         -1.98708796e+02,  1.43372541e+04, -1.25634487e+01])}}
     dLmax_m1 = {}
+    for k in data_sim.keys():
+        dLmax_m1[k] = {}
+        dLmax_m1[k] = data_sim[k][snr]
+
+    """
     if snr == 9:
         dLmax_m1['O1'] = [122.15726247, 207.22700382, 136.86499411, 284.60513109]
         dLmax_m1['O2'] = [206.11810764, 205.09670503,  30.7884025 , 271.33777237]
@@ -99,6 +138,8 @@ def get_dLmax_params_bbh(snr):
         dLmax_m1['O4actual'] = [219.9698398,  380.77703764, 427.91543449, 398.47682656]
     else:
         print("dLmax(m1) parameters not available for snr {}.".format(snr))
+    """
+    print(dLmax_m1)
     return dLmax_m1
 
 def get_dLmax_params_nsbh(snr):
@@ -599,12 +640,16 @@ class Create_injections(object):
     def getdLmax_bbh(self,LVCrun,m1):
 
         '''
-        returns the value dLmax(m1) = (a[0]+a[1]*m1)*exp( -(m1+a[2])^2 / (2*a[3]^2) )
+        old function: returns the value dLmax(m1) = (a[0]+a[1]*m1)*exp( -(m1+a[2])^2 / (2*a[3]^2) )
+        new function: returns the value dLmax(m1) = (a0+a1*x)* np.exp(-(a2*x+a3)**2/(a4+a5*x))
         '''
         dlp = self.dLmax_m1_params[LVCrun]
-        dl = (dlp[0]+dlp[1]*m1)*np.exp( - (m1+dlp[2])**2 / (2 * dlp[3]**2) )
+        # old function dl = (dlp[0]+dlp[1]*m1)*np.exp( - (m1+dlp[2])**2 / (2 * dlp[3]**2) )
+        # new function, valid for masses up to 1000
+        dl = (dlp[0]+dlp[1]*m1)*np.exp( - (dlp[2]*m1+dlp[3])**2 / (dlp[4]+dlp[5]*m1) )
         #dlcst = {'O1':8e3,'O2':1e4,'O3':1.3e4}
         #return np.min([dl,dlcst[LVCrun]])
+        #print(LVCrun,m1,dl,dlp)
         return dl
 
     
