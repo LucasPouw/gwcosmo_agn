@@ -67,7 +67,7 @@ def get_dLmax_params_bbh(snr):
     '''
     This function returns the values of the parameters of the function dLmax(m1) for snrs 9, 10, 11, 12.
     There are 6 free parameters and the function is:
-    dLmax(m1) = (a[0]+a[1]*m1)*exp(-(a[2]*x+a[3])**2/(a[4]+a[5]*x))
+    dLmax(m1det) = (a[0]+a[1]*m1det)*exp(-(a[2]*m1det+a[3])**2/(a[4]+a[5]*m1det))
     '''
     # data from simulation
     data_sim = {'O1': {9: np.array([ 2.04066927e+03,  4.49451916e+03,  9.36428505e-05,
@@ -94,6 +94,22 @@ def get_dLmax_params_bbh(snr):
                                    -1.97159907e+02,  1.53870346e+04, -1.43452666e+01]),
                        12: np.array([ 1.29806220e+03,  2.44664338e+03,  7.53270027e-06,
                                    -2.31161468e+02,  2.10296468e+04, -1.95854594e+01])},
+                'O4low': {9: np.array([ 2.44049953e+03,  2.96639576e+03,  5.81749937e-05,
+                                     -4.07322075e+02,  8.35515214e+04, -8.01815715e+01]),
+                          10: np.array([ 1.99008783e+03,  2.38128214e+03, -3.19004145e-05,
+                                      -2.94719833e+02,  4.42557140e+04, -4.25652505e+01]),
+                          11: np.array([ 1.67184068e+03,  1.96410539e+03,  3.47675031e-05,
+                                      -1.99096031e+02,  2.05449796e+04, -1.98809544e+01]),
+                          12: np.array([ 1.45673603e+03,  1.72357453e+03, -1.66473436e-06,
+                                      -2.32150620e+02,  2.78913978e+04, -2.69648514e+01])},
+                'O4high': {9: np.array([ 8.60111084e+02,  6.78385116e+02, -1.31055289e-01,
+                                      -1.38539308e+02,  4.01875531e+04, -4.01875528e+01]),
+                           10: np.array([ 5.75281226e+02,  4.77289796e+02, -2.32409361e-01,
+                                       -1.58674238e+02,  8.11081454e+04, -8.11081432e+01]),
+                           11: np.array([ 4.97577061e+02,  3.98378941e+02, -1.86840677e-01,
+                                       -1.21963079e+02,  5.05000530e+04, -5.05000526e+01]),
+                           12: np.array([ 4.43303905e+02,  3.33903815e+02, -1.32956128e-01,
+                                       -8.03063400e+01,  2.40593765e+04, -2.40593765e+01])},
                 'O4actual': {9: np.array([ 4.23233131e+03,  4.91528542e+03, -1.09484832e-06,
                                         -2.18188466e+02,  1.75019248e+04, -1.54155715e+01]),
                              10: np.array([ 3.44683840e+03,  3.91988171e+03,  1.61782225e-05,
@@ -295,7 +311,8 @@ class Create_injections(object):
                  SNR_thres=9,
                  nsbh=False,
                  combine=False,
-                 dump_inj_period=200):
+                 dump_inj_period=200,
+                 isMDC = False):
 
 
         ###########################################################################
@@ -451,7 +468,7 @@ class Create_injections(object):
                     continue
                 try:
                     # load strain data, these files have 2 columns: frequency - ASD
-                    if LVCrun == 'O4': # there can be 3 psds for O4, 'actual', 'high' or 'low' sensitivities
+                    if LVCrun == 'O4': # there can be 4 psds for O4, 'actual', 'high', 'low' or 'MDC' sensitivities
                         if self.psd_opts == 'high' or self.psd_opts == 'low':
                             asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
                         elif self.psd_opts == 'actual':
@@ -462,8 +479,16 @@ class Create_injections(object):
                             elif ifo == 'V1':
                                 print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                                 sys.exit()
+                        elif self.psd_opts == 'MDC':
+                            if ifo == 'L1':
+                                asd_file = asd_path+'aligo_O4high.txt'
+                            elif ifo == 'H1':
+                                asd_file = asd_path+'aligo_O4high.txt'
+                            elif ifo == 'V1':
+                                asd_file = asd_path+'avirgo_O4high_NEW.txt'
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
+
                     print("Using sentivity file: {}".format(asd_file))
                     data = np.genfromtxt(asd_file)
                     self.psd_dict[LVCrun][ifo] = {}
@@ -599,6 +624,9 @@ class Create_injections(object):
                 elif self.psd_opts == 'actual':
                     print("Using 'O4actual' sensitivity")
                     dLmax_m1['O4'] = dLmax_m1['O4actual']
+                elif self.psd_opts == 'MDC':
+                    print("WARNING MDC case: Using 'O4high' sensitivity for the random draws")
+                    dLmax_m1['O4'] = dLmax_m1['O4high']
                 else:
                     print("ERROR in psd_opts.")
                     
@@ -1125,7 +1153,7 @@ class Create_injections(object):
 
             # increase the number of simulations, event if there are no available interferometers
             nsim_child_tot += 1            
-            run_LVC, dets = self.detector_config.GetDetectorConfig() # draw a random detector configuration ([O1, O2, O3, O4], + [L, V, H])
+            run_LVC, dets = self.detector_config.GetDetectorConfig(self.psd_opts) # draw a random detector configuration ([O1, O2, O3, O4], + [L, V, H])
             nsim_child_tot_LVC[run_LVC] += 1
             nsim_global_tot = self.NsimTot.increment() # return value after increment
             nsim_global_tot_LVC = self.Nsim[run_LVC].increment() # return value after increment
@@ -1473,7 +1501,29 @@ class detector_config(object):
         self.prob = list(prob_of_run.values()) # list of probas
         self.psd_dict = psd_dict # dict of the form {'O1': {'H1': {'frequency':.... {'L1':....
         
-    def GetDetectorConfig(self):
+    def GetDetectorConfig(self, isMDC=None):
+        # hack for MDC injections, cf https://git.ligo.org/simone.mastrogiovanni/micecatv1_mdc/-/blob/main/MDCutils.py?ref_type=heads
+        if isMDC == 'MDC':
+            lucky = np.random.rand()    
+            if lucky < 0.5:
+                ifos = ['H1','L1','V1']
+            elif (lucky >= 0.5) & (lucky < 0.64):
+                ifos = ['H1','L1']
+            elif (lucky >= 0.64) & (lucky < 0.78):
+                ifos = ['H1','V1']
+            elif (lucky >= 0.78) & (lucky < 0.92):
+                ifos = ['L1','V1']
+            elif (lucky >= 0.92) & (lucky < 0.94):
+                ifos = ['H1']
+            elif (lucky >= 0.94) & (lucky < 0.96):
+                ifos = ['L1']
+            elif (lucky >= 0.96) & (lucky < 0.98):
+                ifos = ['V1']
+            else:
+                ifos = []
+            return 'O4',ifos
+
+        
         # draw among O1, O2, O3, O4
         LVCrun = np.random.choice(self.keys,1,replace=True,p=self.prob)[0]
         
