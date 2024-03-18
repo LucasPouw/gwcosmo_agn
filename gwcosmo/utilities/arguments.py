@@ -147,7 +147,7 @@ def create_parser(*config):
         "--days_of_O4": argument(None, default=330, type=float,
             help="Total days of O4 run (default=330)."),
         "--O4sensitivity": argument(None, default='low', type=str,
-            help="Optimistic (high) or pessimistic (low) sensitivity for O4 (default='low')."),
+            help="Optimistic ('high'), pessimistic ('low'), real ('actual') or MDC ('MDC')  sensitivity for O4 (default='low')."),
         "--duty_factor_O4_H1": argument(None, default=0.75, type=float,
             help="The duty factor of H1 for the O4 run (default=0.75)."),
         "--duty_factor_O4_L1": argument(None, default=0.75, type=float,
