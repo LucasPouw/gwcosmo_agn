@@ -63,7 +63,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
             Assumed Omega_m (if Flat Lambda CDM cosmology)  while constructing skymap if skymap_prior_distance is "UniformComoving".
         """
 
-        super().__init__(parameters={'H0': None, 'Xi0': None, 'n': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'beta':None, 'alphans':None, 'mminns':None, 'mmaxns':None})
+        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'beta':None, 'alphans':None, 'mminns':None, 'mmaxns':None, 'Xi0':None, 'n':None, 'D':None, 'logRc':None, 'nD':None, 'cM':None})
 
         # em couterpart information
         self.counterpart_dictionary = counterpart_dictionary
@@ -256,7 +256,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
     def log_likelihood(self):
 
-        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n']}
+        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.zrates.gamma = self.parameters['gamma']
