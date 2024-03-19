@@ -91,6 +91,7 @@ conda-build:
 
 
 pages:
+  image: python:3.9
   stage: deploy
   script:
   - pip install .
