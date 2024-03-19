@@ -471,6 +471,23 @@ class extra_dimension_cosmology(standard_cosmology):
         return ((self.__D-4)/2/self.__nD)*(1 + (self.dl_zH0(z)/(1+z)/10**(self.__logRc))**self.__nD)**((self.__D-4)/2/self.__nD-1) * self.__nD*(self.dl_zH0(z)/(1+z)/10**(self.__logRc))**(self.__nD-1) * (self.ddl_dz(z)/(1+z)/10**(self.__logRc)-self.dl_zH0(z)/(1+z)**2/10**(self.__logRc))
 
 
+    def z_dgw(self, dgw):
+        """
+        Returns redshift given GW distance
+
+        Parameters
+        ----------
+        dgw : GW distance in Mpc
+
+        Returns
+        -------
+        redshift, z
+        """
+        zgw = self.z_of_dgw(dgw*self.H0/c)
+
+        return zgw
+
+
 class cM_cosmology(standard_cosmology):
     # Modified cosmology in cM parameterization, inheriting features from standard cosmology.
 
