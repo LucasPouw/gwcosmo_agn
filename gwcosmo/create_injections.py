@@ -468,7 +468,7 @@ class Create_injections(object):
                     continue
                 try:
                     # load strain data, these files have 2 columns: frequency - ASD
-                    if LVCrun == 'O4': # there can be 4 psds for O4, 'actual', 'high', 'low' or 'MDC' sensitivities
+                    if LVCrun == 'O4': # there can be several psds for O4, 'actual', 'avg', 'high', 'low' or 'MDC' sensitivities
                         if self.psd_opts == 'high' or self.psd_opts == 'low':
                             asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
                         elif self.psd_opts == 'actual':
@@ -486,6 +486,14 @@ class Create_injections(object):
                                 asd_file = asd_path+'aligo_O4high.txt'
                             elif ifo == 'V1':
                                 asd_file = asd_path+'avirgo_O4high_NEW.txt'
+                        elif self.psd_opts == 'avg':
+                            if ifo == 'L1':
+                                asd_file = asd_path+'L1_O4a_avg.txt'
+                            elif ifo == 'H1':
+                                asd_file = asd_path+'H1_O4a_avg.txt'
+                            elif ifo == 'V1':
+                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
+                                sys.exit()
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -627,6 +635,9 @@ class Create_injections(object):
                 elif self.psd_opts == 'MDC':
                     print("WARNING MDC case: Using 'O4high' sensitivity for the random draws")
                     dLmax_m1['O4'] = dLmax_m1['O4high']
+                elif self.psd_opts == 'avg':
+                    print("WARNING AVG case: Using 'O4high' sensitivity for the random draws")
+                    dLmax_m1['O4'] = dLmax_m1['O4high']   
                 else:
                     print("ERROR in psd_opts.")
                     
