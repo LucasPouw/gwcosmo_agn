@@ -494,6 +494,14 @@ class Create_injections(object):
                             elif ifo == 'V1':
                                 print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                                 sys.exit()
+                        elif self.psd_opts == 'late':
+                            if ifo == 'L1':
+                                asd_file = asd_path+'LLO_1384459938.txt'
+                            elif ifo == 'H1':
+                                asd_file = asd_path+'LHO_1388988918.txt'
+                            elif ifo == 'V1':
+                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
+                                sys.exit()
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -637,7 +645,10 @@ class Create_injections(object):
                     dLmax_m1['O4'] = dLmax_m1['O4high']
                 elif self.psd_opts == 'avg':
                     print("WARNING AVG case: Using 'O4high' sensitivity for the random draws")
-                    dLmax_m1['O4'] = dLmax_m1['O4high']   
+                    dLmax_m1['O4'] = dLmax_m1['O4high']
+                elif self.psd_opts == 'late':
+                    print("WARNING LATE case: Using 'O4high' sensitivity for the random draws")
+                    dLmax_m1['O4'] = dLmax_m1['O4high']
                 else:
                     print("ERROR in psd_opts.")
                     
