@@ -312,7 +312,7 @@ class Create_injections(object):
                  nsbh=False,
                  combine=False,
                  dump_inj_period=200,
-                 isMDC = False):
+                 isrun = False):
 
 
         ###########################################################################
@@ -1522,32 +1522,50 @@ class detector_config(object):
         self.keys = list(prob_of_run.keys()) # list of keys ['O1','O2','O3','O4']
         self.prob = list(prob_of_run.values()) # list of probas
         self.psd_dict = psd_dict # dict of the form {'O1': {'H1': {'frequency':.... {'L1':....
-        
-    def GetDetectorConfig(self, isMDC=None):
-        # hack for MDC injections, cf https://git.ligo.org/simone.mastrogiovanni/micecatv1_mdc/-/blob/main/MDCutils.py?ref_type=heads
-        if isMDC == 'MDC':
-            lucky = np.random.rand()    
-            if lucky < 0.5:
-                ifos = ['H1','L1','V1']
-            elif (lucky >= 0.5) & (lucky < 0.64):
-                ifos = ['H1','L1']
-            elif (lucky >= 0.64) & (lucky < 0.78):
-                ifos = ['H1','V1']
-            elif (lucky >= 0.78) & (lucky < 0.92):
-                ifos = ['L1','V1']
-            elif (lucky >= 0.92) & (lucky < 0.94):
-                ifos = ['H1']
-            elif (lucky >= 0.94) & (lucky < 0.96):
-                ifos = ['L1']
-            elif (lucky >= 0.96) & (lucky < 0.98):
-                ifos = ['V1']
-            else:
-                ifos = []
-            return 'O4',ifos
 
-        
-        # draw among O1, O2, O3, O4
+    def GetDetectorConfig(self, isrun=None):
+
+        # first, draw among O1, O2, O3, O4
         LVCrun = np.random.choice(self.keys,1,replace=True,p=self.prob)[0]
+        
+        # hack for MDC injections, cf https://git.ligo.org/simone.mastrogiovanni/micecatv1_mdc/-/blob/main/MDCutils.py?ref_type=heads
+        if (LVCrun == 'O4'):
+            if isrun == 'MDC':
+                lucky = np.random.rand()    
+                if lucky < 0.5:
+                    ifos = ['H1','L1','V1']
+                elif (lucky >= 0.5) & (lucky < 0.64):
+                    ifos = ['H1','L1']
+                elif (lucky >= 0.64) & (lucky < 0.78):
+                    ifos = ['H1','V1']
+                elif (lucky >= 0.78) & (lucky < 0.92):
+                    ifos = ['L1','V1']
+                elif (lucky >= 0.92) & (lucky < 0.94):
+                    ifos = ['H1']
+                elif (lucky >= 0.94) & (lucky < 0.96):
+                    ifos = ['L1']
+                elif (lucky >= 0.96) & (lucky < 0.98):
+                    ifos = ['V1']
+                else:
+                    ifos = []
+
+            else:
+                # we refine the random draw of H1, L1 using 1-fold and 2-fold uptimes, see https://gwosc.org/detector_status/O4a/
+                # warning: on this web page, the probabilities don't add-up to 1: 53.4 + 29.7 + 16.6 = 99.7%
+                # so that I used 53.5% with 2 ifos, 29.8 with 1 ifo and 16.7 with 0 ifo
+                lucky = np.random.rand()    
+                if lucky < 0.535:
+                    ifos = ['H1','L1']
+                elif (lucky >= 0.535) & (lucky < 0.69): #0.535 + 15.5 = 69% for L1 during O4a
+                    ifos = ['L1']
+                elif (lucky >= 0.69) & (lucky < 0.83): # 0.535 + 0.83 - 0.69 = 67.5% for H1 during O4a
+                    ifos = ['H1']
+                else: # proba = 17%
+                    ifos = []
+
+            return 'O4',ifos
+        
+        
         
         dets = []
         # draw online interferometers according to their duty cycle
