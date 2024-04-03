@@ -78,34 +78,27 @@ else:
 print("\nGW events parameters are:\n")
 missing_files = {}
 for evt_k, evt_v in posterior_samples_dictionary.items():
-    print("--- {}:--- ".format(evt_k))
-    if "skymap_path" not in evt_v.keys():
-        parser.error("GW event {} has not skymap. Exiting.".format(evt_k))
-    if "posterior_file_path" not in evt_v.keys():
-        parser.error("GW event {} has not PE samples. Exiting.".format(evt_k))
+    print(f"--- {evt_k}:---")
+    if "skymap_path" not in evt_v:
+        raise ValueError(f"GW event {evt_k} has not skymap. Exiting.")
+    if "posterior_file_path" not in evt_v:
+        raise ValueError(f"GW event {evt_k} has not PE samples. Exiting.")
     for k, v in evt_v.items():
-        file_exists = os.path.exists(v)
-        if not file_exists:
-            add_txt = "DOES NOT EXIST!"
-        else:
-            add_txt = "FILE OK"
-        print("           {} -> {}: {}".format(k,v,add_txt))
-        if not file_exists:
-            if evt_k in missing_files.keys():
-                if 'missing' in missing_files[evt_k].keys():
-                    missing_files[evt_k]['missing'].append(v)
-                else:
-                    missing_files[evt_k]['missing'] = [v]
+        if not (file_exists := os.path.exists(v)):
+            missing_files.setdefault(evt_k, {}).update({k: v})
+        add_txt = "DOES NOT EXIST!" if not file_exists else "FILE OK"
+        print(f"           {k} -> {v}: {add_txt}")
     print("\n")
 
 if missing_files:
-    print(missing_files)
     print("PE or skymaps files are missing:")
     for evt_k, evt_v in missing_files.items():
-        print("--- {}:--- {}".format(evt_k,evt_v))
+        print(f"--- {evt_k}:---")
+        for k, v in evt_v.items():
+            print(f"      missing {k} -> {v}")
     print("Exiting.")
     sys.exit()
-    
+
 if opts.parameter_dict is not None:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
