@@ -474,6 +474,9 @@ def get_dL_prior(dl_prior):
     cmod = cmod.replace(" K","")
     cmod = cmod.replace(" eV","")
     cmod = cmod.replace("[0.   0.   0.06]","[0.,   0.,   0.06]")
+    # Fix for astropy >= 6.0
+    cmod = cmod.replace("<Quantity","")
+    cmod = cmod.replace(">","")
     PE_cosmo = eval(cmod)
     #print("cmod: {}".format(cmod))
     #print("PE_cosmo: {}".format(PE_cosmo))
