@@ -1,331 +1,321 @@
 #!/usr/bin/env python3
 """
-Multi-paraeter likelihood computation module for GW event with unique EM counterpart
+Multi-parameter likelihood computation module for GW event with unique EM counterpart
 
 Tathagata Ghosh
 """
 
-import numpy as np
-import gwcosmo
 import json
 import pickle
-import bilby
 from itertools import product
-from gwcosmo.utilities.posterior_utilities import str2bool
-from gwcosmo.utilities.arguments import create_parser
-from gwcosmo.utilities.cosmology import *
-from gwcosmo.utilities.check_boundary import *
-from gwcosmo.utilities.host_galaxy_merger_relations import RedshiftEvolutionConstant, RedshiftEvolutionPowerLaw, RedshiftEvolutionMadau
-from gwcosmo.injections import injections_at_detector
+
 import astropy.constants as const
-from tqdm import tqdm
+import bilby
+import gwcosmo
 import h5py
-
-from gwcosmo.prior.priors import *
-
 import matplotlib
-matplotlib.use('agg')
+import numpy as np
+from gwcosmo.injections import injections_at_detector
+from gwcosmo.prior import priors
+from gwcosmo.utilities import host_galaxy_merger_relations
+from gwcosmo.utilities.arguments import create_parser
+from gwcosmo.utilities.check_boundary import *
+from gwcosmo.utilities.cosmology import *
+from gwcosmo.utilities.posterior_utilities import str2bool
+from tqdm import tqdm
+
+matplotlib.use("agg")
 import matplotlib.pyplot as plt
-matplotlib.rcParams['font.family']= 'Times New Roman'
-matplotlib.rcParams['font.sans-serif']= ['Bitstream Vera Sans']
-matplotlib.rcParams['mathtext.fontset']= 'stixsans'
+
+matplotlib.rcParams["font.family"] = "Times New Roman"
+matplotlib.rcParams["font.sans-serif"] = ["Bitstream Vera Sans"]
+matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 
 import seaborn as sns
-sns.set_context('paper')
-sns.set_style('ticks')
-sns.set_palette('colorblind')
+
+sns.set(context="paper", style="ticks", palette="colorblind")
 
 
-speed_of_light = const.c.to('km/s').value
+speed_of_light = const.c.to("km/s").value
 
 
-parser = create_parser("--method", "--counterpart_dictionary", "--counterpart_z", "--counterpart_sigmaz", "--counterpart_v", "--counterpart_sigmav", "--counterpart_ra", "--counterpart_dec", "--posterior_samples", "--skymap", "--skymap_prior_distance", "--skymap_H0", "--skymap_Omega_m", "--post_los", "--redshift_evolution", "--parameter_dict", "--injections_path", "--mass_model", "--snr", "--ifar", "--plot", "--outputfile", "--posterior_samples_field", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz", "--nsamps")
+parser = create_parser(
+    "--method",
+    "--posterior_samples",
+    "--skymap_prior_distance",
+    "--skymap_H0",
+    "--skymap_Omega_m",
+    "--redshift_evolution",
+    "--parameter_dict",
+    "--injections_path",
+    "--mass_model",
+    "--snr",
+    "--ifar",
+    "--plot",
+    "--outputfile",
+    "--posterior_samples_field",
+    "--gravity_model",
+    "--sampler",
+    "--nwalkers",
+    "--npool",
+    "--walks",
+    "--nsteps",
+    "--nlive",
+    "--dlogz",
+    "--nsamps",
+)
 
 opts = parser.parse_args()
 
-if opts.method is not None:
+if opts.method:
     method = str(opts.method)
 else:
     parser.error("Missing method. Choose 'sampling' or 'gridded'.")
 
-if opts.counterpart_dictionary is None :
-    if (opts.counterpart_z is None and opts.counterpart_v is None) :
-        parser.error("Provide either counterpart redshift or recessional velocity.")
-    if (opts.counterpart_sigmaz is None and opts.counterpart_sigmav is None):
-        parser.error("Provide either counterpart redshift uncertainty or recessional velocity uncertainty.")
-if opts.posterior_samples is None and opts.skymap is None:
-    parser.error ("posterior samples and skymap both are missing")
+### if opts.counterpart_dictionary is None :
+###     if (opts.counterpart_z is None and opts.counterpart_v is None) :
+###         parser.error("Provide either counterpart redshift or recessional velocity.")
+###     if (opts.counterpart_sigmaz is None and opts.counterpart_sigmav is None):
+###         parser.error("Provide either counterpart redshift uncertainty or recessional velocity uncertainty.")
 
-if (opts.counterpart_z is not None and opts.counterpart_v is not None):
-    print("Both counterpart redshift and recessional velocity provided. Using recessional velocity.")
-if (opts.counterpart_sigmaz is not None and opts.counterpart_sigmav is not None):
-    print("Both counterpart redshift uncertainty and recessional velocity uncertainty provided. Using recessional velocity uncertainty.")
-if (opts.posterior_samples is not None and opts.skymap is not None):
-    print("Both posterior samples and skymap provided. Using posterior samples.")
+if not opts.posterior_samples:
+    parser.error("Posterior samples file is missing")
 
 
-# redshift information
-if opts.counterpart_dictionary is not None :
-    with open(str(opts.counterpart_dictionary)) as json_file:
-        counterpart_dictionary = json.load(json_file)
-    for event in counterpart_dictionary.keys():
-        if "redshift" in counterpart_dictionary [event].keys() :
-            pass
-        elif "velocity" in counterpart_dictionary [event].keys() :    
-            counterpart_dictionary [event] ["redshift"] = counterpart_dictionary [event] ["velocity"]/speed_of_light
-        else :
-            parser.error (f"provide redshift or velocity for {event}")
-else :
-    if opts.counterpart_z is not None:
-        counterpart_z = float(opts.counterpart_z)
-    if opts.counterpart_sigmaz is not None:
-        counterpart_sigmaz = float(opts.counterpart_sigmaz)
-    if opts.counterpart_v is not None:
-        counterpart_v = float(opts.counterpart_v)
-        counterpart_z = counterpart_v/speed_of_light
-    if opts.counterpart_sigmav is not None:
-        counterpart_sigmav = float(opts.counterpart_sigmav)
-        counterpart_sigmaz = counterpart_sigmav/speed_of_light
+### if (opts.counterpart_z is not None and opts.counterpart_v is not None):
+###     print("Both counterpart redshift and recessional velocity provided. Using recessional velocity.")
+### if (opts.counterpart_sigmaz is not None and opts.counterpart_sigmav is not None):
+###     print("Both counterpart redshift uncertainty and recessional velocity uncertainty provided. Using recessional velocity uncertainty.")
 
-    counterpart_dictionary = {}
-    counterpart_dictionary ['event'] = {}
-    counterpart_dictionary ['event'] ["redshift"]= np.array ([counterpart_z,counterpart_sigmaz])
 
-# ra dec information
-if opts.posterior_samples is None and opts.skymap is not None:
-    if opts.counterpart_dictionary is None :
-        if opts.counterpart_ra is None or opts.counterpart_dec is None:
-            parser.error('Provide ra and/or dec.')
-        elif opts.counterpart_ra is not None and opts.counterpart_dec is not None:
-            counterpart_ra = float(opts.counterpart_ra)
-            counterpart_dec = float(opts.counterpart_dec)
-            counterpart_dictionary ['event'] ["ra_dec"]= np.array ([counterpart_ra,counterpart_dec]) 
+# # redshift information
+# if opts.counterpart_dictionary is not None:
+#     with open(str(opts.counterpart_dictionary)) as json_file:
+#         counterpart_dictionary = json.load(json_file)
+#     for event in counterpart_dictionary.keys():
+#         if "redshift" in counterpart_dictionary[event].keys():
+#             pass
+#         elif "velocity" in counterpart_dictionary[event].keys():
+#             counterpart_dictionary[event]["redshift"] = (
+#                 counterpart_dictionary[event]["velocity"] / speed_of_light
+#             )
+#         else:
+#             parser.error(f"provide redshift or velocity for {event}")
+### else :
+###     if opts.counterpart_z is not None:
+###         counterpart_z = float(opts.counterpart_z)
+###     if opts.counterpart_sigmaz is not None:
+###         counterpart_sigmaz = float(opts.counterpart_sigmaz)
+###     if opts.counterpart_v is not None:
+###         counterpart_v = float(opts.counterpart_v)
+###         counterpart_z = counterpart_v/speed_of_light
+###     if opts.counterpart_sigmav is not None:
+###         counterpart_sigmav = float(opts.counterpart_sigmav)
+###         counterpart_sigmaz = counterpart_sigmav/speed_of_light
+##
+###     counterpart_dictionary = {}
+###     counterpart_dictionary ['event'] = {}
+###     counterpart_dictionary ['event'] ["redshift"]= np.array ([counterpart_z,counterpart_sigmaz])
 
-# Skymap prior information
-if opts.posterior_samples is None and opts.skymap is not None:
-    if opts.skymap_prior_distance=="dlSquare" :
-        print ("Distance prior for GW skymap is uniform dl^2.")
-    elif opts.skymap_prior_distance=="Uniform" :
-        print ("Distance prior for GW skymap is uniform in luminosity distance.")
-    elif opts.skymap_prior_distance=="UniformComoving" :
-        print (f"Distance prior for GW skymap is uniform in comoving  volume with H0={opts.skymap_H0} km/s/Mpc and Omega_m={opts.skymap_Omega_m}.") 
+### # ra dec information
+### if opts.posterior_samples is None and opts.skymap is not None:
+###     if opts.counterpart_dictionary is None :
+###         if opts.counterpart_ra is None or opts.counterpart_dec is None:
+###             parser.error('Provide ra and/or dec.')
+###         elif opts.counterpart_ra is not None and opts.counterpart_dec is not None:
+###             counterpart_ra = float(opts.counterpart_ra)
+###             counterpart_dec = float(opts.counterpart_dec)
+###             counterpart_dictionary ['event'] ["ra_dec"]= np.array ([counterpart_ra,counterpart_dec])
+
+### # Skymap prior information
+### if opts.posterior_samples is None and opts.skymap is not None:
+###     if opts.skymap_prior_distance=="dlSquare" :
+###         print ("Distance prior for GW skymap is uniform dl^2.")
+###     elif opts.skymap_prior_distance=="Uniform" :
+###         print ("Distance prior for GW skymap is uniform in luminosity distance.")
+###     elif opts.skymap_prior_distance=="UniformComoving" :
+###         print (f"Distance prior for GW skymap is uniform in comoving  volume with H0={opts.skymap_H0} km/s/Mpc and Omega_m={opts.skymap_Omega_m}.")
 
 # loading GW data (posterior samples/skymap)
-if opts.posterior_samples is not None:
-    if str(opts.posterior_samples).endswith('.json'):
-        with open(str(opts.posterior_samples)) as json_file:
-            posterior_samples_dictionary = json.load(json_file)
-    else: # a json file is required
-        err_str = """Missing posterior samples. Expecting a json file with format:\n
-        {
-           "GW170817":
-              {
-	         "posterior_file_path" : "/path/to/GW170817.h5",
-	         "samples_field" : "C01:Mixed",
-	         "skymap_path" : "/path/to/GW170817_skymap.fits"
-              }
-        }
-        """
-        parser.error(err_str)
-        # posterior_samples_dictionary = {}
-        # posterior_samples_dictionary['event'] = str(opts.posterior_samples)
-        #if str2bool(opts.post_los_dictionary) is False: 
-        #    if opts.counterpart_dictionary is None :
-        #        if opts.counterpart_ra is None or opts.counterpart_dec is None:
-        #            parser.error('Provide ra and/or dec.')
-        #        elif opts.counterpart_ra is not None and opts.counterpart_dec is not None:
-        #            counterpart_ra = float(opts.counterpart_ra)
-        #            counterpart_dec = float(opts.counterpart_dec)
-        #            counterpart_dictionary ['event'] ["ra_dec"]= np.array ([counterpart_ra,counterpart_dec])
-    post_los_dictionary = {}
-    nsamps_dictionary = {}
-    if opts.post_los is None:
-        print ("Assuming posterior samples are conditioned over line of sight.") 
-        for event in posterior_samples_dictionary.keys() :
-            post_los_dictionary [event] = True
-    elif str(opts.post_los).endswith('.json'): 
-        with open(str(opts.post_los)) as json_file:
-            post_los_dictionary_in = json.load(json_file)
-        for event in post_los_dictionary_in :
-            post_los_dictionary [event] = str2bool (post_los_dictionary_in [event]["post_los"])
-            if "nsamps" in post_los_dictionary_in [event].keys():
-                nsamps_dictionary [event] = int(post_los_dictionary_in [event]["nsamps"])
-            elif isinstance(opts.nsamps, int) or isinstance(opts.nsamps, float):
-                nsamps_dictionary [event] = int(opts.nsamps)
-    else :
-        post_los = str2bool(opts.post_los)
-        for event in posterior_samples_dictionary.keys() :
-            post_los_dictionary [event] = post_los
-        if post_los is False and (isinstance(opts.nsamps, int) or isinstance(opts.nsamps, float)):
-            for event in posterior_samples_dictionary.keys():
-                nsamps_dictionary [event] = int(opts.nsamps)
+if str(opts.posterior_samples).endswith(".json"):
+    with open(opts.posterior_samples) as json_file:
+        posterior_samples_dictionary = json.load(json_file)
+else:  # a json file is required
+    err_str = """Missing posterior samples. Expecting a json file with format:\n
+    {
+       "GW170817":
+	  {
+		 "posterior_file_path" : "/path/to/GW170817.h5",
+		 "samples_field" : "C01:Mixed",
+		 "skymap_path" : "/path/to/GW170817_skymap.fits"
+	  }
+    }
+    """
+    parser.error(err_str)
 
-    events = list(post_los_dictionary.keys())
-    nevents = len(events)
-    if nevents >1 :
-        for event in events :
-            if post_los_dictionary[event] is False :
-                if counterpart_dictionary[event].get("ra_dec") is None :
-                    parser.error(f"Provide ra and dec infromation in counterpart dictionary for {event}")
-    else :
-        event = events [0]
-        if post_los_dictionary[event] is False :
-            if counterpart_dictionary[event].get("ra_dec") is None :
-                if opts.counterpart_ra is None or opts.counterpart_dec is None:
-                    parser.error('Provide ra and/or dec using arguments counterpart_ra and counterpart_dec.')
-                elif opts.counterpart_ra is not None and opts.counterpart_dec is not None:
-                    counterpart_ra = float(opts.counterpart_ra)
-                    counterpart_dec = float(opts.counterpart_dec)
-                    counterpart_dictionary [event] ["ra_dec"]= np.array ([counterpart_ra,counterpart_dec])
+# Select events to be used
+posterior_samples_dictionary = {
+    k: v for k, v in posterior_samples_dictionary.items() if str2bool(v.get("use_event", "True"))
+}
 
+post_los_dictionary = {}
+nsamps_dictionary = {}
+counterpart_dictionary = {}
+posterior_samples_field_dictionary = {}
 
-elif opts.posterior_samples is None and opts.skymap is not None:
-    if str(opts.skymap).endswith('.json'):
-        with open(str(opts.skymap)) as json_file:
-            skymap_dictionary = json.load(json_file)
-    else :
-        skymap_dictionary = {}
-        skymap_dictionary['event'] = str(opts.skymap)
-
-# posterior sample field
-if opts.posterior_samples is not None:
-    if opts.posterior_samples_field is not None:
-        if str(opts.posterior_samples_field).endswith('.json'):
-            with open(str(opts.posterior_samples_field)) as json_file:
-                posterior_samples_field_dictionary = json.load(json_file)
-            for key in posterior_samples_dictionary.keys():
-                if key in posterior_samples_field_dictionary.keys():
-                    pass
-                else:
-                    posterior_samples_field_dictionary[key] = None 
-        else:
-            posterior_samples_field_dictionary = {}
-            posterior_samples_field_dictionary['event'] = str(opts.posterior_samples_field)
-            posterior_samples_field_dictionary [event] = None
+for event, meta in posterior_samples_dictionary.items():
+    if counterpart_redshift := meta.get("counterpart_redshift"):
+        counterpart_dictionary.setdefault(event, {}).update(redshift=counterpart_redshift)
+    elif counterpart_velocity := meta.get("counterpart_velocity"):
+        counterpart_dictionary.setdefault(event, {}).update(
+            redshift=counterpart_velocity / speed_of_light
+        )
     else:
-        posterior_samples_field_dictionary = {}
-        for key in posterior_samples_dictionary.keys():
-            posterior_samples_field_dictionary[key] = None 
+        raise ValueError(
+            f"Missing either 'counterpart_redshift' or 'counterpart_velocity' for '{event}' event!"
+        )
+
+    # Fill nsamps_dictionary
+    if nsamps := meta.get("nsamps"):
+        nsamps_dictionary.setdefault(event, {}).update(nsamps=nsamps)
+
+    # Fill post_los_dictionary
+    post_los = str2bool(meta.get("posterior_los", "True"))
+    post_los_dictionary[event] = post_los
+
+    if not (counterpart_ra_dec := meta.get("counterpart_ra_dec")) and not post_los:
+        raise ValueError(f"Missing 'counterpart_ra_dec' for '{event}' event!")
+    counterpart_dictionary.setdefault(event, {}).update(ra_dec=counterpart_ra_dec)
+
+    # Fill posterior_samples_field_dictionary
+    posterior_samples_field_dictionary.update(event=meta.get("samples_field"))
 
 # parameter(s) file
-if opts.parameter_dict is not None:
+if opts.parameter_dict:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
-    if opts.posterior_samples is None and opts.skymap is not None :
-        mass_parameters = ['alpha', 'delta_m', 'mu_g', 'sigma_g', 'lambda_peak', 'alpha_1', 'alpha_2', 'b', 'mminbh', 'mmaxbh', 'beta', 'alphans', 'mminns', 'mmaxns']
-        for key in mass_parameters :
-            if key in parameter_dict.keys() :
-                if isinstance(parameter_dict[key]['value'], list):
+    if opts.posterior_samples is None and opts.skymap is not None:
+        mass_parameters = [
+            "alpha",
+            "delta_m",
+            "mu_g",
+            "sigma_g",
+            "lambda_peak",
+            "alpha_1",
+            "alpha_2",
+            "b",
+            "mminbh",
+            "mmaxbh",
+            "beta",
+            "alphans",
+            "mminns",
+            "mmaxns",
+        ]
+        for key in mass_parameters:
+            if key in parameter_dict.keys():
+                if isinstance(parameter_dict[key]["value"], list):
                     parser.error(f"Mass parameter({key}) cannot be inferred while using GW skymap.")
 else:
-    parser.error('Missing parameters file')
+    parser.error("Missing parameters file")
 
-try :
-    injdata = h5py.File(opts.injections_path,'r')
+try:
+    injdata = h5py.File(opts.injections_path, "r")
 except OSError:
-    injdata = h5py.File(opts.injections_path,'r', locking=False)
+    injdata = h5py.File(opts.injections_path, "r", locking=False)
 
-if 'ifar' in injdata.keys():
-    ifar = np.array(injdata['ifar'])
+if "ifar" in injdata:
+    ifar = np.array(injdata["ifar"])
 else:
-    ifar = np.inf+0*np.array(injdata['m1d'])
+    ifar = np.inf + 0 * np.array(injdata["m1d"])
 
-if opts.snr == None and opts.ifar != None:
-    opts.snr = 0
-elif opts.snr != None and opts.ifar == None:
-    opts.ifar = 0
-elif opts.snr == None and opts.ifar == None:
+if not opts.snr and not opts.ifar:
     parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
-print("Analysis will be run with cuts on SNR: {} and IFAR: {}".format(opts.snr,opts.ifar))
+opts.snr = opts.snr or 0.0
+opts.ifar = opts.ifar or 0.0
+print(f"Analysis will be run with cuts on SNR: {opts.snr} and IFAR: {opts.ifar}")
 
-
-    
-injections = injections_at_detector(m1d=np.array(injdata['m1d']),
-                                    m2d=np.array(injdata['m2d']),
-                                    dl=np.array(injdata['dl']),
-                                    prior_vals=np.array(injdata['pini']),
-                                    snr_det=np.array(injdata['snr']),
-                                    snr_cut=opts.snr,
-                                    ifar=ifar,
-                                    ifar_cut=opts.ifar,
-                                    ntotal=np.array(injdata['ntotal']),
-                                    Tobs=np.array(injdata['Tobs']))
+injections = injections_at_detector(
+    m1d=np.array(injdata["m1d"]),
+    m2d=np.array(injdata["m2d"]),
+    dl=np.array(injdata["dl"]),
+    prior_vals=np.array(injdata["pini"]),
+    snr_det=np.array(injdata["snr"]),
+    snr_cut=opts.snr,
+    ifar=ifar,
+    ifar_cut=opts.ifar,
+    ntotal=np.array(injdata["ntotal"]),
+    Tobs=np.array(injdata["Tobs"]),
+)
 
 injdata.close()
 
-mass_model = str(opts.mass_model)
-if mass_model == 'BBH-powerlaw':
-    mass_priors = BBH_powerlaw()
-elif mass_model == 'NSBH-powerlaw':
-    mass_priors = NSBH_powerlaw()
-elif mass_model == 'BBH-powerlaw-gaussian':
-    mass_priors = BBH_powerlaw_gaussian()
-elif mass_model == 'NSBH-powerlaw-gaussian':
-    mass_priors = NSBH_powerlaw_gaussian()
-elif mass_model == 'BBH-broken-powerlaw':
-    mass_priors = BBH_broken_powerlaw()
-elif mass_model == 'NSBH-broken-powerlaw':
-    mass_priors = NSBH_broken_powerlaw()
-elif mass_model == 'BNS':
-    mass_priors = BNS()
-else:
-    parser.error('Unrecognized mass model')
-print(f'Using the {mass_model} mass model')
+if not (mass_model := opts.mass_model):
+    parser.error("Missing mass model")
+if not (mass_priors := getattr(priors, mass_model.replace("-", "_"), None)):
+    parser.error("Unrecognized mass model")
+print(f"Using the {mass_model} mass model")
+mass_priors = mass_priors()
 
-gravity_model = str(opts.gravity_model)
-if gravity_model == 'GR':
+gravity_model = opts.gravity_model
+if gravity_model == "GR":
     cosmo = standard_cosmology()
-elif gravity_model == 'Xi0_n':
+elif gravity_model == "Xi0_n":
     cosmo = Xi0_n_cosmology()
 else:
-    parser.error('Unrecognized gravity model')
-print(f'Using the {gravity_model} gravity model')
+    parser.error("Unrecognized gravity model")
+print(f"Using the {gravity_model} gravity model")
 
-#check_boundary(cosmo, parameter_dict, injections, mass_priors, gravity_model, mass_model)
+# redshift evolution model
+redshift_evolution = opts.redshift_evolution
+if redshift_evolution == "None":
+    redshift_evolution = "Constant"
+if not (
+    ps_z := getattr(host_galaxy_merger_relations, f"RedshiftEvolution{redshift_evolution}", None)
+):
+    parser.error("Unrecognized redshift evolution model")
+print(f"Assuming a {redshift_evolution} redshift evolution model")
+ps_z = ps_z()
 
-plot = str2bool(opts.plot) 
+# check_boundary(cosmo, parameter_dict, injections, mass_priors, gravity_model, mass_model)
+
+plot = str2bool(opts.plot)
 outputfile = str(opts.outputfile)
 
-#redshift evolution model
-redshift_evolution = str(opts.redshift_evolution)
-
-if redshift_evolution=='PowerLaw':
-    ps_z = RedshiftEvolutionPowerLaw()
-elif redshift_evolution=='Madau':
-    ps_z = RedshiftEvolutionMadau()
-elif redshift_evolution=='None':
-    ps_z = RedshiftEvolutionConstant()
-print(f'Assuming a {redshift_evolution} redshift evolution model')
-
-
-
-if opts.posterior_samples is not None: 
-    #if str2bool(opts.post_los) is True: 
-    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
-        counterpart_dictionary, injections, ps_z, cosmo, mass_priors, 
+if opts.posterior_samples:
+    # if str2bool(opts.post_los) is True:
+    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM(
+        counterpart_dictionary,
+        injections,
+        ps_z,
+        cosmo,
+        mass_priors,
         posterior_samples_dictionary=posterior_samples_dictionary,
         posterior_samples_field=posterior_samples_field_dictionary,
-        network_snr_threshold=opts.snr, post_los_dictionary=post_los_dictionary, nsamps=nsamps_dictionary)
-    #else:
+        network_snr_threshold=opts.snr,
+        post_los_dictionary=post_los_dictionary,
+        nsamps=nsamps_dictionary,
+    )
+    # else:
     #    nsamps = int(opts.nsamps)
     #    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
-    #        counterpart_dictionary, injections, ps_z, cosmo, mass_priors, 
+    #        counterpart_dictionary, injections, ps_z, cosmo, mass_priors,
     #        posterior_samples_dictionary=posterior_samples_dictionary,
     #        posterior_samples_field=posterior_samples_field_dictionary,
     #        network_snr_threshold=opts.snr, post_los_dictionary=post_los_dictionary, nsamps=nsamps)
 
-elif opts.posterior_samples is None and opts.skymap is not None:
-    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
-         counterpart_dictionary, injections, ps_z, cosmo, mass_priors, 
-         skymap_dictionary=skymap_dictionary,  
-         network_snr_threshold=opts.snr, skymap_prior_distance=opts.skymap_prior_distance, 
-         skymap_H0=float(opts.skymap_H0), skymap_Omega_m=float(opts.skymap_Omega_m))
-         
-for key in parameter_dict:
-    if key not in me.parameters.keys():
-        print(f'WARNING: The parameter {key} from your parameter dictionary is not recognised by the likelihood module.')
-        
-if method == "sampling" :   
+##### elif opts.posterior_samples is None and opts.skymap is not None:
+#####     me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
+#####          counterpart_dictionary, injections, ps_z, cosmo, mass_priors,
+#####          skymap_dictionary=skymap_dictionary,
+#####          network_snr_threshold=opts.snr, skymap_prior_distance=opts.skymap_prior_distance,
+#####          skymap_H0=float(opts.skymap_H0), skymap_Omega_m=float(opts.skymap_Omega_m))
+
+for key in parameter_dict and key not in me.parameters:
+    print(
+        f"WARNING: The parameter {key} from your parameter dictionary is not recognised by the likelihood module."
+    )
+
+if method == "sampling":
 
     sampler = str(opts.sampler)
     nwalkers = int(opts.nwalkers)
