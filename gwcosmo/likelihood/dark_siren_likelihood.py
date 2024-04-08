@@ -51,7 +51,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         print(f'Chosen resolution nside: {nside}')
         self.z_array = LOS_catalog['z_array'][:]
         self.zprior_full_sky = get_zprior_full_sky(LOS_catalog)
-        LOS_catalog.close()
 
         self.mass_priors = mass_priors
         self.cosmo = cosmo
@@ -104,6 +103,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             self.samples_dictionary[key] = samples
             self.samples_indices_dictionary[key] = samp_ind
             self.keys.append(key)
+
+        LOS_catalog.close()
 
         self.injections = injections
         # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
