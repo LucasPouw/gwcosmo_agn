@@ -8,6 +8,7 @@ import numpy as np
 
 from scipy.integrate import simpson
 from scipy.interpolate import interp1d
+from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.zprior_utilities import get_zprior_full_sky, get_zprior
 from gwcosmo.likelihood.posterior_samples import *
 import gwcosmo
@@ -65,6 +66,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.keys = []
                     
         for key, value in posterior_samples_dictionary.items():
+            if not str2bool(value.get("use_event", "True")):
+                print(f"Event '{key}' not used in the analysis")
+                continue
+
             samples = load_posterior_samples(posterior_samples_dictionary[key])
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
