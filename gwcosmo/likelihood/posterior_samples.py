@@ -25,34 +25,11 @@ from scipy.interpolate import RegularGridInterpolator
 class m1d_m2d_uniform_dL_square_PE_priors(object):
     """
     This is the class handling the default PE priors, being uniform in pi(m1d, m2d) and \propto dL^2 for the luminosity distance
-    if the code cannot deal with another prior (either user-provided or found in the posteriors file of events), gwcosmo will consider
-    this default prior
 
     Reminder: 
     For other PE priors, the user must create another file user_prior.py but 
     the name of the class must always be "PE_priors" with a member function 
-    called def get_prior(self,m1d,m2d,dL) that returns a floating value (or an array)
-
-    Example prior file: (CIT:/home/cbc.cosmology/MDC/population_only_MDC_gwsim_2023/Events/event_99/priors.priors)
-
-    mass_1 = Constraint(minimum=1, maximum=500, name='mass_1', latex_label='$m_1$', unit=None)
-    mass_2 = Constraint(minimum=1, maximum=500, name='mass_2', latex_label='$m_2$', unit=None)
-    mass_ratio = Uniform(minimum=0.01, maximum=1, name='mass_ratio', latex_label='$\\mathcal{M}$', unit=None, boundary=None)
-    chirp_mass = Uniform(minimum=14.091282825125148, maximum=56.36513130050059, name='chirp_mass', latex_label='$\\mathcal{M}$', unit=None, boundary=None)
-    luminosity_distance = PowerLaw(alpha=2, minimum=0, maximum=15000, name='luminosity_distance', latex_label='$d_L$', unit='Mpc', boundary=None)
-    dec = Cosine(minimum=-1.5707963267948966, maximum=1.5707963267948966, name='dec', latex_label='$\\mathrm{DEC}$', unit=None, boundary=None)
-    ra = Uniform(minimum=0, maximum=6.283185307179586, name='ra', latex_label='$\\mathrm{RA}$', unit=None, boundary='periodic')
-    theta_jn = Sine(minimum=0, maximum=3.141592653589793, name='theta_jn', latex_label='$\\theta_{JN}$', unit=None, boundary=None)
-    psi = Uniform(minimum=0, maximum=3.141592653589793, name='psi', latex_label='$\\psi$', unit=None, boundary='periodic')
-    phase = Uniform(minimum=0, maximum=6.283185307179586, name='phase', latex_label='$\\phi$', unit=None, boundary='periodic')
-    a_1 = 0.0 
-    a_2 = 0.0 
-    tilt_1 = 0.0 
-    tilt_2 = 0.0 
-    phi_12 = 0.0 
-    phi_jl = 0.0 
-    geocent_time = Uniform(minimum=62928.38062513391, maximum=62928.58062513391, name='mass_2', latex_label='$m_2$', unit=None, boundary=None)
-    seed = 1988
+    called def get_prior(self,m1d,m2d,dL) that returns a floating value (or an array)    
     """
     
     def __init__(self):
@@ -125,8 +102,7 @@ class analytic_PE_priors(object):
                 print("Setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_dL # dL only, it's a uniform 2D-pdf pi(m1d,m2d)
         else:
-            print("Weird... no 'mass_1', 'mass_2', 'chirp_mass', 'mass_ratio' keys in the dict. Exiting.")
-            sys.exit()
+            raise ValueError("Weird... no 'mass_1', 'mass_2', 'chirp_mass', 'mass_ratio' keys in the dict. Exiting.")
             
     def get_prior_actual_m1d_m2d_dL(self,m1d,m2d,dL):
         """
@@ -150,8 +126,11 @@ class load_posterior_samples(object):
 
     Parameters
     ----------
-    posterior_samples : Path to posterior samples file to be loaded.
-    field : Internal field of the json or the h5 file
+    posterior_samples : dict for each GW event, the dict can contain the following fields:
+    "posterior_file_path" => path to the PE posteriors, h5, hdf, json, dat...
+    "samples_field" => name of the waveform approximant (CO1:Mixed, C01:IMRPhenomXPHM...)
+    "PEprior_file_path" => path to the PE prior file (optional)
+    "skymap_path" => path to the GW event skymap (fits file)
     """
     
     def __init__(self,posterior_samples):
@@ -161,7 +140,14 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path"
         self.PE_prior_class_name = "PE_priors"
         self.PE_skymap_file_key = "skymap_path"
-        
+
+        # define the default approximant to consider if the user did not specify one
+        # the approximants will be search for in this order
+        self.default_approximants = ['PublicationSamples','C01:Mixed','C01:PhenomPNRT-HS', 
+                                     'C01:NRSur7dq4', 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
+                                     'C01:IMRPhenomD', 'C01:IMRPhenomPv2_NRTidal:LowSpin', 
+                                     'C01:IMRPhenomPv2_NRTidal:HighSpin']
+                
         self.posterior_samples = posterior_samples
         print("\n\nTreating event: {}".format(posterior_samples))
         # deal with the PE priors:
@@ -174,8 +160,7 @@ class load_posterior_samples(object):
                 self.pe_priors_object = module.PE_priors()
                 print("PE priors loaded: prior name = {}".format(self.pe_priors_object.name))
             except:
-                print("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
-                sys.exit()
+                raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
         else:
             print("NO PE prior file user-provided.")
             self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
@@ -204,16 +189,11 @@ class load_posterior_samples(object):
             pes = read(posterior_file,package="core")
             print("Posterior file correctly read with pesummary.")
         except:
-            print("Could not read posterior file with pesummary. Check the file. Exiting.")
-            sys.exit()
+            raise ValueError("Could not read posterior file with pesummary. Check the file. Exiting.")
 
         if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict): # check if we have a multianalysis file
             if self.field is None:
-                approximants = ['PublicationSamples','C01:Mixed','C01:PhenomPNRT-HS', 
-                                'C01:NRSur7dq4', 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
-                                'C01:IMRPhenomD', 'C01:IMRPhenomPv2_NRTidal:LowSpin', 
-                                'C01:IMRPhenomPv2_NRTidal:HighSpin']
-                for approximant in approximants:
+                for approximant in self.approximants:
                     try:
                         data = pes.samples_dict[approximant]
                         print("No waveform field provided -> setting model: "+approximant)
@@ -225,9 +205,9 @@ class load_posterior_samples(object):
                 if self.field in  pes.samples_dict.keys(): # check if required key exists
                     data = pes.samples_dict[self.field]
                 else:
-                    print("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
+                    raise ValueError("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
                           .format(self.field,pes.samples_dict.keys()))
-                    sys.exit()
+
         else: # single analysis in file
             data = pes.samples_dict
             
@@ -385,6 +365,9 @@ def get_priors(pes):
     subdict = False
     pdicts = {}
     print("labels in posterior samples file: {}".format(pes.labels))
+    if pes.priors == None:
+        raise ValueError("No PE prior object in posterior samples file. Cannot perform the analysis.")
+
     print("prior keys in posterior samples file: {}".format(pes.priors.keys()))
     dict_count = 0
     if isinstance(pes.priors,dict):
