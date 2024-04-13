@@ -78,6 +78,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
             samp_ind ={}
+
             for i,pixel_index in enumerate(pixel_indices):
                 samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=100)
                 
