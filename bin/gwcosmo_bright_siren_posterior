@@ -86,7 +86,7 @@ else :
     if opts.counterpart_sigmav is not None:
         counterpart_sigmav = float(opts.counterpart_sigmav)
         counterpart_sigmaz = counterpart_sigmav/speed_of_light
-
+    
     counterpart_dictionary = {}
     counterpart_dictionary ['event'] = {}
     counterpart_dictionary ['event'] ["redshift"]= np.array ([counterpart_z,counterpart_sigmaz])
