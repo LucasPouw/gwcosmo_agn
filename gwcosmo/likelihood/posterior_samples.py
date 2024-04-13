@@ -44,6 +44,20 @@ class m1d_m2d_uniform_dL_square_PE_priors(object):
         """
         return dL**2
 
+def check_sampling(prior_dict, samp_vars):
+    """
+    This function detects if the variables in argument samp_vars are sampled in the prior_dict
+    returns a dict with keys=samp_vars and the values are True/False if the variables are sampled or not
+    """
+    is_sampled = {}
+    for sv in samp_vars:
+        is_sampled[sv] = False
+        if sv in prior_dict.keys():
+            sd = prior_dict.sample_subset([sv])
+            if sd: # actual sampling
+                is_sampled[sv] = True
+    return is_sampled
+                
 class analytic_PE_priors(object):
     """
     This is the class handling the analytic PE priors
@@ -82,28 +96,49 @@ class analytic_PE_priors(object):
         # analytic_dict must be an objet having a .prob() function, like Bilby prior dicts
         self.prior = analytic_dict
         # determine if the prior is on m1d, m2d or Mc, q
-        sample_dict = self.prior.sample_subset(['chirp_mass','mass_ratio','mass_1','mass_2','luminosity_distance'],1) # sample only the subset of variable of interest
-        thekeys = sample_dict.keys()
-        #print("thekeys: {}".format(thekeys))
-        print("Check actual sampling parameters: ",sample_dict)
-        if 'mass_1' in thekeys and 'mass_2' in thekeys:
-            # check if it is a sampling key or a constrained key
-            if 'Constraint' in str(self.prior['mass_1' ]) and 'Constraint' in str(self.prior['mass_2' ]):
-                # m1 and m2 are constrained, not sampled
-                if 'chirp_mass' in thekeys and 'mass_ratio' in thekeys:            
-                    if 'UniformInComponentsChirpMass' in str(self.prior['chirp_mass' ]) and 'UniformInComponentsMassRatio' in str(self.prior['mass_ratio' ]):
-                        print("Setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
-                        self.get_prior_m1d_m2d_dL = self.get_prior_dL # uniform 2D pdf pi(m1d,m2d)
-            else:
-                self.get_prior_m1d_m2d_dL = self.get_prior_actual_m1d_m2d_dL
+        # we expect the sampling to be done either or (Mc,q) or (m1d,m2d)
+        sampling_OK = False
 
-        elif 'chirp_mass' in thekeys and 'mass_ratio' in thekeys:
-            if 'UniformInComponentsChirpMass' in str(self.prior['chirp_mass' ]) and 'UniformInComponentsMassRatio' in str(self.prior['mass_ratio' ]):
-                print("Setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
-                self.get_prior_m1d_m2d_dL = self.get_prior_dL # dL only, it's a uniform 2D-pdf pi(m1d,m2d)
-        else:
-            raise ValueError("Weird... no 'mass_1', 'mass_2', 'chirp_mass', 'mass_ratio' keys in the dict. Exiting.")
-            
+        # check if Mc and q are in the keys
+        svars = ['chirp_mass','mass_ratio']
+        is_sampled = check_sampling(self.prior,svars)
+        if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['chirp_mass','mass_ratio']
+            # check if it's UniformInComponents, i.e. sampling in Mc, q with U(m1d,m2d)
+            if 'UniformInComponents' in str(type(self.prior[svars[0]])) and 'UniformInComponents' in str(type(self.prior[svars[1]])):
+                print("Sampled vars are Mc and q but setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
+                self.get_prior_m1d_m2d_dL = self.get_prior_dL # uniform 2D pdf pi(m1d,m2d)
+                sampling_OK = True
+            else:
+                print("The sampling is on Mc, q with no 'UniformInComponents' option. Adding the jacobian.")
+                self.get_prior_m1d_m2d_dL = self.get_prior_actual_Mc_q_dL_to_m1d_m2d_dL
+                sampling_OK = True
+        if not sampling_OK: # the true sampling must be on m1d, m2d as we did not succeed to set it for Mc, q
+            # double check that the sampling is on m1d, m2d
+            svars = ['mass_1','mass_2']
+            is_sampled = check_sampling(self.prior,svars)
+            if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['mass_1','mass_2']
+                print("Setting m1d, m2d, dL prior to the analytic prior of PE file.")
+                self.get_prior_m1d_m2d_dL = self.get_prior_actual_m1d_m2d_dL
+                sampling_OK = True
+            else:
+                raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
+                
+    def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        it must be used when the PE posterior were obtained after a sampling on Mc, q
+        the function is called with args m1d, m2d, dL so that we must first compute Mc, q (det frame),
+        compute the PE prior probability on Mc, q and convert it into the PE prior probability on m1d, m2d and add the jacobian
+        """
+        mcdet = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
+        q = m2d/m1d
+        nvals = len(q)
+        prior_mcdet_q_dL = np.zeros(nvals)
+        for i in range(nvals): # did not find how to compute all probs at once!
+            prior_mcdet_q_dL[i] = self.prior.prob({'chirp_mass':mcdet[i],'mass_ratio':q[i],'luminosity_distance':dL[i]})
+        jacobian = mcdet/m1d**2
+        return prior_mcdet_q_dL*jacobian
+
     def get_prior_actual_m1d_m2d_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(m1d,m2d,dL)
@@ -393,7 +428,10 @@ def get_priors(pes):
                                     ndict[k] = eval(pes.priors['analytic'][key][k])
                             else: # get the object directly, no need to convert str into object
                                 ndict[k] = pes.priors['analytic'][key][k]
-                        pdicts[key] = BBHPriorDict()
+                        pdicts[key] = BBHPriorDict() # deal with the NSBH of BNS cases!
+                        allkeys = list(pdicts.keys())
+                        for k in allkeys:
+                            pdicts[key].pop(k) # remove all keys, in order to keep only those of the PE file
                         pdicts[key].from_dictionary(ndict)
                     else:
                         print("\tKey {} is an empty dict. Ignoring.".format(key))
@@ -408,8 +446,12 @@ def get_priors(pes):
                 #print("main::PEcosmo: {}".format(PEcosmo))
                 #print("main::PEcosmo: {}".format(type(PEcosmo)))
                 ndict['luminosity_distance'] = dLprior
-                pdicts = bilby.gw.prior.BBHPriorDict()
+                pdicts = bilby.gw.prior.BBHPriorDict() # just to have the correct type for pdicts; have to deal with the NSBH of BNS cases!
+                allkeys = list(pdicts.keys())
+                for k in allkeys:
+                    pdicts.pop(k) # remove all keys, in order to keep only those of the PE file
                 pdicts.from_dictionary(ndict)
+                
                 
     return status, subdict, pdicts
 
@@ -640,6 +682,8 @@ class make_pixel_px_function(object):
             sep += step
             sel = np.where(separations<sep)[0]
             nsamps = len(sel)
+            if sep > np.pi:
+                raise ValueError("Problem with the number of posterior samples.")
         print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
             
         return sel
