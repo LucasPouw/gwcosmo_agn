@@ -171,7 +171,7 @@ def create_parser(*config):
         "--duty_factor_O1_L1": argument(None, default=0.574, type=float,
             help="The duty factor of L1 for the O1 run (default=0.574)."),
         "--frame": argument(None, default='detectors_frame', type=str,
-            help="The frame of the injections(source or detectors) (default is 'detectors_frame')."),
+            help="The frame of the injections (source or detectors) (default is 'detectors_frame', 'source_frame' is NOT implemented.)."),
         "--num_threads": argument(None, default=1, type=int,
             help="Number of threads (default is 1)."),            
         "--snr": argument(None, default=None, type=float,
@@ -227,7 +227,9 @@ def create_parser(*config):
         "--skymap_H0": argument(None, default=70, type=float,
             help="H0 when distance prior of skymap is uniform in comoving volume (default is 70)"), 
         "--skymap_Omega_m": argument(None, default=0.3065, type=float,
-            help="Omega_m when distance prior of skymap is uniform in comoving volume (default is 0.3065)")
+                                     help="Omega_m when distance prior of skymap is uniform in comoving volume (default is 0.3065)"),
+
+        "--check_PE_h5": argument(None,default=None,type=str,help="h5 file containing event posteriors")
     }
 
     for arg in config:
