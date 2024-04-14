@@ -14,13 +14,20 @@ from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.arguments import create_parser
 from gwcosmo.likelihood.posterior_samples import load_posterior_samples
 
-parser = create_parser("--posterior_samples","--outputfile")
+parser = create_parser("--posterior_samples","--outputfile","--check_PE_h5")
 
 opts = parser.parse_args()
 
 print(opts)
 
-if opts.posterior_samples is not None:
+if opts.check_PE_h5 is not None:
+
+    posterior_samples_dictionary = {}
+    posterior_samples_dictionary['GWcheck'] = {}
+    posterior_samples_dictionary['GWcheck']["posterior_file_path"] = opts.check_PE_h5
+
+elif opts.posterior_samples is not None:
+
     if str(opts.posterior_samples).endswith('.json'):
         with open(str(opts.posterior_samples)) as json_file:
             posterior_samples_dictionary = json.load(json_file)
@@ -59,7 +66,6 @@ for evt_k, evt_v in posterior_samples_dictionary.items():
     print("\n")
     evt_v.update(ndict)
 
-print(posterior_samples_dictionary)
 if missing_files:
     print("PE or skymaps files are missing:")
     for evt_k, evt_v in missing_files.items():
