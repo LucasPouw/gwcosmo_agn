@@ -184,6 +184,7 @@ class load_posterior_samples(object):
         self.multi_analysis = "multi"
         self.single_analysis = "single"
         self.approximants_available = "approximants_available"
+        self.approximant_requested = "approximant_requested"
         self.approximant_selected = "approximant_selected"
         self.has_analytic_priors = "has_analytic_priors"
 
@@ -218,9 +219,11 @@ class load_posterior_samples(object):
 
         # deal with the field for the PE analysis (C01:Mixed etc.):
         self.field = None
+        self.posterior_samples[self.approximant_requested] = None
         if self.samples_field_key in self.posterior_samples.keys(): # i.e. if the user specified the 'C01:...' waveform model
             if self.posterior_samples[self.samples_field_key].lower() != "none":
                 self.field = self.posterior_samples[self.samples_field_key]
+                self.posterior_samples[self.approximant_requested] = self.posterior_samples[self.samples_field_key]
 
         # deal with the skymap:
         # for dark_siren: the key 'skymap_path' must exists in the dictionary => already check for that in bin/gwcosmo_dark...
@@ -309,9 +312,9 @@ class load_posterior_samples(object):
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
                         else:
-                            print("No analytic prior dict with field name {}. Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS."
-                                  .format(self.field))
-                            self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                            raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis.".format(self.field))
+                            #raise ValueError("No analytic prior dict with field name {}. Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
+                            #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 else: # this is the single analysis case {'mass_1':....}
                     print("Single analysis case.")
                     self.pe_priors_object = analytic_PE_priors(pdicts)
