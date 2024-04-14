@@ -8,7 +8,7 @@ from astropy import units as u
 from astropy.cosmology import FlatLambdaCDM
 import bilby
 import h5py
-from .skymap import ra_dec_from_ipix
+from gwcosmo.likelihood.skymap import ra_dec_from_ipix
 from ..prior.priors import distance_distribution
 import json
 import healpy as hp
@@ -98,7 +98,8 @@ class analytic_PE_priors(object):
         # determine if the prior is on m1d, m2d or Mc, q
         # we expect the sampling to be done either or (Mc,q) or (m1d,m2d)
         sampling_OK = False
-
+        self.sampling_vars = []
+        
         # check if Mc and q are in the keys
         svars = ['chirp_mass','mass_ratio']
         is_sampled = check_sampling(self.prior,svars)
@@ -112,6 +113,7 @@ class analytic_PE_priors(object):
                 print("The sampling is on Mc, q with no 'UniformInComponents' option. Adding the jacobian.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_actual_Mc_q_dL_to_m1d_m2d_dL
                 sampling_OK = True
+            self.sampling_vars = svars
         if not sampling_OK: # the true sampling must be on m1d, m2d as we did not succeed to set it for Mc, q
             # double check that the sampling is on m1d, m2d
             svars = ['mass_1','mass_2']
@@ -122,6 +124,7 @@ class analytic_PE_priors(object):
                 sampling_OK = True
             else:
                 raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
+            self.sampling_vars = svars
                 
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
@@ -175,12 +178,25 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path"
         self.PE_prior_class_name = "PE_priors"
         self.PE_skymap_file_key = "skymap_path"
+        # we will add some new fields to the 'posterior_samples' dict
+        self.analysis_type = "analysis_type"
+        self.sampling_vars = "sampling_variables"
+        self.multi_analysis = "multi"
+        self.single_analysis = "single"
+        self.approximants_available = "approximants_available"
+        self.approximant_selected = "approximant_selected"
+        self.has_analytic_priors = "has_analytic_priors"
 
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
-        self.default_approximants = ['PublicationSamples','C01:Mixed','C01:PhenomPNRT-HS', 
-                                     'C01:NRSur7dq4', 'C01:IMRPhenomPv3HM', 'C01:IMRPhenomPv2',
-                                     'C01:IMRPhenomD', 'C01:IMRPhenomPv2_NRTidal:LowSpin', 
+        self.default_approximants = ['PublicationSamples',
+                                     'C01:Mixed',
+                                     'C01:PhenomPNRT-HS', 
+                                     'C01:NRSur7dq4',
+                                     'C01:IMRPhenomPv3HM',
+                                     'C01:IMRPhenomPv2',
+                                     'C01:IMRPhenomD',
+                                     'C01:IMRPhenomPv2_NRTidal:LowSpin', 
                                      'C01:IMRPhenomPv2_NRTidal:HighSpin']
                 
         self.posterior_samples = posterior_samples
@@ -222,13 +238,15 @@ class load_posterior_samples(object):
         print(posterior_file)
         try:
             pes = read(posterior_file,package="core")
-            print("Posterior file correctly read with pesummary.")
+            print("Posterior file {} correctly read with pesummary.".format(posterior_file))
         except:
-            raise ValueError("Could not read posterior file with pesummary. Check the file. Exiting.")
+            raise ValueError("Could not read posterior file {} with pesummary. Check the file. Exiting.".format(posterior_file))
 
         if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict): # check if we have a multianalysis file
+            self.posterior_samples[self.analysis_type] = self.multi_analysis
+            self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
-                for approximant in self.approximants:
+                for approximant in self.default_approximants:
                     try:
                         data = pes.samples_dict[approximant]
                         print("No waveform field provided -> setting model: "+approximant)
@@ -236,6 +254,7 @@ class load_posterior_samples(object):
                         break
                     except KeyError:
                         continue
+                self.posterior_samples[self.approximant_selected] = self.field
             else:
                 if self.field in  pes.samples_dict.keys(): # check if required key exists
                     data = pes.samples_dict[self.field]
@@ -244,6 +263,8 @@ class load_posterior_samples(object):
                           .format(self.field,pes.samples_dict.keys()))
 
         else: # single analysis in file
+            self.posterior_samples[self.analysis_type] = self.single_analysis
+            self.posterior_samples[self.approximant_selected] = None
             data = pes.samples_dict
             
         self.distance = data['luminosity_distance']
@@ -258,6 +279,7 @@ class load_posterior_samples(object):
         if self.pe_priors_object is None: # no prior file provided by the user so the prior object may be stored in the posterior file
             status, subdict, pdicts = get_priors(pes) # try to find a prior in the posterior file
             if status:
+                self.posterior_samples[self.has_analytic_priors] = True
                 print("Analytic priors found in file...")                    
                 #print(pdicts)
                 non_empty_dicts_keys = []
@@ -298,10 +320,11 @@ class load_posterior_samples(object):
                     for k in show_keys:
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
+                self.posterior_samples[self.sampling_vars] = self.pe_priors_object.sampling_vars
             else:
                 print("No analytic priors in file, using U(m1d, m2d) and p(dL) \propto dL^2")
+                self.posterior_samples[self.has_analytic_priors] = False
                 self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
-
 
                     
         
@@ -377,8 +400,7 @@ class load_posterior_samples(object):
 
         if self.pe_priors_object is None:
             # case where no prior has been found: neither user-provided nor in the posterior file
-            print("WARNING !!!!!!!!!!! No PE-prior has been set. Using the default case: U(m1d, m2d) and p(dL) \propto dL^2")
-            self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+            raise ValueError("WARNING !!!!!!!!!!! No PE-prior has been set. Cannot run the analysis.")
         
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
@@ -429,7 +451,7 @@ def get_priors(pes):
                             else: # get the object directly, no need to convert str into object
                                 ndict[k] = pes.priors['analytic'][key][k]
                         pdicts[key] = BBHPriorDict() # deal with the NSBH of BNS cases!
-                        allkeys = list(pdicts.keys())
+                        allkeys = list(pdicts[key].keys())
                         for k in allkeys:
                             pdicts[key].pop(k) # remove all keys, in order to keep only those of the PE file
                         pdicts[key].from_dictionary(ndict)
