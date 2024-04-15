@@ -183,6 +183,7 @@ class load_posterior_samples(object):
         self.PE_file_key = "posterior_file_path"
         self.samples_field_key = "samples_field"
         self.PE_prior_file_key = "PEprior_file_path"
+        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py
         self.PE_prior_class_name = "PE_priors"
         self.PE_skymap_file_key = "skymap_path"
         # we will add some new fields to the 'posterior_samples' dict
@@ -196,6 +197,7 @@ class load_posterior_samples(object):
         self.has_analytic_priors = "has_analytic_priors"
         self.search_analytic_priors_str = "search_analytic_priors"
         self.could_read_with_pesummary = "could_read_with_pesummary"
+        self.user_defined_PE = "user_defined_PE_priors"
         
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
@@ -214,7 +216,11 @@ class load_posterior_samples(object):
 
         print("\n\nTreating event: {}".format(posterior_samples))
         # deal with the PE priors:
-        if self.PE_prior_file_key in self.posterior_samples.keys():
+        user_defined_PE = False
+        if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
+            raise ValueError("PE prior set with file and kind. Choose one method, not both. Exiting.")
+        elif self.PE_prior_file_key in self.posterior_samples.keys():
+            user_defined_PE = True
             print("PE prior file provided: {}".format(self.posterior_samples[self.PE_prior_file_key]))
             try:
                 spec = importlib.util.spec_from_file_location(self.PE_prior_class_name,self.posterior_samples[self.PE_prior_file_key])
@@ -224,6 +230,10 @@ class load_posterior_samples(object):
                 print("PE priors loaded: prior name = {}".format(self.pe_priors_object.name))
             except:
                 raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
+        elif self.PE_prior_kind_key in self.posterior_samples.keys():
+            user_defined_PE = True
+            print("PE prior kind provided: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
+            self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
         else:
             print("NO PE prior file user-provided.")
             self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
@@ -236,6 +246,8 @@ class load_posterior_samples(object):
                 self.field = self.posterior_samples[self.samples_field_key]
                 self.posterior_samples[self.approximant_requested] = self.posterior_samples[self.samples_field_key]
 
+
+        self.posterior_samples[self.user_defined_PE] = user_defined_PE
         # deal with the skymap:
         # for dark_siren: the key 'skymap_path' must exists in the dictionary => already check for that in bin/gwcosmo_dark...
         # but the bright siren case can have no skymap
