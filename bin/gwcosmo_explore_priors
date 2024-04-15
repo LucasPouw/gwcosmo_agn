@@ -22,7 +22,7 @@ opts = parser.parse_args()
 print(opts)
 
 if opts.check_PE_h5 is not None:
-    evt_name = re.findall('GW[1-3][0-9][0-1][0-9][1-3][0-9]',opts.check_PE_h5)
+    evt_name = re.findall('GW[1-3][0-9][0-1][0-9][0-3][0-9]',opts.check_PE_h5)
     if len(evt_name) == 0: # no match for event name of format GWXXXXXX, take file's basename
         evt_key = os.path.basename(opts.check_PE_h5)
     else:
