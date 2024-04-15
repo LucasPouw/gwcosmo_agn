@@ -222,7 +222,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         z_prior = interp1d(z_array,self.zprior(z_array)*self.zrates(z_array))
         dz=np.diff(z_array)
         z_prior_norm = np.sum((z_prior(z_array)[:-1]+z_prior(z_array)[1:])*(dz)/2)
-        injections = self.injections
+        injections = copy.deepcopy(self.injections)
         
         # Update the sensitivity estimation with the new model
         injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
