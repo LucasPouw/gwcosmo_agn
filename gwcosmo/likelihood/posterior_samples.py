@@ -95,16 +95,19 @@ class analytic_PE_priors(object):
         self.name = "analytic_PE_prior_from_PE_file"
         # analytic_dict must be an objet having a .prob() function, like Bilby prior dicts
         self.prior = analytic_dict
-        # determine if the prior is on m1d, m2d or Mc, q
+        # determine if the prior is on (m1d, m2d) or (Mc, q)
         # we expect the sampling to be done either or (Mc,q) or (m1d,m2d)
         sampling_OK = False
-        self.sampling_vars = []
+        self.sampling_vars = {}
         
         # check if Mc and q are in the keys
         svars = ['chirp_mass','mass_ratio']
+        sampling_vars = {}
         is_sampled = check_sampling(self.prior,svars)
         if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['chirp_mass','mass_ratio']
             # check if it's UniformInComponents, i.e. sampling in Mc, q with U(m1d,m2d)
+            for sv in svars:
+                sampling_vars[sv] = str(type(self.prior[sv]))
             if 'UniformInComponents' in str(type(self.prior[svars[0]])) and 'UniformInComponents' in str(type(self.prior[svars[1]])):
                 print("Sampled vars are Mc and q but setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_dL # uniform 2D pdf pi(m1d,m2d)
@@ -113,18 +116,20 @@ class analytic_PE_priors(object):
                 print("The sampling is on Mc, q with no 'UniformInComponents' option. Adding the jacobian.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_actual_Mc_q_dL_to_m1d_m2d_dL
                 sampling_OK = True
-            self.sampling_vars = svars
         if not sampling_OK: # the true sampling must be on m1d, m2d as we did not succeed to set it for Mc, q
             # double check that the sampling is on m1d, m2d
             svars = ['mass_1','mass_2']
             is_sampled = check_sampling(self.prior,svars)
+            for sv in svars:
+                sampling_vars[sv] = str(type(self.prior[sv]))
             if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['mass_1','mass_2']
                 print("Setting m1d, m2d, dL prior to the analytic prior of PE file.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_actual_m1d_m2d_dL
                 sampling_OK = True
             else:
                 raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
-            self.sampling_vars = svars
+
+        self.sampling_vars = sampling_vars
                 
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
@@ -323,7 +328,8 @@ class load_posterior_samples(object):
                     for k in show_keys:
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
-                self.posterior_samples[self.sampling_vars] = self.pe_priors_object.sampling_vars
+                self.posterior_samples[self.sampling_vars] = {}
+                self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
             else:
                 print("No analytic priors in file, using U(m1d, m2d) and p(dL) \propto dL^2")
                 self.posterior_samples[self.has_analytic_priors] = False
