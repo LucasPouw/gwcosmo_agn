@@ -77,15 +77,20 @@ if missing_files:
 
 for key, value in posterior_samples_dictionary.items():
     save_key = None
+    save_key_2 = None
     if "PEprior_file_path" in posterior_samples_dictionary[key].keys():
         save_key = posterior_samples_dictionary[key]["PEprior_file_path"]
         # remove key PEprior if it exists, before calling load_posterior_samples, as we want the h5 contents
         posterior_samples_dictionary[key].pop("PEprior_file_path")
+    if "PEprior_kind" in posterior_samples_dictionary[key].keys():
+        save_key_2 = posterior_samples_dictionary[key]["PEprior_kind"]
+        posterior_samples_dictionary[key].pop("PEprior_kind")
     try:
         samples = load_posterior_samples(posterior_samples_dictionary[key])
     except ValueError as ve:
         print(ve)
     if save_key: posterior_samples_dictionary[key]["PEprior_file_path"] = save_key
+    if save_key_2: posterior_samples_dictionary[key]["PEprior_kind"] = save_key_2
     
 print("\nPosterior sample file contents:\n")
 for k in posterior_samples_dictionary.keys():
