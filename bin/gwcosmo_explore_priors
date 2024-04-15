@@ -101,5 +101,13 @@ for k in posterior_samples_dictionary.keys():
     for l in posterior_samples_dictionary[k].keys():
         print("{} -> {}: {}".format(tabs,l,posterior_samples_dictionary[k][l]))
 
-with open('data.json','w',encoding='utf-8') as f:
+if opts.outputfile == parser.get_default('outputfile'):
+    jsonfile = "./data.json"
+else:
+    jsonfile = opts.outputfile
+    if jsonfile[-5:] != '.json': jsonfile += '.json'
+
+with open(jsonfile,'w',encoding='utf-8') as f:
     json.dump(posterior_samples_dictionary,f,ensure_ascii=False,indent=4)
+
+print("GW event(s) details written in file {}".format(jsonfile))
