@@ -194,7 +194,9 @@ class load_posterior_samples(object):
         self.approximant_requested = "approximant_requested"
         self.approximant_selected = "approximant_selected"
         self.has_analytic_priors = "has_analytic_priors"
-
+        self.search_analytic_priors_str = "search_analytic_priors"
+        self.could_read_with_pesummary = "could_read_with_pesummary"
+        
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
         self.default_approximants = ['PublicationSamples',
@@ -208,6 +210,8 @@ class load_posterior_samples(object):
                                      'C01:IMRPhenomPv2_NRTidal:HighSpin']
                 
         self.posterior_samples = posterior_samples
+        self.posterior_samples[self.search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
+
         print("\n\nTreating event: {}".format(posterior_samples))
         # deal with the PE priors:
         if self.PE_prior_file_key in self.posterior_samples.keys():
@@ -245,11 +249,15 @@ class load_posterior_samples(object):
         '''
         This function is called when dealing with .h5 files and O4-.hdf5 files.
         '''
+
+        self.posterior_samples[self.search_analytic_priors_str] = True # record the fact we try to find analytic prior
         print(posterior_file)
         try:
             pes = read(posterior_file,package="core")
             print("Posterior file {} correctly read with pesummary.".format(posterior_file))
+            self.posterior_samples[self.could_read_with_pesummary] = True
         except:
+            self.posterior_samples[self.could_read_with_pesummary] = False
             raise ValueError("Could not read posterior file {} with pesummary. Check the file. Exiting.".format(posterior_file))
 
         if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict): # check if we have a multianalysis file
@@ -288,6 +296,7 @@ class load_posterior_samples(object):
         # deal with PE prior values for each sample
         if self.pe_priors_object is None: # no prior file provided by the user so the prior object may be stored in the posterior file
             status, subdict, pdicts = get_priors(pes) # try to find a prior in the posterior file
+            self.posterior_samples[self.has_analytic_priors] = False
             if status:
                 self.posterior_samples[self.has_analytic_priors] = True
                 print("Analytic priors found in file...")                    
