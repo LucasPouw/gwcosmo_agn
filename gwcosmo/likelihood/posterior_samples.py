@@ -368,7 +368,7 @@ class load_posterior_samples(object):
         """
         posterior_file = self.posterior_samples[self.PE_file_key]
         if posterior_file[-3:] == 'dat':
-            samples = np.genfromtxt(self.posterior_samples, names = True)
+            samples = np.genfromtxt(posterior_file, names = True)
            
             self.distance = np.array([var for var in samples['luminosity_distance']])
             self.ra =  np.array([var for var in samples['ra']])
