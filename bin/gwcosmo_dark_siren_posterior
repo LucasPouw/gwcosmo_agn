@@ -84,7 +84,9 @@ for evt_k, evt_v in posterior_samples_dictionary.items():
     if "posterior_file_path" not in evt_v:
         raise ValueError(f"GW event {evt_k} has not PE samples. Exiting.")
     for k, v in evt_v.items():
-        if "_path" not in k: continue
+        if "_path" not in k: # check if it is a key associated with a file path
+            print("Paths check: skip key {}".format(k))
+            continue
         if not (file_exists := os.path.exists(v)):
             missing_files.setdefault(evt_k, {}).update({k: v})
         add_txt = "DOES NOT EXIST!" if not file_exists else "FILE OK"
