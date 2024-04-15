@@ -115,7 +115,7 @@ else:
     jsonfile = opts.outputfile
     if jsonfile[-5:] != '.json': jsonfile += '.json'
 
-with open(jsonfile,'w',encoding='utf-8') as f:
+with open(jsonfile,'a',encoding='utf-8') as f:
     json.dump(posterior_samples_dictionary,f,ensure_ascii=False,indent=4)
 
 print("GW event(s) details written in file {}".format(jsonfile))
