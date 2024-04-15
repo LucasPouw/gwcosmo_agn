@@ -21,7 +21,7 @@ import sys
    
 class MultipleEventLikelihoodEM(bilby.Likelihood):
 
-    def __init__(self, counterpart_dictionary, injections, zrates, cosmo, mass_priors, posterior_samples_dictionary=None, posterior_samples_field=None, skymap_dictionary=None,  network_snr_threshold=12., post_los_dictionary=None, nsamps=1000, skymap_prior_distance="dlSquare", skymap_H0=70, skymap_Omega_m=0.3065, pe_prior=None):
+    def __init__(self, counterpart_dictionary, injections, zrates, cosmo, mass_priors, posterior_samples_dictionary=None, posterior_samples_field=None, skymap_dictionary=None,  network_snr_threshold=12., post_los_dictionary=None, nsamps=1000, skymap_prior_distance="dlSquare", skymap_H0=70, skymap_Omega_m=0.3065):
 
         """
         Class to calculate log-likelihood on cosmological and population hyper-parameters.
@@ -98,7 +98,6 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
         self.samples_dictionary = {}
 
-        self.pe_prior = pe_prior
         self.keys = []
 
         # likelihood in distance from skymap for em counterpart
