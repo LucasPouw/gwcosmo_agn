@@ -81,7 +81,10 @@ for key, value in posterior_samples_dictionary.items():
         save_key = posterior_samples_dictionary[key]["PEprior_file_path"]
         # remove key PEprior if it exists, before calling load_posterior_samples, as we want the h5 contents
         posterior_samples_dictionary[key].pop("PEprior_file_path")
-    samples = load_posterior_samples(posterior_samples_dictionary[key])
+    try:
+        samples = load_posterior_samples(posterior_samples_dictionary[key])
+    except ValueError as ve:
+        print(ve)
     if save_key: posterior_samples_dictionary[key]["PEprior_file_path"] = save_key
     
 print("\nPosterior sample file contents:\n")
