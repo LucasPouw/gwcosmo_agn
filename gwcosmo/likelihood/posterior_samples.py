@@ -107,7 +107,7 @@ class analytic_PE_priors(object):
         if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['chirp_mass','mass_ratio']
             # check if it's UniformInComponents, i.e. sampling in Mc, q with U(m1d,m2d)
             for sv in svars:
-                sampling_vars[sv] = str(type(self.prior[sv]))
+                sampling_vars[sv] = str(self.prior[sv])
             if 'UniformInComponents' in str(type(self.prior[svars[0]])) and 'UniformInComponents' in str(type(self.prior[svars[1]])):
                 print("Sampled vars are Mc and q but setting m1d,m2d,dL prior to dL as it's UniformInComponents for Mc and q.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_dL # uniform 2D pdf pi(m1d,m2d)
@@ -121,7 +121,7 @@ class analytic_PE_priors(object):
             svars = ['mass_1','mass_2']
             is_sampled = check_sampling(self.prior,svars)
             for sv in svars:
-                sampling_vars[sv] = str(type(self.prior[sv]))
+                sampling_vars[sv] = str(self.prior[sv])
             if is_sampled[svars[0]] and is_sampled[svars[1]]: # then the sampling is done on ['mass_1','mass_2']
                 print("Setting m1d, m2d, dL prior to the analytic prior of PE file.")
                 self.get_prior_m1d_m2d_dL = self.get_prior_actual_m1d_m2d_dL
@@ -130,6 +130,8 @@ class analytic_PE_priors(object):
                 raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
 
         self.sampling_vars = sampling_vars
+        # add luminosity distance prior
+        self.sampling_vars['luminosity_distance'] = str(self.prior['luminosity_distance'])
                 
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
