@@ -37,7 +37,7 @@ def _S_factor(mass, mmin,delta_m):
 
     mprime = mass-mmin
 
-    # Defines the different regions of thw window function ad in Eq. B6 of  https://arxiv.org/pdf/2010.14533.pdf
+    # Defines the different regions of the window function ad in Eq. B6 of  https://arxiv.org/pdf/2010.14533.pdf
     select_window = (mass>mmin) & (mass<(delta_m+mmin))
     select_one = mass>=(delta_m+mmin)
     select_zero = mass<=mmin
