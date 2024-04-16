@@ -301,7 +301,7 @@ class Create_injections(object):
                  tmp_to_dict=None,
                  tmp_to_stdout=None,
                  tmpfile_to_dict=None,
-                 approx='IMRPhenomPv2',
+                 approx='IMRPhenomXPHM',
                  priors=None,
                  priors_limits=None,
                  fmin=20,
@@ -330,8 +330,7 @@ class Create_injections(object):
 
         logging.disable(logging.INFO)
         if priors != None:
-            print("The current version of the injection code does not treat priors from file. Exiting.")
-            sys.exit()
+            raise ValueError("The current version of the injection code does not treat priors from file. Exiting.")
                 
         if tmp_to_dict != None:
             # convert a temporary injections file into a dict file
@@ -350,7 +349,8 @@ class Create_injections(object):
                 else:
                     print("Tmp file {} skipped".format(tmp_to_dict))
             else:
-                print("Could not open file {}. Exiting.".format(list_to_dict))
+                raise ValueError("Could not open file {}. Exiting.".format(list_to_dict))
+
             sys.exit()
 
         if tmpfile_to_dict != None:
@@ -362,7 +362,8 @@ class Create_injections(object):
                                                    self.footer_msg,
                                                    self.injection_msg)
             else:
-                print("Could not open file {}. Exiting.".format(tmpfile_to_dict))
+                raise ValueError("Could not open file {}. Exiting.".format(tmpfile_to_dict))
+
             sys.exit()
             
         if tmp_to_stdout != None:
@@ -373,8 +374,7 @@ class Create_injections(object):
                     fd = open(tmp_to_stdout,"rb")
                 except Exception as e:
                     print(e)
-                    print("Could not open file {}. Exiting.".format(tmp_to_stdout))
-                    sys.exit()
+                    raise ValueError("Could not open file {}. Exiting.".format(tmp_to_stdout))
                 try:
                     evt_list = pickle.load(fd)
                     for i in evt_list:
@@ -383,7 +383,8 @@ class Create_injections(object):
                     print(e)
                     print("Could not unpickle the file {}, file could be damaged, try to redownload it?\nSkipping file...".format(tmp_to_stdout))
             else:
-                print("Invalid file {}. Exiting.".format(tmp_to_stdout))
+                raise ValueError("Invalid file {}. Exiting.".format(tmp_to_stdout))
+
             sys.exit()
 
         if combine:
@@ -398,8 +399,7 @@ class Create_injections(object):
         self.SNR_th = SNR_thres # SNR threshold
 
         if self.frame != "detectors_frame":
-            print("Injections are computed only in the detector frame. Source frame not implemented yet. Exiting.")
-            sys.exit()
+            raise ValueError("Injections are computed only in the detector frame. Source frame not implemented yet. Exiting.")
         
         self.H0_ref = -1 # init, updated later on if frame = source
         self.Om0_ref = -1 # init, updated later on if frame = source
@@ -419,8 +419,7 @@ class Create_injections(object):
         for key in self.psd_dict:
             self.total_days += days_of_runs[key]
         if self.total_days == 0:
-            print("Observation time Tobs = 0. Check parameter 'days_of_runs'. Exiting.")
-            sys.exit()
+            raise ValueError("Observation time Tobs = 0. Check parameter 'days_of_runs'. Exiting.")
 
         if duty_factors == None:
             # use the same values as the default ones in gwcosmo/utilities/arguments.py
@@ -438,8 +437,8 @@ class Create_injections(object):
                 self.prob_of_run[key] = days_of_runs[key]/self.total_days
                 ptot += self.prob_of_run[key]
         if abs(1-ptot) > 0.01:
-            print("Anomaly: probabilities don't add-up to 1 (ptot = {}), check the days of activity of runs! Exiting.".format(ptot))
-            sys.exit()
+            raise ValueError("Anomaly: probabilities don't add-up to 1 (ptot = {}), check the days of activity of runs! Exiting.".format(ptot))
+
         else: # rescale prob of runs, to reach exactly 1
             print(self.prob_of_run)
             for i in self.prob_of_run:
@@ -477,8 +476,7 @@ class Create_injections(object):
                             elif ifo == 'H1':
                                 asd_file = asd_path+'LHO_O4a.txt'
                             elif ifo == 'V1':
-                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
-                                sys.exit()
+                                raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                         elif self.psd_opts == 'MDC':
                             if ifo == 'L1':
                                 asd_file = asd_path+'aligo_O4high.txt'
@@ -492,16 +490,14 @@ class Create_injections(object):
                             elif ifo == 'H1':
                                 asd_file = asd_path+'H1_O4a_avg.txt'
                             elif ifo == 'V1':
-                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
-                                sys.exit()
+                                raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                         elif self.psd_opts == 'late':
                             if ifo == 'L1':
                                 asd_file = asd_path+'LLO_1384459938.txt'
                             elif ifo == 'H1':
                                 asd_file = asd_path+'LHO_1388988918.txt'
                             elif ifo == 'V1':
-                                print("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
-                                sys.exit()
+                                raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -519,8 +515,7 @@ class Create_injections(object):
                     print(e)
 
         if nfiles_ok == 0:
-            print("No asd file loaded. Check paths! Exiting.")
-            sys.exit()
+            raise ValueError("No asd file loaded. Check paths! Exiting.")
         
         # create object detector_config
         # this object if used when randomly drawing the run (O1, O2, O3, O4) and the online interferometers
@@ -554,8 +549,7 @@ class Create_injections(object):
 
         # check if we use dLmax(m1), available for SNRth = 9, 10, 11, 12
         if self.dLmax_depends_on_m1 and ((self.SNR_th != 9) and (self.SNR_th != 10) and (self.SNR_th != 11) and (self.SNR_th != 12)):
-            print("Using dLmax(m1) is OK for SNR_th = 9, 10, 11 or 12 only. Exiting.")
-            sys.exit()
+            raise ValueError("Using dLmax(m1) is OK for SNR_th = 9, 10, 11 or 12 only. Exiting.")
 
         # by default we compute injections for BBHs
         self.get_dLmax_params = get_dLmax_params_bbh
@@ -1235,7 +1229,7 @@ class Create_injections(object):
             ninj += 1
             sum_SNR_sq = 0
             for ifo_string in dets:
-                sum_SNR_sq += np.real(ifos.meta_data[ifo_string]['matched_filter_SNR'])**2
+                sum_SNR_sq += np.real(ifos.meta_data[ifo_string]['matched_filter_SNR'])**2 # + some noise with exp=0, var=1
 
             SNR = np.sqrt(sum_SNR_sq)
 
@@ -1358,8 +1352,7 @@ class Create_injections(object):
                 sq_ratio += ar**2
 
         if ndicts == 0:
-            print("No valid dict file found, nothing to merge. Exiting.")
-            sys.exit()
+            raise ValueError("No valid dict file found, nothing to merge. Exiting.")
             
         dict_detected['avg_ratio'] = avg_ratio/ndicts # average acceptance ratio
         if ndicts > 1:
@@ -1488,8 +1481,7 @@ def read_injection_file(file):
     try:
         injdata = h5py.File(file,'r')
     except:
-        print("Cannot open hdf5 file {}. Exiting.".format(file))
-        sys.exit()
+        raise ValueError("Cannot open hdf5 file {}. Exiting.".format(file))
         
     injdict = {k:injdata[k][()] for k in injdata.keys()} # copy all data to python dict
     injdata.close()
@@ -1552,9 +1544,10 @@ class detector_config(object):
             else:
                 # we refine the random draw of H1, L1 using 1-fold and 2-fold uptimes, see https://gwosc.org/detector_status/O4a/
                 # warning: on this web page, the probabilities don't add-up to 1: 53.4 + 29.7 + 16.6 = 99.7%
-                # so that I used 53.5% with 2 ifos, 29.8 with 1 ifo and 16.7 with 0 ifo
+                # Derek Davis on mattermost DetCharTools 20230325: the missing 0.3% should be considered as 0 ifo
+                # these are probas for 'observing' mode
                 lucky = np.random.rand()    
-                if lucky < 0.535:
+                if lucky < 0.534:
                     ifos = ['H1','L1']
                 elif (lucky >= 0.535) & (lucky < 0.69): #0.535 + 15.5 = 69% for L1 during O4a
                     ifos = ['L1']
@@ -1645,8 +1638,7 @@ def convert_temp_file_to_dict(temp_file, header_msg, footer_msg, inj_msg):
         fd = open(temp_file,"rb")
     except Exception as e:
         print(e)
-        print("Could not open file {}. Exiting.".format(temp_file))
-        sys.exit()
+        raise ValueError("Could not open file {}. Exiting.".format(temp_file))
         
     try:
         evt_list = pickle.load(fd)
@@ -1739,8 +1731,7 @@ def merge_tmpfile(file,header,footer,injection):
         f.close()
         
     if len(tmpfiles) == 0:
-        print("No tmp file to merge. Exiting.")
-        sys.exit()
+        raise ValueError("No tmp file to merge. Exiting.")
 
     tmpdir = tempfile.TemporaryDirectory().name
     print("Merged dict will be in dir {}".format(tmpdir))

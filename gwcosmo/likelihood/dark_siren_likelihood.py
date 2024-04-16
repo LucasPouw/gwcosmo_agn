@@ -79,6 +79,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
             samp_ind ={}
+
             for i,pixel_index in enumerate(pixel_indices):
                 samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=100)
                 
@@ -154,7 +155,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
         dz=np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
-        injections = copy.deepcopy(self.injections) # tester s'il y a une difference entre = et copy.deepcopy
+        injections = copy.deepcopy(self.injections)
         
         # Update the sensitivity estimation with the new model
         injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
