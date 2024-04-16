@@ -6,10 +6,8 @@ Tathagata Ghosh
 """
 
 import json
-import pickle
 from itertools import product
 
-import astropy.constants as const
 import bilby
 import gwcosmo
 import h5py
@@ -36,15 +34,9 @@ import seaborn as sns
 sns.set(context="paper", style="ticks", palette="colorblind")
 
 
-speed_of_light = const.c.to("km/s").value
-
-
 parser = create_parser(
     "--method",
     "--posterior_samples",
-    "--skymap_prior_distance",
-    "--skymap_H0",
-    "--skymap_Omega_m",
     "--redshift_evolution",
     "--parameter_dict",
     "--injections_path",
@@ -53,7 +45,6 @@ parser = create_parser(
     "--ifar",
     "--plot",
     "--outputfile",
-    "--posterior_samples_field",
     "--gravity_model",
     "--sampler",
     "--nwalkers",
@@ -62,82 +53,19 @@ parser = create_parser(
     "--nsteps",
     "--nlive",
     "--dlogz",
-    "--nsamps",
 )
 
 opts = parser.parse_args()
 
-if opts.method:
-    method = str(opts.method)
-else:
-    parser.error("Missing method. Choose 'sampling' or 'gridded'.")
-
-### if opts.counterpart_dictionary is None :
-###     if (opts.counterpart_z is None and opts.counterpart_v is None) :
-###         parser.error("Provide either counterpart redshift or recessional velocity.")
-###     if (opts.counterpart_sigmaz is None and opts.counterpart_sigmav is None):
-###         parser.error("Provide either counterpart redshift uncertainty or recessional velocity uncertainty.")
-
 if not opts.posterior_samples:
     parser.error("Posterior samples file is missing")
 
-
-### if (opts.counterpart_z is not None and opts.counterpart_v is not None):
-###     print("Both counterpart redshift and recessional velocity provided. Using recessional velocity.")
-### if (opts.counterpart_sigmaz is not None and opts.counterpart_sigmav is not None):
-###     print("Both counterpart redshift uncertainty and recessional velocity uncertainty provided. Using recessional velocity uncertainty.")
-
-
-# # redshift information
-# if opts.counterpart_dictionary is not None:
-#     with open(str(opts.counterpart_dictionary)) as json_file:
-#         counterpart_dictionary = json.load(json_file)
-#     for event in counterpart_dictionary.keys():
-#         if "redshift" in counterpart_dictionary[event].keys():
-#             pass
-#         elif "velocity" in counterpart_dictionary[event].keys():
-#             counterpart_dictionary[event]["redshift"] = (
-#                 counterpart_dictionary[event]["velocity"] / speed_of_light
-#             )
-#         else:
-#             parser.error(f"provide redshift or velocity for {event}")
-### else :
-###     if opts.counterpart_z is not None:
-###         counterpart_z = float(opts.counterpart_z)
-###     if opts.counterpart_sigmaz is not None:
-###         counterpart_sigmaz = float(opts.counterpart_sigmaz)
-###     if opts.counterpart_v is not None:
-###         counterpart_v = float(opts.counterpart_v)
-###         counterpart_z = counterpart_v/speed_of_light
-###     if opts.counterpart_sigmav is not None:
-###         counterpart_sigmav = float(opts.counterpart_sigmav)
-###         counterpart_sigmaz = counterpart_sigmav/speed_of_light
-##
-###     counterpart_dictionary = {}
-###     counterpart_dictionary ['event'] = {}
-###     counterpart_dictionary ['event'] ["redshift"]= np.array ([counterpart_z,counterpart_sigmaz])
-
-### # ra dec information
-### if opts.posterior_samples is None and opts.skymap is not None:
-###     if opts.counterpart_dictionary is None :
-###         if opts.counterpart_ra is None or opts.counterpart_dec is None:
-###             parser.error('Provide ra and/or dec.')
-###         elif opts.counterpart_ra is not None and opts.counterpart_dec is not None:
-###             counterpart_ra = float(opts.counterpart_ra)
-###             counterpart_dec = float(opts.counterpart_dec)
-###             counterpart_dictionary ['event'] ["ra_dec"]= np.array ([counterpart_ra,counterpart_dec])
-
-### # Skymap prior information
-### if opts.posterior_samples is None and opts.skymap is not None:
-###     if opts.skymap_prior_distance=="dlSquare" :
-###         print ("Distance prior for GW skymap is uniform dl^2.")
-###     elif opts.skymap_prior_distance=="Uniform" :
-###         print ("Distance prior for GW skymap is uniform in luminosity distance.")
-###     elif opts.skymap_prior_distance=="UniformComoving" :
-###         print (f"Distance prior for GW skymap is uniform in comoving  volume with H0={opts.skymap_H0} km/s/Mpc and Omega_m={opts.skymap_Omega_m}.")
+if not opts.method:
+    parser.error("Missing method. Choose 'sampling' or 'gridded'.")
+method = opts.method
 
 # loading GW data (posterior samples/skymap)
-if str(opts.posterior_samples).endswith(".json"):
+if opts.posterior_samples.endswith(".json"):
     with open(opts.posterior_samples) as json_file:
         posterior_samples_dictionary = json.load(json_file)
 else:  # a json file is required
@@ -152,43 +80,6 @@ else:  # a json file is required
     }
     """
     parser.error(err_str)
-
-# Select events to be used
-posterior_samples_dictionary = {
-    k: v for k, v in posterior_samples_dictionary.items() if str2bool(v.get("use_event", "True"))
-}
-
-post_los_dictionary = {}
-nsamps_dictionary = {}
-counterpart_dictionary = {}
-posterior_samples_field_dictionary = {}
-
-for event, meta in posterior_samples_dictionary.items():
-    if counterpart_redshift := meta.get("counterpart_redshift"):
-        counterpart_dictionary.setdefault(event, {}).update(redshift=counterpart_redshift)
-    elif counterpart_velocity := meta.get("counterpart_velocity"):
-        counterpart_dictionary.setdefault(event, {}).update(
-            redshift=counterpart_velocity / speed_of_light
-        )
-    else:
-        raise ValueError(
-            f"Missing either 'counterpart_redshift' or 'counterpart_velocity' for '{event}' event!"
-        )
-
-    # Fill nsamps_dictionary
-    if nsamps := meta.get("nsamps"):
-        nsamps_dictionary.setdefault(event, {}).update(nsamps=nsamps)
-
-    # Fill post_los_dictionary
-    post_los = str2bool(meta.get("posterior_los", "True"))
-    post_los_dictionary[event] = post_los
-
-    if not (counterpart_ra_dec := meta.get("counterpart_ra_dec")) and not post_los:
-        raise ValueError(f"Missing 'counterpart_ra_dec' for '{event}' event!")
-    counterpart_dictionary.setdefault(event, {}).update(ra_dec=counterpart_ra_dec)
-
-    # Fill posterior_samples_field_dictionary
-    posterior_samples_field_dictionary.update(event=meta.get("samples_field"))
 
 # parameter(s) file
 if opts.parameter_dict:
@@ -246,7 +137,6 @@ injections = injections_at_detector(
     ntotal=np.array(injdata["ntotal"]),
     Tobs=np.array(injdata["Tobs"]),
 )
-
 injdata.close()
 
 if not (mass_model := opts.mass_model):
@@ -262,7 +152,7 @@ if gravity_model == "GR":
 elif gravity_model == "Xi0_n":
     cosmo = Xi0_n_cosmology()
 else:
-    parser.error("Unrecognized gravity model")
+    parser.error(f"Unrecognized '{gravity_model}' gravity model")
 print(f"Using the {gravity_model} gravity model")
 
 # redshift evolution model
@@ -281,39 +171,20 @@ ps_z = ps_z()
 plot = str2bool(opts.plot)
 outputfile = str(opts.outputfile)
 
-if opts.posterior_samples:
-    # if str2bool(opts.post_los) is True:
-    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM(
-        counterpart_dictionary,
-        injections,
-        ps_z,
-        cosmo,
-        mass_priors,
-        posterior_samples_dictionary=posterior_samples_dictionary,
-        posterior_samples_field=posterior_samples_field_dictionary,
-        network_snr_threshold=opts.snr,
-        post_los_dictionary=post_los_dictionary,
-        nsamps=nsamps_dictionary,
-    )
-    # else:
-    #    nsamps = int(opts.nsamps)
-    #    me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
-    #        counterpart_dictionary, injections, ps_z, cosmo, mass_priors,
-    #        posterior_samples_dictionary=posterior_samples_dictionary,
-    #        posterior_samples_field=posterior_samples_field_dictionary,
-    #        network_snr_threshold=opts.snr, post_los_dictionary=post_los_dictionary, nsamps=nsamps)
+me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM(
+    posterior_samples_dictionary,
+    injections,
+    ps_z,
+    cosmo,
+    mass_priors,
+    network_snr_threshold=opts.snr,
+)
 
-##### elif opts.posterior_samples is None and opts.skymap is not None:
-#####     me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM (
-#####          counterpart_dictionary, injections, ps_z, cosmo, mass_priors,
-#####          skymap_dictionary=skymap_dictionary,
-#####          network_snr_threshold=opts.snr, skymap_prior_distance=opts.skymap_prior_distance,
-#####          skymap_H0=float(opts.skymap_H0), skymap_Omega_m=float(opts.skymap_Omega_m))
-
-for key in parameter_dict and key not in me.parameters:
-    print(
-        f"WARNING: The parameter {key} from your parameter dictionary is not recognised by the likelihood module."
-    )
+for key in parameter_dict:
+    if key not in me.parameters:
+        print(
+            f"WARNING: The parameter {key} from your parameter dictionary is not recognized by the likelihood module."
+        )
 
 if method == "sampling":
 
@@ -328,65 +199,93 @@ if method == "sampling":
     priors = {}
 
     for key in parameter_dict:
-        if isinstance(parameter_dict[key]['value'],list):
+        if isinstance(parameter_dict[key]["value"], list):
             if "label" in parameter_dict[key]:
-                label = parameter_dict[key]['label']
+                label = parameter_dict[key]["label"]
             else:
                 label = key
-            if parameter_dict[key]['prior'] == 'Uniform' or parameter_dict[key]['prior'] == 'uniform':
-                priors[key] = bilby.core.prior.Uniform(parameter_dict[key]['value'][0],parameter_dict[key]['value'][1],name=key,latex_label=label)
-            elif parameter_dict[key]['prior'] == 'Gaussian':
-                priors[key] = bilby.core.prior.Gaussian(parameter_dict[key]['value'][0],parameter_dict[key]['value'][1],name=key,latex_label=label)
+            if (
+                parameter_dict[key]["prior"] == "Uniform"
+                or parameter_dict[key]["prior"] == "uniform"
+            ):
+                priors[key] = bilby.core.prior.Uniform(
+                    parameter_dict[key]["value"][0],
+                    parameter_dict[key]["value"][1],
+                    name=key,
+                    latex_label=label,
+                )
+            elif parameter_dict[key]["prior"] == "Gaussian":
+                priors[key] = bilby.core.prior.Gaussian(
+                    parameter_dict[key]["value"][0],
+                    parameter_dict[key]["value"][1],
+                    name=key,
+                    latex_label=label,
+                )
             else:
-                raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'.")
+                raise ValueError(
+                    f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'."
+                )
         else:
-            priors[key] = float(parameter_dict[key]['value'])
+            priors[key] = float(parameter_dict[key]["value"])
 
-    sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
-    
+    sampling_method = "acceptance-walk"  # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
+
     bilbyresult = bilby.run_sampler(
-    likelihood=me,
-    priors=priors,
-    outdir=f"{opts.outputfile}",     # the directory to output the results to
-    label=f"{opts.outputfile}",      # a label to apply to the output file
-    plot=plot,         # by default this is True and a corner plot will be produced
-    sampler=sampler,  # set the name of the sampler
-    nlive=nlive,         # add in any keyword arguments used by that sampler
-    dlogz=dlogz,
-    nwalkers=nwalkers,   # add in any keyword arguments used by that sampler
-    walks=walks,
-    nsteps=nsteps,
-    npool=npool,
-    sample=sampling_method
-    #injection_parameters={"m": m, "c": c},  # (optional) true values for adding to plots
+        likelihood=me,
+        priors=priors,
+        outdir=f"{opts.outputfile}",  # the directory to output the results to
+        label=f"{opts.outputfile}",  # a label to apply to the output file
+        plot=plot,  # by default this is True and a corner plot will be produced
+        sampler=sampler,  # set the name of the sampler
+        nlive=nlive,  # add in any keyword arguments used by that sampler
+        dlogz=dlogz,
+        nwalkers=nwalkers,  # add in any keyword arguments used by that sampler
+        walks=walks,
+        nsteps=nsteps,
+        npool=npool,
+        sample=sampling_method,
+        # injection_parameters={"m": m, "c": c},  # (optional) true values for adding to plots
     )
 
 
-elif method == "gridded" :
-         
+elif method == "gridded":
+
     parameter_grid = {}
     fixed_params = {}
     parameter_grid_indices = {}
 
     for key in parameter_dict:
-        if isinstance(parameter_dict[key]['value'],list):
-            if parameter_dict[key]['prior'] == 'Uniform' or parameter_dict[key]['prior'] == 'uniform':
-                print(f"Setting a uniform prior on {key} in the range [{parameter_dict[key]['value'][0]}, {parameter_dict[key]['value'][1]}]")
+        if isinstance(parameter_dict[key]["value"], list):
+            if (
+                parameter_dict[key]["prior"] == "Uniform"
+                or parameter_dict[key]["prior"] == "uniform"
+            ):
+                print(
+                    f"Setting a uniform prior on {key} in the range [{parameter_dict[key]['value'][0]}, {parameter_dict[key]['value'][1]}]"
+                )
             else:
-                raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform').")
-            if len(parameter_dict[key]['value'])==3:
-                parameter_grid[key] = np.linspace(parameter_dict[key]['value'][0],parameter_dict[key]['value'][1],parameter_dict[key]['value'][2])
-            elif len(parameter_dict[key]['value'])==2:
-                parameter_grid[key] = np.linspace(parameter_dict[key]['value'][0],parameter_dict[key]['value'][1],10)
+                raise ValueError(
+                    f"Unrecognised prior settings for parameter {key} (specify 'Uniform')."
+                )
+            if len(parameter_dict[key]["value"]) == 3:
+                parameter_grid[key] = np.linspace(
+                    parameter_dict[key]["value"][0],
+                    parameter_dict[key]["value"][1],
+                    parameter_dict[key]["value"][2],
+                )
+            elif len(parameter_dict[key]["value"]) == 2:
+                parameter_grid[key] = np.linspace(
+                    parameter_dict[key]["value"][0], parameter_dict[key]["value"][1], 10
+                )
             else:
                 raise ValueError(f"Incorrect formatting for parameter {key}.")
             parameter_grid_indices[key] = range(len(parameter_grid[key]))
         else:
-            fixed_params[key] = float(parameter_dict[key]['value'])
+            fixed_params[key] = float(parameter_dict[key]["value"])
 
     for key in fixed_params:
         me.parameters[key] = fixed_params[key]
-        print(f'Setting parameter {key} to {fixed_params[key]}')
+        print(f"Setting parameter {key} to {fixed_params[key]}")
 
     shape = [len(x) for x in parameter_grid.values()]
     likelihood = np.zeros(shape)
@@ -398,68 +297,82 @@ elif method == "gridded" :
     indices = []
     for items in product(*parameter_grid_indices.values()):
         indices.append(items)
-	
-    print(f'Computing the likelihood on a grid over {names}')
+
+    print(f"Computing the likelihood on a grid over {names}")
     for i, value in enumerate(tqdm(values)):
-        n=0
+        n = 0
         for name in names:
             me.parameters[name] = value[n]
             n += 1
         likelihood[indices[i]] = me.log_likelihood()
 
     # rescale values of the log-likelihood before exponentiating
-    likelihood -= np.nanmax(likelihood) #np.nanmin(likelihood[likelihood != -np.inf])
+    likelihood -= np.nanmax(likelihood)  # np.nanmin(likelihood[likelihood != -np.inf])
     likelihood = np.exp(likelihood)
-	
+
     param_values = [parameter_grid[k] for k in names]
 
-    mylist = np.array([names,param_values,likelihood,opts,parameter_dict],dtype=object)
-    np.savez(outputfile+'.npz',mylist)
+    mylist = np.array([names, param_values, likelihood, opts, parameter_dict], dtype=object)
+    np.savez(outputfile + ".npz", mylist)
 
     if plot:
         no_params = len(names)
-        labels=[]
+        labels = []
         for name in names:
             if "label" in parameter_dict[name]:
                 labels.append(parameter_dict[name]["label"])
             else:
                 labels.append(name)
-	
+
         if no_params == 1:
-            ind_lik_norm = likelihood/np.sum(likelihood)/(param_values[0][1]-param_values[0][0])
-            plt.figure(figsize=[4.2,4.2])
-            plt.plot(param_values[0],ind_lik_norm)
-            plt.xlabel(labels[0],fontsize=16)
-            plt.xlim(param_values[0][0],param_values[0][-1])
-            plt.ylim(0,1.1*np.max(ind_lik_norm))
-            plt.ylabel(f'p({labels[0]})',fontsize=16)
+            ind_lik_norm = (
+                likelihood / np.sum(likelihood) / (param_values[0][1] - param_values[0][0])
+            )
+            plt.figure(figsize=[4.2, 4.2])
+            plt.plot(param_values[0], ind_lik_norm)
+            plt.xlabel(labels[0], fontsize=16)
+            plt.xlim(param_values[0][0], param_values[0][-1])
+            plt.ylim(0, 1.1 * np.max(ind_lik_norm))
+            plt.ylabel(f"p({labels[0]})", fontsize=16)
 
         else:
-            fig, ax = plt.subplots(no_params, no_params, figsize=[4*no_params,4*no_params],constrained_layout=True)
-            for column in np.arange(0,no_params):
-                for row in np.arange(0,no_params):
+            fig, ax = plt.subplots(
+                no_params,
+                no_params,
+                figsize=[4 * no_params, 4 * no_params],
+                constrained_layout=True,
+            )
+            for column in np.arange(0, no_params):
+                for row in np.arange(0, no_params):
                     indices = list(range(no_params))
                     if column > row:
                         fig.delaxes(ax[row][column])
 
                     elif row == column:
                         indices.remove(row)
-                        ind_lik = np.sum(likelihood,axis=tuple(indices))
-                        ind_lik_norm = ind_lik/np.sum(ind_lik)/(param_values[row][1]-param_values[row][0])
+                        ind_lik = np.sum(likelihood, axis=tuple(indices))
+                        ind_lik_norm = (
+                            ind_lik
+                            / np.sum(ind_lik)
+                            / (param_values[row][1] - param_values[row][0])
+                        )
 
-                        ax[row,column].plot(param_values[row],ind_lik_norm)
-                        ax[row,column].set_xlim(param_values[row][0],param_values[row][-1])
-                        ax[row,column].set_ylim(0,1.1*np.max(ind_lik_norm))
+                        ax[row, column].plot(param_values[row], ind_lik_norm)
+                        ax[row, column].set_xlim(param_values[row][0], param_values[row][-1])
+                        ax[row, column].set_ylim(0, 1.1 * np.max(ind_lik_norm))
 
                     else:
                         indices.remove(row)
                         indices.remove(column)
-                        ax[row,column].contourf(param_values[column],param_values[row],np.sum(likelihood,axis=tuple(indices)).T,20)
+                        ax[row, column].contourf(
+                            param_values[column],
+                            param_values[row],
+                            np.sum(likelihood, axis=tuple(indices)).T,
+                            20,
+                        )
                     if column == 0:
-                        ax[row,column].set_ylabel(labels[row], fontsize=16)
-                    if row == no_params-1:
-                        ax[row,column].set_xlabel(labels[column],fontsize=16)
+                        ax[row, column].set_ylabel(labels[row], fontsize=16)
+                    if row == no_params - 1:
+                        ax[row, column].set_xlabel(labels[column], fontsize=16)
 
-        plt.savefig(f'{outputfile}.png',dpi=100,bbox_inches='tight')
-
-
+        plt.savefig(f"{outputfile}.png", dpi=100, bbox_inches="tight")
