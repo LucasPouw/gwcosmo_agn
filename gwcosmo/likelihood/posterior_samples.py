@@ -322,16 +322,20 @@ class load_posterior_samples(object):
                         else:
                             non_empty_dicts_keys.append(k) # record existing dict keys
                     if len(non_empty_dicts_keys) == 0:
-                        print("Problem: no dict with active keys available! Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.")
-                        self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                        raise ValueError("Problem: no dict with active keys available! You could set the PE priors either by kind or by file. Exiting.")
                     elif len(non_empty_dicts_keys) == 1:
                         ldict = pdicts[non_empty_dicts_keys[0]]
-                        self.pe_priors_object = analytic_PE_priors(ldict)
-                        print("Found a single analytic prior dict with field: {} , will use it for the analysis <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
+                        current_key = non_empty_dicts_keys[0]
+                        print("Found a single analytic prior dict with field: {}.".format(current_key))
                         print("Dict characteristics for masses and distance:")
                         for k in show_keys:
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
+                        if current_key != self.field:
+                              raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
+                        else:
+                            self.pe_priors_object = analytic_PE_priors(ldict)
+
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
                         print("Required sample field: {}".format(self.field))
@@ -340,8 +344,7 @@ class load_posterior_samples(object):
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
                         else:
-                            raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis.".format(self.field))
-                            #raise ValueError("No analytic prior dict with field name {}. Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
+                            raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis. You could set the PE priors either by key or by file.".format(self.field))
                             #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 else: # this is the single analysis case {'mass_1':....}
                     print("Single analysis case.")
@@ -354,9 +357,9 @@ class load_posterior_samples(object):
                 self.posterior_samples[self.sampling_vars] = {}
                 self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
             else:
-                print("No analytic priors in file, using U(m1d, m2d) and p(dL) \propto dL^2")
                 self.posterior_samples[self.has_analytic_priors] = False
-                self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                raise ValueError("No analytic priors in file and no user-defined PE. You could set the PE priors either by kind or by file. Exiting.")
 
                     
         
@@ -437,7 +440,21 @@ class load_posterior_samples(object):
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
         self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance) # we compute all PE priors values -> pi(m1d,m2d,dL)
-        print("PE priors values for posterior samples are computed.")
+        anomalies = np.where( ( self.pe_priors <= 0 ) |
+                              ( sum(np.isnan(self.pe_priors) > 0 ) ) |
+                              ( sum(np.isinf(self.pe_priors) > 0) ) )[0]
+        if len(anomalies) > 0:
+            print("Posterior file {}: anomalies in pe_priors computed!".format(posterior_file))
+            for i in range(len(anomalies)):
+                print("\t pi(m1d,m1d,dL) = {}, m1i = {}, m2i = {}, dLi = {}, prior = {}".format(self.pe_priors[anomalies[i]],
+                                                                                                self.mass_1[anomalies[i]],
+                                                                                                self.mass_2[anomalies[i]],
+                                                                                                self.distance[anomalies[i]],
+                                                                                                self.pe_priors_object))
+            # we exit as anomalies can lead to wrong likelihoods
+            raise ValueError("Anomalies in computed pe_priors. Check the available analytic priors dict. Exiting.")
+        else:
+            print("PE priors values for posterior samples are computed.")
 
             
     def marginalized_sky(self):
@@ -446,6 +463,8 @@ class load_posterior_samples(object):
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
+
+    
 def get_priors(pes):
     '''
     This function searches for prior dictionnaries in a posterior file (.hdf5 or .h5).
@@ -613,7 +632,8 @@ class reweight_posterior_samples(object):
             try:
                 kde = gaussian_kde(data, weights=weights)
             except:
-                print("KDE problem! create a default KDE with norm=0")
+                anomalies = np.where((weights <= 0) | np.isinf(weights)) [0]
+                print("KDE problem! {} values of the weights are 0 or infinity. create a default KDE with norm=0".format(len(anomalies)))
                 print("norm: {} -> 0, neff: {}".format(norm,neff))
                 norm = 0
                 kde = gaussian_kde(data)
@@ -650,12 +670,11 @@ class reweight_posterior_samples(object):
     def marginalized_redshift_reweight(self, redshift, mass_1_source, mass_2_source, PEpriors_detframe):
         """
         Computes the marginalized distance posterior KDE.
-        it uses the prior object PEpriors_detframe that provides p_PE(m1det,m2det,dL) used in the PE step (detector frame)
+        it uses the PEpriors_detframe values of p_PE(m1det,m2det,dL) used in the PE step (detector frame)
         """
         # Re-weight
         PEpriors_source_frame = PEpriors_detframe * self.jacobian(redshift) # this is pPE(m1d,m2d,dL) (1+z)^2 |ddL/dz|
         weights = self.source_frame_mass_prior.joint_prob(mass_1_source,mass_2_source)/PEpriors_source_frame
-
         return self.get_kde(redshift,weights)
 
     def marginalized_redshift(self, redshift):
