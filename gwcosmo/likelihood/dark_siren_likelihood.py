@@ -78,10 +78,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
             samp_ind ={}
-
+            minsamps = 100 # default value
             for i,pixel_index in enumerate(pixel_indices):
-                samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=100)
-                
+                samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=minsamps)
+            
             no_sub_pix_per_pixel = int(4**(np.log2(nside/nside_low_res)))
 
             # Get the coordinates of the hi-res pixel centres
@@ -159,9 +159,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                   .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
             print("returning infinite denominator")
-            print("exit!")
             log_den = np.inf
-            #sys.exit()
 
         return log_den, np.log(z_prior_norm)
                        
