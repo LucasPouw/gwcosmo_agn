@@ -94,7 +94,7 @@ for key, value in posterior_samples_dictionary.items():
         save_key_2 = posterior_samples_dictionary[key]["PEprior_kind"]
         posterior_samples_dictionary[key].pop("PEprior_kind")
     try:
-        samples = load_posterior_samples(posterior_samples_dictionary[key])
+        samples = load_posterior_samples(posterior_samples_dictionary[key],choose_default=False)
     except ValueError as ve:
         print(ve)
     if save_key: posterior_samples_dictionary[key]["PEprior_file_path"] = save_key
@@ -116,6 +116,6 @@ else:
     if jsonfile[-5:] != '.json': jsonfile += '.json'
 
 with open(jsonfile,'a',encoding='utf-8') as f:
-    json.dump(posterior_samples_dictionary,f,ensure_ascii=False,indent=4)
+    json.dump(posterior_samples_dictionary,f,ensure_ascii=False,indent=4,sort_keys=True)
 
 print("GW event(s) details written in file {}".format(jsonfile))
