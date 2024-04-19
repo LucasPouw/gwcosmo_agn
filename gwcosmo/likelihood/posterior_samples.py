@@ -178,7 +178,7 @@ class load_posterior_samples(object):
     "skymap_path" => path to the GW event skymap (fits file)
     """
     
-    def __init__(self,posterior_samples):
+    def __init__(self,posterior_samples,choose_default=True):
 
         self.PE_file_key = "posterior_file_path"
         self.samples_field_key = "samples_field"
@@ -198,7 +198,9 @@ class load_posterior_samples(object):
         self.search_analytic_priors_str = "search_analytic_priors"
         self.could_read_with_pesummary = "could_read_with_pesummary"
         self.user_defined_PE = "user_defined_PE_priors"
-        
+
+
+        self.choose_default = choose_default
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
         self.default_approximants = ['PublicationSamples',
@@ -276,21 +278,28 @@ class load_posterior_samples(object):
             self.posterior_samples[self.analysis_type] = self.multi_analysis
             self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
-                for approximant in self.default_approximants:
-                    try:
-                        data = pes.samples_dict[approximant]
-                        print("No waveform field provided -> setting model: "+approximant)
-                        self.field = approximant # record the approximant
-                        break
-                    except KeyError:
-                        continue
-                self.posterior_samples[self.approximant_selected] = self.field
-            else:
-                if self.field in  pes.samples_dict.keys(): # check if required key exists
-                    data = pes.samples_dict[self.field]
+                if self.choose_default: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore run
+                    for approximant in self.default_approximants:
+                        try:
+                            data = pes.samples_dict[approximant]
+                            print("No waveform field provided -> setting model: "+approximant)
+                            self.field = approximant # record the approximant
+                            self.posterior_samples[self.approximant_selected] = self.field
+                            break
+                        except KeyError:
+                            continue
+                    if self.field == None:
+                        self.posterior_samples[self.approximant_selected] = None
+                        raise ValueError("No default key found in file. Exiting.")
                 else:
-                    raise ValueError("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
-                          .format(self.field,pes.samples_dict.keys()))
+                    print("Exploratory run. No approximant chosen.")
+                    self.posterior_samples[self.approximant_selected] = None
+            elif self.field in pes.samples_dict.keys(): # check if required key exists
+                data = pes.samples_dict[self.field]
+                print("Requested approximant {} found.".format(self.field))
+            else:
+                raise ValueError("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
+                                 .format(self.field,pes.samples_dict.keys()))
 
         else: # single analysis in file
             self.posterior_samples[self.analysis_type] = self.single_analysis
@@ -331,21 +340,26 @@ class load_posterior_samples(object):
                         for k in show_keys:
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
-                        if current_key != self.field:
+                        if self.choose_default and (current_key != self.field):
                               raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
                         else:
                             self.pe_priors_object = analytic_PE_priors(ldict)
+                            self.posterior_samples[self.sampling_vars] = {}
+                            self.posterior_samples[self.sampling_vars][current_key] = self.pe_priors_object.sampling_vars
 
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
                         print("Required sample field: {}".format(self.field))
                         print("Available keys: {}".format(non_empty_dicts_keys.keys()))
+                        for field in non_empty_dicts_keys.keys():
+                            record_priors = analytic_PE_priors(pdicts[self.field])
+                            self.posterior_samples[self.sampling_vars] = {}
+                            self.posterior_samples[self.sampling_vars][field] = record_priors.sampling_vars
                         if self.field in non_empty_dicts_keys.keys():
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
                         else:
                             raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis. You could set the PE priors either by key or by file.".format(self.field))
-                            #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 else: # this is the single analysis case {'mass_1':....}
                     print("Single analysis case.")
                     self.pe_priors_object = analytic_PE_priors(pdicts)
@@ -742,9 +756,15 @@ class make_pixel_px_function(object):
         sel : array of ints
             The indices of posterior samples for pixel idx
         """
-    
+        
+        ipix_samples = hp.pixelfunc.ang2pix(self.nside, np.pi/2-self.samples.dec, self.samples.ra, nest=self.skymap.nested)
+        sel = np.where(ipix_samples == idx)[0]
+        if len(sel) >= minsamps:
+            print("{} samples fall in pix {}".format(len(sel),idx))
+            return sel
+
+        # not enough samples in pixel 'idx', we need to extend the search
         racent,deccent = ra_dec_from_ipix(self.nside, idx, nest=self.skymap.nested)
-    
         separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
         sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
         step = sep/2. # choose step size for increasing radius
@@ -757,17 +777,16 @@ class make_pixel_px_function(object):
             nsamps = len(sel)
             if sep > np.pi:
                 raise ValueError("Problem with the number of posterior samples.")
-        print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
-            
+        print('pixel idx {}: angular radius: {} radians, No. samples: {}'.format(idx,sep,len(sel)))
+         
         return sel
-
         
 
 def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
     """
     Find the angular separation between all posterior samples and a specific
     LOS. Return the indices of the nsamps closest samples, as well as the 
-    maxiumum separation of those samples.
+    maximum separation of those samples.
     
     Parameters
     ----------
