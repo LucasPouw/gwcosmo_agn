@@ -281,9 +281,15 @@ class make_pixel_px_function(object):
         sel : array of ints
             The indices of posterior samples for pixel idx
         """
-    
+        
+        ipix_samples = hp.pixelfunc.ang2pix(self.nside, np.pi/2-self.samples.dec, self.samples.ra, nest=self.skymap.nested)
+        sel = np.where(ipix_samples == idx)[0]
+        if len(sel) >= minsamps:
+            print("{} samples fall in pix {}".format(len(sel),idx))
+            return sel
+
+        # not enough samples in pixel 'idx', we need to extend the search
         racent,deccent = ra_dec_from_ipix(self.nside, idx, nest=self.skymap.nested)
-    
         separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
         sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
         step = sep/2. # choose step size for increasing radius
@@ -294,10 +300,11 @@ class make_pixel_px_function(object):
             sep += step
             sel = np.where(separations<sep)[0]
             nsamps = len(sel)
-        print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
-            
+            if sep > np.pi:
+                raise ValueError("Problem with the number of posterior samples.")
+        print('pixel idx {}: angular radius: {} radians, No. samples: {}'.format(idx,sep,len(sel)))
+         
         return sel
-
         
 
 def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
