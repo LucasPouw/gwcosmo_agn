@@ -44,6 +44,57 @@ class m1d_m2d_uniform_dL_square_PE_priors(object):
         """
         return dL**2
 
+class chirp_det_frame_q_uniform_dL_square_PE_priors(object):
+    """
+    This class returns the PE priors for the case of a uniform joint probability for (Mc_det_frame,q) and \propto dL^2 for the luminosity distance
+    """
+    def __init__(self):
+
+        self.name = "chirp_det_ratio:uniform --- dL:square"
+
+    def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        """
+        # p(m1d,m2d,dL) = p(Mc,q,dL) * | det Jacobian[(Mc,q,dL) -> (m1d,m2d,dL)] |
+        # p(m1d,m2d,dL) = p(Mc,q) * | det Jacobian[(Mc,q) -> (m1d,m2d)] | * p(dL)
+        # p(m1d,m2d,dL) = p(Mc,q) * Mc/m1d^2 * dL^2
+        # p(m1d,m2d,dL) \propto Mc/m1d^2 * dL^2
+        mc = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
+        return dL**2 * mc/m1d**2
+
+class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(object):
+    """
+    This class returns the PE priors for the case of a uniform joint probability for (m1_det_frame,m2_det_frame) and
+    a p(luminosity distance) \propto dVc/dz /(1+z), see https://lscsoft.docs.ligo.org/bilby/api/bilby.gw.prior.UniformSourceFrame.html
+    """
+    def __init__(self):
+
+        self.name = "m1d_m2d:uniform --- dL:uniform_merger_rate_comoving_H0:67.9, Om0:0.3065"
+        self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc), # value indicated in https://zenodo.org/records/6513631
+                                   Om0=0.3065, # value indicated in https://zenodo.org/records/6513631
+                                   Tcmb0=2.7255 * u.K,
+                                   Neff=3.046,
+                                   m_nu=[0.,0.,0.06] * u.eV,
+                                   Ob0=0.0486)
+
+    def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        """
+
+        dL_pdf = bilby.gw.prior.UniformSourceFrame(minimum=0.1,
+                                                   maximum=50000.0,
+                                                   cosmology=self.cosmo,
+                                                   name='luminosity_distance',
+                                                   latex_label='$d_L$',
+                                                   unit='Mpc',
+                                                   boundary=None)
+
+        return dL_pdf.prob(dL)
+
+
+    
 def check_sampling(prior_dict, samp_vars):
     """
     This function detects if the variables in argument samp_vars are sampled in the prior_dict
@@ -129,6 +180,7 @@ class analytic_PE_priors(object):
             else:
                 raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
 
+        print("Analytic prior case: PE prior function get_prior_m1d_m2d_dL actually points to {}".format(self.get_prior_m1d_m2d_dL.__name__))
         self.sampling_vars = sampling_vars
         # add luminosity distance prior
         self.sampling_vars['luminosity_distance'] = str(self.prior['luminosity_distance'])
@@ -136,16 +188,13 @@ class analytic_PE_priors(object):
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(m1d,m2d,dL)
-        it must be used when the PE posterior were obtained after a sampling on Mc, q
+        it must be used when the PE posterior were obtained after a sampling on Mc (det frame), q
         the function is called with args m1d, m2d, dL so that we must first compute Mc, q (det frame),
         compute the PE prior probability on Mc, q and convert it into the PE prior probability on m1d, m2d and add the jacobian
         """
         mcdet = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
         q = m2d/m1d
-        nvals = len(q)
-        prior_mcdet_q_dL = np.zeros(nvals)
-        for i in range(nvals): # did not find how to compute all probs at once!
-            prior_mcdet_q_dL[i] = self.prior.prob({'chirp_mass':mcdet[i],'mass_ratio':q[i],'luminosity_distance':dL[i]})
+        prior_mcdet_q_dL = self.prior.prob({'chirp_mass':mcdet,'mass_ratio':q,'luminosity_distance':dL},axis=0)
         jacobian = mcdet/m1d**2
         return prior_mcdet_q_dL*jacobian
 
@@ -154,13 +203,13 @@ class analytic_PE_priors(object):
         This function returns something proportional to p(m1d,m2d,dL)
         the analytic case returns the probability p(m1d,m2d,dL) after marginalizing over all other parameters
         """
-        return self.prior.prob({'mass_1':m1d,'mass_2':m2d,'luminosity_distance':dL})
+        return self.prior.prob({'mass_1':m1d,'mass_2':m2d,'luminosity_distance':dL},axis=0)
 
     def get_prior_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(dL) assuming p(m1d,m2d) is uniform
         """
-        return self.prior['luminosity_distance'].prob(dL)
+        return self.prior['luminosity_distance'].prob(dL) # no axis=0 here
     
 
 
@@ -198,6 +247,9 @@ class load_posterior_samples(object):
         self.search_analytic_priors_str = "search_analytic_priors"
         self.could_read_with_pesummary = "could_read_with_pesummary"
         self.user_defined_PE = "user_defined_PE_priors"
+        self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
+                                  "chirp_det_frame_q_uniform_dL_square_PE_priors",
+                                  "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
 
 
         self.choose_default = choose_default
@@ -234,8 +286,12 @@ class load_posterior_samples(object):
                 raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
         elif self.PE_prior_kind_key in self.posterior_samples.keys():
             user_defined_PE = True
-            print("PE prior kind provided: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
-            self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
+            print("PE prior kind requested: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
+            try:
+                self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
+            except:
+                raise ValueError("Could not find PE prior kind {}. Available PE prior kinds are: {}. Exiting.".format(self.posterior_samples[self.PE_prior_kind_key],
+                                                                                                                      self.existing_PE_kinds))
         else:
             print("NO PE prior file user-provided.")
             self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
