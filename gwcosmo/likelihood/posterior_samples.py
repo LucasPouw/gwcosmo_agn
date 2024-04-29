@@ -581,7 +581,13 @@ def get_priors(pes):
                         
             else: # it's a single analysis h5 file
                 print("Single analysis posterior file. Getting analytic prior data.")
-                ndict = copy.deepcopy(pes.priors['analytic'])
+                bdict = pes.priors['analytic']
+                if 'luminosity_distance' not in bdict.keys():
+                    subdict_key = list(bdict.keys())[0]
+                    print("Sub-dictionary with key: {}".format(subdict_key))
+                    bdict = bdict[subdict_key]
+                    
+                ndict = copy.deepcopy(bdict)
                 print(ndict['luminosity_distance'])
                 dLprior, PEcosmo = get_dL_prior(str(ndict['luminosity_distance']))
                 #print("main::dLprior: {}".format(dLprior))
