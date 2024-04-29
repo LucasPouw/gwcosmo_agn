@@ -320,6 +320,7 @@ class load_posterior_samples(object):
         This function is called when dealing with .h5 files and O4-.hdf5 files.
         '''
 
+        data = None
         self.posterior_samples[self.search_analytic_priors_str] = True # record the fact we try to find analytic prior
         print(posterior_file)
         try:
@@ -334,7 +335,7 @@ class load_posterior_samples(object):
             self.posterior_samples[self.analysis_type] = self.multi_analysis
             self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
-                if self.choose_default: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore run
+                if self.choose_default: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore_priors run
                     for approximant in self.default_approximants:
                         try:
                             data = pes.samples_dict[approximant]
@@ -345,6 +346,7 @@ class load_posterior_samples(object):
                         except KeyError:
                             continue
                     if self.field == None:
+                        data = None # no analysis to perform
                         self.posterior_samples[self.approximant_selected] = None
                         raise ValueError("No default key found in file. Exiting.")
                 else:
@@ -362,12 +364,14 @@ class load_posterior_samples(object):
             self.posterior_samples[self.approximant_selected] = None
             data = pes.samples_dict
             
-        self.distance = data['luminosity_distance']
-        self.ra = data['ra']
-        self.dec = data['dec']
-        self.mass_1 = data['mass_1']
-        self.mass_2 = data['mass_2']
-        self.nsamples = len(self.distance)
+        if data != None:
+            self.distance = data['luminosity_distance']
+            self.ra = data['ra']
+            self.dec = data['dec']
+            self.mass_1 = data['mass_1']
+            self.mass_2 = data['mass_2']
+            self.nsamples = len(self.distance)
+            
         show_keys = ['mass_1','mass_2','chirp_mass','mass_ratio','luminosity_distance']
         print("Searching for sample field: {}".format(self.field))
         # deal with PE prior values for each sample
@@ -503,6 +507,10 @@ class load_posterior_samples(object):
             self.nsamples = len(self.distance)
             file.close()
 
+        if (self.field is None) and (self.choose_default == False):
+            # then it's a gwcosmo_explore_priors run, stop here
+            return
+            
         if self.pe_priors_object is None:
             # case where no prior has been found: neither user-provided nor in the posterior file
             raise ValueError("WARNING !!!!!!!!!!! No PE-prior has been set. Cannot run the analysis.")
