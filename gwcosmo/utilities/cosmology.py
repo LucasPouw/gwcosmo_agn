@@ -496,6 +496,9 @@ class cM_cosmology(standard_cosmology):
 
         super().__init__(H0, Omega_m, w0, wa, zmax, zmin, zbin)
 
+        if w0!=-1 or wa!=0:
+            raise ValueError('The change in w0 and wa is currently not supported.')
+
         self.H0 = 0
         self.__cM = 0
         self.Omega_L = 1-self.Omega_m
