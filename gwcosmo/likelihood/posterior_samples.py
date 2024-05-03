@@ -19,6 +19,7 @@ import pesummary
 from pesummary.io import read
 from bilby.core.prior.analytical import *
 from bilby.gw.prior import *
+import re
 
 from scipy.interpolate import RegularGridInterpolator
 
@@ -229,13 +230,15 @@ class load_posterior_samples(object):
     
     def __init__(self,posterior_samples,choose_default=True):
 
-        self.PE_file_key = "posterior_file_path"
-        self.samples_field_key = "samples_field"
-        self.PE_prior_file_key = "PEprior_file_path"
-        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py
+        # list of keys that can be used in the posterior_samples json file
+        self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
+        self.PE_skymap_file_key = "skymap_path" # path to the event skymap (needed)
+        self.samples_field_key = "samples_field" # name of the approximant (online, CO1:...) (optional)
+        self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
+        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
+        self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
+        # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
-        self.PE_skymap_file_key = "skymap_path"
-        # we will add some new fields to the 'posterior_samples' dict
         self.analysis_type = "analysis_type"
         self.sampling_vars = "sampling_variables"
         self.multi_analysis = "multi"
@@ -247,6 +250,8 @@ class load_posterior_samples(object):
         self.search_analytic_priors_str = "search_analytic_priors"
         self.could_read_with_pesummary = "could_read_with_pesummary"
         self.user_defined_PE = "user_defined_PE_priors"
+        self.skip_me = False
+        # list of available PE priors kind if no PE priors file
         self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
                                   "chirp_det_frame_q_uniform_dL_square_PE_priors",
                                   "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
@@ -269,6 +274,11 @@ class load_posterior_samples(object):
         self.posterior_samples[self.search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
 
         print("\n\nTreating event: {}".format(posterior_samples))
+
+        if (self.use_event_key in self.posterior_samples.keys()) and (self.posterior_samples[self.use_event_key].lower() == "false"):
+            self.skip_me = True # we skip this event
+            return # stop the init
+        
         # deal with the PE priors:
         user_defined_PE = False
         if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
@@ -348,7 +358,7 @@ class load_posterior_samples(object):
                     if self.field == None:
                         data = None # no analysis to perform
                         self.posterior_samples[self.approximant_selected] = None
-                        raise ValueError("No default key found in file. Exiting.")
+                        raise ValueError("No pre-defined approximant found in file. Exiting.")
                 else:
                     print("Exploratory run. No approximant chosen.")
                     self.posterior_samples[self.approximant_selected] = None
@@ -360,6 +370,8 @@ class load_posterior_samples(object):
                                  .format(self.field,pes.samples_dict.keys()))
 
         else: # single analysis in file
+            if self.field is not None:
+                print("WARNING: you specified the approximant {} but it's a single analysis posterior file. Ignoring your approximant.".format(self.field))
             self.posterior_samples[self.analysis_type] = self.single_analysis
             self.posterior_samples[self.approximant_selected] = None
             data = pes.samples_dict
@@ -430,7 +442,7 @@ class load_posterior_samples(object):
                             print("\t {}:{}".format(k,pdicts[k]))
                 self.posterior_samples[self.sampling_vars] = {}
                 self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
-            else:
+            else: # status if False, from get_priors
                 self.posterior_samples[self.has_analytic_priors] = False
                 #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 raise ValueError("No analytic priors in file and no user-defined PE. You could set the PE priors either by kind or by file. Exiting.")
@@ -444,6 +456,15 @@ class load_posterior_samples(object):
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
         posterior_file = self.posterior_samples[self.PE_file_key]
+
+        # deal with cosmologically-reweighted samples, and warn the user
+        cosmo_reweight = re.findall('_cosmo.h',posterior_file)
+        if len(cosmo_reweight) > 0:
+            if self.pe_priors_object == None:
+                raise ValueError("Seems like you are using a cosmologically-reweighted samples file. Be careful as the PE prior dict could indicated a p(dL) \propto dL^2 and this is NOT what was used to get the dL samples. You may want to set a PE prior.")
+            else:
+                print("WARNING: seems like you are using a cosmologically-reweighted samples files, check carefully the PE prior used to get the samples.")
+        
         if posterior_file[-3:] == 'dat':
             samples = np.genfromtxt(posterior_file, names = True)
            
