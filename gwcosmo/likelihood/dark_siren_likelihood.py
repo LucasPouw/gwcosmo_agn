@@ -8,7 +8,6 @@ import numpy as np
 
 from scipy.integrate import simpson
 from scipy.interpolate import interp1d
-from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.zprior_utilities import get_zprior_full_sky, get_zprior
 from gwcosmo.likelihood.posterior_samples import *
 import gwcosmo
