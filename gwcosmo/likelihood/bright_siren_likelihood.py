@@ -113,8 +113,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
             # Add posterior samples if any
             if meta.get("posterior_file_path"):
                 event.update(posterior_samples=load_posterior_samples(meta))
-                # This is only need with posterior samples. May be worth doing it only if an event has
-                # posterior samples
+                # This is only need with posterior samples
                 self.reweight_samps = reweight_posterior_samples(self.cosmo, self.mass_priors)
 
             # Counterpart settings
