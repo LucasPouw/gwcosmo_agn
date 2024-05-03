@@ -19,6 +19,7 @@ import pesummary
 from pesummary.io import read
 from bilby.core.prior.analytical import *
 from bilby.gw.prior import *
+import re
 
 from scipy.interpolate import RegularGridInterpolator
 
@@ -44,6 +45,57 @@ class m1d_m2d_uniform_dL_square_PE_priors(object):
         """
         return dL**2
 
+class chirp_det_frame_q_uniform_dL_square_PE_priors(object):
+    """
+    This class returns the PE priors for the case of a uniform joint probability for (Mc_det_frame,q) and \propto dL^2 for the luminosity distance
+    """
+    def __init__(self):
+
+        self.name = "chirp_det_ratio:uniform --- dL:square"
+
+    def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        """
+        # p(m1d,m2d,dL) = p(Mc,q,dL) * | det Jacobian[(Mc,q,dL) -> (m1d,m2d,dL)] |
+        # p(m1d,m2d,dL) = p(Mc,q) * | det Jacobian[(Mc,q) -> (m1d,m2d)] | * p(dL)
+        # p(m1d,m2d,dL) = p(Mc,q) * Mc/m1d^2 * dL^2
+        # p(m1d,m2d,dL) \propto Mc/m1d^2 * dL^2
+        mc = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
+        return dL**2 * mc/m1d**2
+
+class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(object):
+    """
+    This class returns the PE priors for the case of a uniform joint probability for (m1_det_frame,m2_det_frame) and
+    a p(luminosity distance) \propto dVc/dz /(1+z), see https://lscsoft.docs.ligo.org/bilby/api/bilby.gw.prior.UniformSourceFrame.html
+    """
+    def __init__(self):
+
+        self.name = "m1d_m2d:uniform --- dL:uniform_merger_rate_comoving_H0:67.9, Om0:0.3065"
+        self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc), # value indicated in https://zenodo.org/records/6513631
+                                   Om0=0.3065, # value indicated in https://zenodo.org/records/6513631
+                                   Tcmb0=2.7255 * u.K,
+                                   Neff=3.046,
+                                   m_nu=[0.,0.,0.06] * u.eV,
+                                   Ob0=0.0486)
+
+    def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        """
+
+        dL_pdf = bilby.gw.prior.UniformSourceFrame(minimum=0.1,
+                                                   maximum=50000.0,
+                                                   cosmology=self.cosmo,
+                                                   name='luminosity_distance',
+                                                   latex_label='$d_L$',
+                                                   unit='Mpc',
+                                                   boundary=None)
+
+        return dL_pdf.prob(dL)
+
+
+    
 def check_sampling(prior_dict, samp_vars):
     """
     This function detects if the variables in argument samp_vars are sampled in the prior_dict
@@ -129,6 +181,7 @@ class analytic_PE_priors(object):
             else:
                 raise ValueError("Weird... no correct sampling on ['mass_1','mass_2'] or ['chirp_mass','mass_ratio'] in the dict. Exiting.")
 
+        print("Analytic prior case: PE prior function get_prior_m1d_m2d_dL actually points to {}".format(self.get_prior_m1d_m2d_dL.__name__))
         self.sampling_vars = sampling_vars
         # add luminosity distance prior
         self.sampling_vars['luminosity_distance'] = str(self.prior['luminosity_distance'])
@@ -136,16 +189,13 @@ class analytic_PE_priors(object):
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(m1d,m2d,dL)
-        it must be used when the PE posterior were obtained after a sampling on Mc, q
+        it must be used when the PE posterior were obtained after a sampling on Mc (det frame), q
         the function is called with args m1d, m2d, dL so that we must first compute Mc, q (det frame),
         compute the PE prior probability on Mc, q and convert it into the PE prior probability on m1d, m2d and add the jacobian
         """
         mcdet = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
         q = m2d/m1d
-        nvals = len(q)
-        prior_mcdet_q_dL = np.zeros(nvals)
-        for i in range(nvals): # did not find how to compute all probs at once!
-            prior_mcdet_q_dL[i] = self.prior.prob({'chirp_mass':mcdet[i],'mass_ratio':q[i],'luminosity_distance':dL[i]})
+        prior_mcdet_q_dL = self.prior.prob({'chirp_mass':mcdet,'mass_ratio':q,'luminosity_distance':dL},axis=0)
         jacobian = mcdet/m1d**2
         return prior_mcdet_q_dL*jacobian
 
@@ -154,13 +204,13 @@ class analytic_PE_priors(object):
         This function returns something proportional to p(m1d,m2d,dL)
         the analytic case returns the probability p(m1d,m2d,dL) after marginalizing over all other parameters
         """
-        return self.prior.prob({'mass_1':m1d,'mass_2':m2d,'luminosity_distance':dL})
+        return self.prior.prob({'mass_1':m1d,'mass_2':m2d,'luminosity_distance':dL},axis=0)
 
     def get_prior_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(dL) assuming p(m1d,m2d) is uniform
         """
-        return self.prior['luminosity_distance'].prob(dL)
+        return self.prior['luminosity_distance'].prob(dL) # no axis=0 here
     
 
 
@@ -178,15 +228,17 @@ class load_posterior_samples(object):
     "skymap_path" => path to the GW event skymap (fits file)
     """
     
-    def __init__(self,posterior_samples):
+    def __init__(self,posterior_samples,choose_default=True):
 
-        self.PE_file_key = "posterior_file_path"
-        self.samples_field_key = "samples_field"
-        self.PE_prior_file_key = "PEprior_file_path"
-        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py
+        # list of keys that can be used in the posterior_samples json file
+        self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
+        self.PE_skymap_file_key = "skymap_path" # path to the event skymap (needed)
+        self.samples_field_key = "samples_field" # name of the approximant (online, CO1:...) (optional)
+        self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
+        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
+        self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
+        # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
-        self.PE_skymap_file_key = "skymap_path"
-        # we will add some new fields to the 'posterior_samples' dict
         self.analysis_type = "analysis_type"
         self.sampling_vars = "sampling_variables"
         self.multi_analysis = "multi"
@@ -198,7 +250,14 @@ class load_posterior_samples(object):
         self.search_analytic_priors_str = "search_analytic_priors"
         self.could_read_with_pesummary = "could_read_with_pesummary"
         self.user_defined_PE = "user_defined_PE_priors"
-        
+        self.skip_me = False
+        # list of available PE priors kind if no PE priors file
+        self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
+                                  "chirp_det_frame_q_uniform_dL_square_PE_priors",
+                                  "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
+
+
+        self.choose_default = choose_default
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
         self.default_approximants = ['PublicationSamples',
@@ -215,6 +274,11 @@ class load_posterior_samples(object):
         self.posterior_samples[self.search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
 
         print("\n\nTreating event: {}".format(posterior_samples))
+
+        if (self.use_event_key in self.posterior_samples.keys()) and (self.posterior_samples[self.use_event_key].lower() == "false"):
+            self.skip_me = True # we skip this event
+            return # stop the init
+        
         # deal with the PE priors:
         user_defined_PE = False
         if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
@@ -232,8 +296,12 @@ class load_posterior_samples(object):
                 raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
         elif self.PE_prior_kind_key in self.posterior_samples.keys():
             user_defined_PE = True
-            print("PE prior kind provided: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
-            self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
+            print("PE prior kind requested: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
+            try:
+                self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
+            except:
+                raise ValueError("Could not find PE prior kind {}. Available PE prior kinds are: {}. Exiting.".format(self.posterior_samples[self.PE_prior_kind_key],
+                                                                                                                      self.existing_PE_kinds))
         else:
             print("NO PE prior file user-provided.")
             self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
@@ -262,6 +330,7 @@ class load_posterior_samples(object):
         This function is called when dealing with .h5 files and O4-.hdf5 files.
         '''
 
+        data = None
         self.posterior_samples[self.search_analytic_priors_str] = True # record the fact we try to find analytic prior
         print(posterior_file)
         try:
@@ -276,33 +345,45 @@ class load_posterior_samples(object):
             self.posterior_samples[self.analysis_type] = self.multi_analysis
             self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
-                for approximant in self.default_approximants:
-                    try:
-                        data = pes.samples_dict[approximant]
-                        print("No waveform field provided -> setting model: "+approximant)
-                        self.field = approximant # record the approximant
-                        break
-                    except KeyError:
-                        continue
-                self.posterior_samples[self.approximant_selected] = self.field
-            else:
-                if self.field in  pes.samples_dict.keys(): # check if required key exists
-                    data = pes.samples_dict[self.field]
+                if self.choose_default: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore_priors run
+                    for approximant in self.default_approximants:
+                        try:
+                            data = pes.samples_dict[approximant]
+                            print("No waveform field provided -> setting model: "+approximant)
+                            self.field = approximant # record the approximant
+                            self.posterior_samples[self.approximant_selected] = self.field
+                            break
+                        except KeyError:
+                            continue
+                    if self.field == None:
+                        data = None # no analysis to perform
+                        self.posterior_samples[self.approximant_selected] = None
+                        raise ValueError("No pre-defined approximant found in file. Exiting.")
                 else:
-                    raise ValueError("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
-                          .format(self.field,pes.samples_dict.keys()))
+                    print("Exploratory run. No approximant chosen.")
+                    self.posterior_samples[self.approximant_selected] = None
+            elif self.field in pes.samples_dict.keys(): # check if required key exists
+                data = pes.samples_dict[self.field]
+                print("Requested approximant {} found.".format(self.field))
+            else:
+                raise ValueError("The required analysis key {} does not exist in file. Available keys are: {}. Exiting."
+                                 .format(self.field,pes.samples_dict.keys()))
 
         else: # single analysis in file
+            if self.field is not None:
+                print("WARNING: you specified the approximant {} but it's a single analysis posterior file. Ignoring your approximant.".format(self.field))
             self.posterior_samples[self.analysis_type] = self.single_analysis
             self.posterior_samples[self.approximant_selected] = None
             data = pes.samples_dict
             
-        self.distance = data['luminosity_distance']
-        self.ra = data['ra']
-        self.dec = data['dec']
-        self.mass_1 = data['mass_1']
-        self.mass_2 = data['mass_2']
-        self.nsamples = len(self.distance)
+        if data != None:
+            self.distance = data['luminosity_distance']
+            self.ra = data['ra']
+            self.dec = data['dec']
+            self.mass_1 = data['mass_1']
+            self.mass_2 = data['mass_2']
+            self.nsamples = len(self.distance)
+            
         show_keys = ['mass_1','mass_2','chirp_mass','mass_ratio','luminosity_distance']
         print("Searching for sample field: {}".format(self.field))
         # deal with PE prior values for each sample
@@ -322,27 +403,35 @@ class load_posterior_samples(object):
                         else:
                             non_empty_dicts_keys.append(k) # record existing dict keys
                     if len(non_empty_dicts_keys) == 0:
-                        print("Problem: no dict with active keys available! Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.")
-                        self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                        raise ValueError("Problem: no dict with active keys available! You could set the PE priors either by kind or by file. Exiting.")
                     elif len(non_empty_dicts_keys) == 1:
                         ldict = pdicts[non_empty_dicts_keys[0]]
-                        self.pe_priors_object = analytic_PE_priors(ldict)
-                        print("Found a single analytic prior dict with field: {} , will use it for the analysis <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
+                        current_key = non_empty_dicts_keys[0]
+                        print("Found a single analytic prior dict with field: {}.".format(current_key))
                         print("Dict characteristics for masses and distance:")
                         for k in show_keys:
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
+                        if self.choose_default and (current_key != self.field):
+                              raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
+                        else:
+                            self.pe_priors_object = analytic_PE_priors(ldict)
+                            self.posterior_samples[self.sampling_vars] = {}
+                            self.posterior_samples[self.sampling_vars][current_key] = self.pe_priors_object.sampling_vars
+
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
                         print("Required sample field: {}".format(self.field))
                         print("Available keys: {}".format(non_empty_dicts_keys.keys()))
+                        for field in non_empty_dicts_keys.keys():
+                            record_priors = analytic_PE_priors(pdicts[self.field])
+                            self.posterior_samples[self.sampling_vars] = {}
+                            self.posterior_samples[self.sampling_vars][field] = record_priors.sampling_vars
                         if self.field in non_empty_dicts_keys.keys():
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
                         else:
-                            raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis.".format(self.field))
-                            #raise ValueError("No analytic prior dict with field name {}. Using m1d_m2d_uniform_dL_square PE priors <=== CHECK IF THIS IS OK FOR YOUR ANALYSIS.".format(self.field))
-                            #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                            raise ValueError("No analytic prior dict with field name {}. Please set the PE prior sample field for the analysis. You could set the PE priors either by key or by file.".format(self.field))
                 else: # this is the single analysis case {'mass_1':....}
                     print("Single analysis case.")
                     self.pe_priors_object = analytic_PE_priors(pdicts)
@@ -353,10 +442,10 @@ class load_posterior_samples(object):
                             print("\t {}:{}".format(k,pdicts[k]))
                 self.posterior_samples[self.sampling_vars] = {}
                 self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
-            else:
-                print("No analytic priors in file, using U(m1d, m2d) and p(dL) \propto dL^2")
+            else: # status if False, from get_priors
                 self.posterior_samples[self.has_analytic_priors] = False
-                self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
+                raise ValueError("No analytic priors in file and no user-defined PE. You could set the PE priors either by kind or by file. Exiting.")
 
                     
         
@@ -367,6 +456,15 @@ class load_posterior_samples(object):
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
         posterior_file = self.posterior_samples[self.PE_file_key]
+
+        # deal with cosmologically-reweighted samples, and warn the user
+        cosmo_reweight = re.findall('_cosmo.h',posterior_file)
+        if len(cosmo_reweight) > 0:
+            if self.pe_priors_object == None:
+                raise ValueError("Seems like you are using a cosmologically-reweighted samples file. Be careful as the PE prior dict could indicated a p(dL) \propto dL^2 and this is NOT what was used to get the dL samples. You may want to set a PE prior.")
+            else:
+                print("WARNING: seems like you are using a cosmologically-reweighted samples files, check carefully the PE prior used to get the samples.")
+        
         if posterior_file[-3:] == 'dat':
             samples = np.genfromtxt(posterior_file, names = True)
            
@@ -430,6 +528,10 @@ class load_posterior_samples(object):
             self.nsamples = len(self.distance)
             file.close()
 
+        if (self.field is None) and (self.choose_default == False):
+            # then it's a gwcosmo_explore_priors run, stop here
+            return
+            
         if self.pe_priors_object is None:
             # case where no prior has been found: neither user-provided nor in the posterior file
             raise ValueError("WARNING !!!!!!!!!!! No PE-prior has been set. Cannot run the analysis.")
@@ -437,7 +539,21 @@ class load_posterior_samples(object):
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
         self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance) # we compute all PE priors values -> pi(m1d,m2d,dL)
-        print("PE priors values for posterior samples are computed.")
+        anomalies = np.where( ( self.pe_priors <= 0 ) |
+                              ( sum(np.isnan(self.pe_priors) > 0 ) ) |
+                              ( sum(np.isinf(self.pe_priors) > 0) ) )[0]
+        if len(anomalies) > 0:
+            print("Posterior file {}: anomalies in pe_priors computed!".format(posterior_file))
+            for i in range(len(anomalies)):
+                print("\t pi(m1d,m1d,dL) = {}, m1i = {}, m2i = {}, dLi = {}, prior = {}".format(self.pe_priors[anomalies[i]],
+                                                                                                self.mass_1[anomalies[i]],
+                                                                                                self.mass_2[anomalies[i]],
+                                                                                                self.distance[anomalies[i]],
+                                                                                                self.pe_priors_object))
+            # we exit as anomalies can lead to wrong likelihoods
+            raise ValueError("Anomalies in computed pe_priors. Check the available analytic priors dict. Exiting.")
+        else:
+            print("PE priors values for posterior samples are computed.")
 
             
     def marginalized_sky(self):
@@ -446,6 +562,8 @@ class load_posterior_samples(object):
         """
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
+
+    
 def get_priors(pes):
     '''
     This function searches for prior dictionnaries in a posterior file (.hdf5 or .h5).
@@ -492,7 +610,13 @@ def get_priors(pes):
                         
             else: # it's a single analysis h5 file
                 print("Single analysis posterior file. Getting analytic prior data.")
-                ndict = copy.deepcopy(pes.priors['analytic'])
+                bdict = pes.priors['analytic']
+                if 'luminosity_distance' not in bdict.keys():
+                    subdict_key = list(bdict.keys())[0]
+                    print("Sub-dictionary with key: {}".format(subdict_key))
+                    bdict = bdict[subdict_key]
+                    
+                ndict = copy.deepcopy(bdict)
                 print(ndict['luminosity_distance'])
                 dLprior, PEcosmo = get_dL_prior(str(ndict['luminosity_distance']))
                 #print("main::dLprior: {}".format(dLprior))
@@ -613,7 +737,8 @@ class reweight_posterior_samples(object):
             try:
                 kde = gaussian_kde(data, weights=weights)
             except:
-                print("KDE problem! create a default KDE with norm=0")
+                anomalies = np.where((weights <= 0) | np.isinf(weights)) [0]
+                print("KDE problem! {} values of the weights are 0 or infinity. create a default KDE with norm=0".format(len(anomalies)))
                 print("norm: {} -> 0, neff: {}".format(norm,neff))
                 norm = 0
                 kde = gaussian_kde(data)
@@ -650,12 +775,11 @@ class reweight_posterior_samples(object):
     def marginalized_redshift_reweight(self, redshift, mass_1_source, mass_2_source, PEpriors_detframe):
         """
         Computes the marginalized distance posterior KDE.
-        it uses the prior object PEpriors_detframe that provides p_PE(m1det,m2det,dL) used in the PE step (detector frame)
+        it uses the PEpriors_detframe values of p_PE(m1det,m2det,dL) used in the PE step (detector frame)
         """
         # Re-weight
         PEpriors_source_frame = PEpriors_detframe * self.jacobian(redshift) # this is pPE(m1d,m2d,dL) (1+z)^2 |ddL/dz|
         weights = self.source_frame_mass_prior.joint_prob(mass_1_source,mass_2_source)/PEpriors_source_frame
-
         return self.get_kde(redshift,weights)
 
     def marginalized_redshift(self, redshift):
@@ -723,9 +847,15 @@ class make_pixel_px_function(object):
         sel : array of ints
             The indices of posterior samples for pixel idx
         """
-    
+        
+        ipix_samples = hp.pixelfunc.ang2pix(self.nside, np.pi/2-self.samples.dec, self.samples.ra, nest=self.skymap.nested)
+        sel = np.where(ipix_samples == idx)[0]
+        if len(sel) >= minsamps:
+            print("{} samples fall in pix {}".format(len(sel),idx))
+            return sel
+
+        # not enough samples in pixel 'idx', we need to extend the search
         racent,deccent = ra_dec_from_ipix(self.nside, idx, nest=self.skymap.nested)
-    
         separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
         sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
         step = sep/2. # choose step size for increasing radius
@@ -738,17 +868,16 @@ class make_pixel_px_function(object):
             nsamps = len(sel)
             if sep > np.pi:
                 raise ValueError("Problem with the number of posterior samples.")
-        print('angular radius: {} radians, No. samples: {}'.format(sep,len(sel)))
-            
+        print('pixel idx {}: angular radius: {} radians, No. samples: {}'.format(idx,sep,len(sel)))
+         
         return sel
-
         
 
 def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
     """
     Find the angular separation between all posterior samples and a specific
     LOS. Return the indices of the nsamps closest samples, as well as the 
-    maxiumum separation of those samples.
+    maximum separation of those samples.
     
     Parameters
     ----------

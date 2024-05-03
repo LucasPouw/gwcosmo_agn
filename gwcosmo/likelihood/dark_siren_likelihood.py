@@ -61,12 +61,17 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.samples_indices_dictionary = {}
         self.keys = []
                     
-        for key, value in posterior_samples_dictionary.items():
-            if not str2bool(value.get("use_event", "True")):
-                print(f"Event '{key}' not used in the analysis")
-                continue
+        for key, value in posterior_samples_dictionary.items():            
+            try:
+                samples = load_posterior_samples(posterior_samples_dictionary[key])
+            except ValueError as ve:
+                print("Error when loading posterior samples from file {}: {}".format(posterior_samples_dictionary[key],ve))
+                sys.exit()
 
-            samples = load_posterior_samples(posterior_samples_dictionary[key])
+            if samples.skip_me:
+                print("Skip event {} as requested by the user.".format(key))
+                continue
+            
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
@@ -79,10 +84,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
             samp_ind ={}
-
+            minsamps = 100 # default value
             for i,pixel_index in enumerate(pixel_indices):
-                samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=100)
-                
+                samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=minsamps)
+            
             no_sub_pix_per_pixel = int(4**(np.log2(nside/nside_low_res)))
 
             # Get the coordinates of the hi-res pixel centres
@@ -167,9 +172,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                   .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
             print("returning infinite denominator")
-            print("exit!")
             log_den = np.inf
-            #sys.exit()
 
         return log_den, np.log(z_prior_norm)
                        
