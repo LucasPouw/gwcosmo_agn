@@ -72,7 +72,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
         #selection effect
         self.injections = injections
-        self.injections.update_cut(snr_cut=network_snr_threshold)
+        self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut))
         try:
             self.injections.Nobs = len(list(posterior_samples_dictionary.keys())) # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
         except:
