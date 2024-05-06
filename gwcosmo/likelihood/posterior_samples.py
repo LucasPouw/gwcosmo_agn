@@ -23,6 +23,25 @@ import re
 
 from scipy.interpolate import RegularGridInterpolator
 
+
+"""
+https://gwosc.org/timeline/query/Run/O1/
+start 1126051217 end 1137254417 duration 11203200
+2015-09-12T24:00:00 - 2016-01-19T16:00:00
+
+https://gwosc.org/timeline/query/Run/O2/
+start 1164556817 end 1187733618 duration 23176801
+2016-11-30T16:00:00 - 2017-08-25T22:00:00
+
+https://gwosc.org/timeline/query/Run/O3a/
+start 1238166018 end 1253977218 duration 15811200
+2019-04-01T15:00:00 - 2019-10-01T15:00:00
+
+https://gwosc.org/timeline/query/Run/O3b/
+start 1256655618 end 1269363618 duration 12708000
+2019-11-01T15:00:00 - 2020-03-27T17:00:00
+"""
+
 class m1d_m2d_uniform_dL_square_PE_priors(object):
     """
     This is the class handling the default PE priors, being uniform in pi(m1d, m2d) and \propto dL^2 for the luminosity distance
@@ -237,6 +256,7 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
         self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
         self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
+        self.run_key = "run" # set to O1, O2, O3, O4, need to know for the SNR/IFAR cuts
         # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
         self.analysis_type = "analysis_type"
@@ -580,7 +600,7 @@ def get_priors(pes):
     if isinstance(pes.priors,dict):
         if 'analytic' in pes.priors.keys():
             status = True
-            if all('C01' in key for key in pes.priors['analytic'].keys()): # it's a multianalysis prior dict
+            if all('C0' in key for key in pes.priors['analytic'].keys()): # it's a multianalysis prior dict, C0 because we can have C01, C02...
                 print("multianalysis file: keys of priors['analytic'] = ",pes.priors['analytic'].keys())
                 subdict = True
                 print("\tsubdict!")
