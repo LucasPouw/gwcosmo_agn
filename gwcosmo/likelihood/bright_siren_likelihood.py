@@ -162,7 +162,10 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 dl_array = cosmo_skymap.dgw_z (z_array)
                 z_prior_skymap = cosmo_skymap.p_z(z_array)
                 self.dl_prior_skymap = interp1d (dl_array, z_prior_skymap)
-        
+
+        # get the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
+        self.injections.Nobs = len(list(self.samples_dictionary.keys()))
+
 
     def log_likelihood_numerator_single_event_from_samples(self,event_name):
 	
