@@ -200,14 +200,8 @@ class standard_cosmology(object):
         z : redshift
         """
         H_z = self.H0*h(z, self.Omega_m, self.w0, self.wa)
-<<<<<<< HEAD
-        tmp = self.dgw_z(z) # compute only once the spline evalutation to save time
-        return tmp/(1+z) + c*(1+z)/H_z * self.dgw_dL_ratio(z) + tmp * self.dgw_dL_ratio_dbyz(z)
-=======
         dgw_z = self.dgw_z(z)
-
         return dgw_z/(1+z) + c*(1+z)/H_z * self.dgw_dL_ratio(z) + dgw_z * self.dgw_dL_ratio_dbyz(z)
->>>>>>> 58a08d0420e6a162338b13c3c5837e8fec70fb5d
 
     def volume_z(self, z):
         """
