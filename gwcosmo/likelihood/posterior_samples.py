@@ -256,7 +256,6 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
         self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
         self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
-        self.run_key = "run" # set to O1, O2, O3, O4, need to know for the SNR/IFAR cuts
         # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
         self.analysis_type = "analysis_type"
