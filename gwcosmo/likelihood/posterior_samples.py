@@ -232,7 +232,20 @@ class analytic_PE_priors(object):
         return self.prior['luminosity_distance'].prob(dL) # no axis=0 here
     
 
+def get_selection_criteria():
+    return ["SNR","IFAR","SNR+IFAR"]
 
+
+def get_default_approximants():
+    return ['PublicationSamples',
+            'C01:Mixed',
+            'C01:PhenomPNRT-HS', 
+            'C01:NRSur7dq4',
+            'C01:IMRPhenomPv3HM',
+            'C01:IMRPhenomPv2',
+            'C01:IMRPhenomD',
+            'C01:IMRPhenomPv2_NRTidal:LowSpin', 
+            'C01:IMRPhenomPv2_NRTidal:HighSpin']
 
 class load_posterior_samples(object):
     """
@@ -256,6 +269,8 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
         self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
         self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
+        self.selection_key = "selection_criteria" # value can be SNR (SNR>SNRth) or FAR (FAR<FARth)
+        self.selection_string = get_selection_criteria()
         # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
         self.analysis_type = "analysis_type"
@@ -279,15 +294,7 @@ class load_posterior_samples(object):
         self.choose_default = choose_default
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
-        self.default_approximants = ['PublicationSamples',
-                                     'C01:Mixed',
-                                     'C01:PhenomPNRT-HS', 
-                                     'C01:NRSur7dq4',
-                                     'C01:IMRPhenomPv3HM',
-                                     'C01:IMRPhenomPv2',
-                                     'C01:IMRPhenomD',
-                                     'C01:IMRPhenomPv2_NRTidal:LowSpin', 
-                                     'C01:IMRPhenomPv2_NRTidal:HighSpin']
+        self.default_approximants = get_default_approximants()
                 
         self.posterior_samples = posterior_samples
         self.posterior_samples[self.search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
@@ -297,7 +304,15 @@ class load_posterior_samples(object):
         if (self.use_event_key in self.posterior_samples.keys()) and (self.posterior_samples[self.use_event_key].lower() == "false"):
             self.skip_me = True # we skip this event
             return # stop the init
-        
+
+        self.selection_criteria = None # default value
+        if self.selection_key in self.posterior_samples.keys(): # the user specified the selection criteria
+            if self.posterior_samples[self.selection_key] in self.selection_string: # check if user's selection criteria is known
+                self.selection_criteria = self.posterior_samples[self.selection_key]
+            else:
+                raise ValueError("Invalid selection criteria {}. Possible values are {}.".format(self.posterior_samples[self.selection_key],
+                                                                                                 self.selection_string))
+                
         # deal with the PE priors:
         user_defined_PE = False
         if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
