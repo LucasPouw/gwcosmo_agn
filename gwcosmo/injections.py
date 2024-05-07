@@ -77,12 +77,28 @@ class Injections():
         self.snrdet=self.snr_original[idet]
         self.ini_prior=self.ini_prior_original[idet]
 
-    def update_cut(self,snr_cut=0,ifar_cut=0,fraction=None):
-        print('Selecting injections with SNR {:f} and IFAR {:f} yr'.format(snr_cut,ifar_cut))
+    def get_selected_idx(self,snr_cut=0,ifar_cut=0):
 
-        self.snr_cut=snr_cut
-        self.ifar_cut=ifar_cut
-        idet=_np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
+        print('Selecting injections with SNR {:f} and IFAR {:f} yr'.format(snr_cut,ifar_cut))
+        return _np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
+
+    def set_selected_idx(self,idet):
+
+        self.idet = idet
+        self.m1det = self.m1d_original[idet]
+        self.m2det = self.m2d_original[idet]
+        self.dldet = self.dl_original[idet]
+        #self.snrdet = self.snr_original[idet]
+        self.ini_prior = self.ini_prior_original[idet]
+        self.log_jacobian_det = self.log_origin_jacobian[idet]
+        
+    
+    def update_cut(self,snr_cut=0,ifar_cut=0,fraction=None):
+
+        idet = get_selected_idx(self,snr_cut,ifar_cut)
+        
+        #self.snr_cut = snr_cut
+        #self.ifar_cut = ifar_cut
 
         #Sub-sample the selected injections in order to reduce the computational load
         if fraction is not None and (fraction > 0) and (fraction <= 1):
@@ -90,14 +106,7 @@ class Injections():
             self.ntotal=int(self.ntotal_original*fraction)
             print('Working with a total of {:d} injections'.format(len(idet)))
 
-        self.idet=idet
-        self.m1det=self.m1d_original[idet]
-        self.m2det=self.m2d_original[idet]
-        self.dldet=self.dl_original[idet]
-        self.snrdet=self.snr_original[idet]
-        self.ini_prior=self.ini_prior_original[idet]
-        self.log_jacobian_det=self.log_origin_jacobian[idet]
-
+        set_selected_idx(idet)
     
     def detector_frame_to_source_frame(self,cosmo,m1det,m2det,dldet):
         
