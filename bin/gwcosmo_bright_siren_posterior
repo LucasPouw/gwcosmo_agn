@@ -201,7 +201,7 @@ if opts.posterior_samples is not None:
         else:
             posterior_samples_field_dictionary = {}
             posterior_samples_field_dictionary['event'] = str(opts.posterior_samples_field)
-            posterior_samples_field_dictionary [event] = None
+
     else:
         posterior_samples_field_dictionary = {}
         for key in posterior_samples_dictionary.keys():

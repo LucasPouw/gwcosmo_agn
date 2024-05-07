@@ -114,7 +114,7 @@ class standard_cosmology(object):
 
     def update_parameters(self,param_dict):
         """
-        Update values of cosmological parameters. 
+        Update values of cosmological parameters.
         Key in param_dict: H0
         """
         if 'H0' in param_dict:
@@ -186,7 +186,7 @@ class standard_cosmology(object):
 
     def dgw_dL_ratio_dbyz(self, z):
         """
-        Returns the derivatives of the ratio between GW distance and 
+        Returns the derivatives of the ratio between GW distance and
         luminosity distance w.r.t. redshift
         """
         return 0
@@ -200,8 +200,14 @@ class standard_cosmology(object):
         z : redshift
         """
         H_z = self.H0*h(z, self.Omega_m, self.w0, self.wa)
+<<<<<<< HEAD
         tmp = self.dgw_z(z) # compute only once the spline evalutation to save time
         return tmp/(1+z) + c*(1+z)/H_z * self.dgw_dL_ratio(z) + tmp * self.dgw_dL_ratio_dbyz(z)
+=======
+        dgw_z = self.dgw_z(z)
+
+        return dgw_z/(1+z) + c*(1+z)/H_z * self.dgw_dL_ratio(z) + dgw_z * self.dgw_dL_ratio_dbyz(z)
+>>>>>>> 58a08d0420e6a162338b13c3c5837e8fec70fb5d
 
     def volume_z(self, z):
         """
@@ -310,7 +316,7 @@ class Xi0_n_cosmology(standard_cosmology):
 
     def update_parameters(self, param_dict):
         """
-        Update values of cosmological parameters. 
+        Update values of cosmological parameters.
         Keys in param_dict: H0, Xi0, n
         """
         if 'H0' in param_dict:
@@ -350,7 +356,7 @@ class Xi0_n_cosmology(standard_cosmology):
 
     def dgw_dL_ratio_dbyz(self, z):
         """
-        Returns the derivative of ratio of GW distance and 
+        Returns the derivative of ratio of GW distance and
         luminosity distance w.r.t. redshift in modified gravity.
         d\Xi(z) / dz = - n * (1-\Xi_0)/(1+z)^(n+1)
 
@@ -381,4 +387,3 @@ class Xi0_n_cosmology(standard_cosmology):
         zgw = self.z_of_dgw(dgw*self.H0/c)
 
         return zgw
-
