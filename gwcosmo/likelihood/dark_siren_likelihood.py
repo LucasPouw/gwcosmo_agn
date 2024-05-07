@@ -51,7 +51,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.z_array = LOS_catalog['z_array'][:]
         self.zprior_full_sky = get_zprior_full_sky(LOS_catalog)
 
-        self.injections = injections
         self.mass_priors = mass_priors
         self.cosmo = cosmo
 
@@ -110,13 +109,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             self.samples_indices_dictionary[key] = samp_ind
             self.keys.append(key)
 
-        # get the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
-        self.injections.Nobs = len(list(self.samples_dictionary.keys()))
-
         LOS_catalog.close()
 
         self.injections = injections
-        # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
+        # get the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
         self.injections.Nobs = len(self.keys)
         #TODO: add check that the snr threshold is valid for this set of injections
         self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut)
