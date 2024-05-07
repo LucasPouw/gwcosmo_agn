@@ -27,7 +27,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     Class for preparing and carrying out the computation of the likelihood on 
     H0 for a single GW event
     """
-    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999, network_snr_threshold=11.,ifar_cut=0):
+    def __init__(self, posterior_samples_dictionary, injections, LOS_catalog_path, zrates, cosmo, mass_priors, min_pixels=30, sky_area=0.999,
+                 network_snr_threshold=11.,ifar_cut=0):
 
         """
         Parameters
@@ -38,7 +39,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             provides p(x|Omega) and skymap properties
         LOS_prior :
         """
-        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None})
+        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None,
+                                     'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None,
+                                     'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None,
+                                     'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None})
 
         self.zrates = zrates
         
@@ -59,7 +63,9 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.samples_dictionary = {}
         self.samples_indices_dictionary = {}
         self.keys = []
-                    
+        self.denominator_type = {}
+        default_cut = "SNR+IFAR"
+        
         for key, value in posterior_samples_dictionary.items():            
             try:
                 samples = load_posterior_samples(posterior_samples_dictionary[key])
@@ -109,17 +115,50 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             self.samples_indices_dictionary[key] = samp_ind
             self.keys.append(key)
 
+            # check event'selection kind: SNR, IFAR, SNR+IFAR
+            if self.samples_dictionary[key].selection_criteria is not None:
+                print("GW event {}: cut = {}".format(key,self.samples_dictionary[key].selection_criteria))
+                if self.samples_dictionary[key].selection_criteria in self.denominator_type.keys():                    
+                    self.denominator_type[self.samples_dictionary[key].selection_criteria]['Nevts'] += 1
+                else:
+                    self.denominator_type[self.samples_dictionary[key].selection_criteria] = {}
+                    self.denominator_type[self.samples_dictionary[key].selection_criteria]['Nevts'] = 1
+            else: # use default selection criteria, i.e. those set by the snr_cut and the ifar_cut
+                print("GW event {}: setting default cut {}".format(key,default_cut))
+                if default_cut in self.denominator_type.keys():
+                    self.denominator_type[default_cut]['Nevts'] += 1
+                else:
+                    self.denominator_type[default_cut] = {}
+                    self.denominator_type[default_cut]['Nevts'] = 1
+                    
         LOS_catalog.close()
 
+        Nobs = len(self.keys)
+        if Nobs == 0:
+            raise ValueError("No events to analyse.")
+        
+        # take care of the SNR/FAR selections
+        self.snr_cut = network_snr_threshold
+        self.ifar_cut = ifar_cut                
         self.injections = injections
-        # get the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
-        self.injections.Nobs = len(self.keys)
-        #TODO: add check that the snr threshold is valid for this set of injections
-        self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut)
-
+        # set the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
+        self.injections.Nobs = Nobs
+        print("len(ifar) = {}".format(len(self.injections.ifar)))
+        # record the indices of injections with the requested selection critera
+        for k in self.denominator_type.keys():
+            if k == "SNR":
+                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut)
+            elif k == "IFAR":
+                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(ifar_cut=self.ifar_cut)
+            elif k == "SNR+IFAR":
+                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut,ifar_cut=self.ifar_cut)
+            else:
+                raise ValueError("Selection of type {} is not available.".format(k))
+            
         print(self.keys)
-
-
+        print("\nDenominator types:\n",self.denominator_type)
+                      
+                      
     def log_likelihood_numerator_single_event(self,event_name):
 
         pixel_indices = self.pixel_indices_dictionary[event_name]
@@ -156,8 +195,9 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         
     def log_likelihood_denominator_single_event(self):
 
-        z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
-        dz=np.diff(self.z_array)
+        z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,
+                           fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
+        dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
         injections = copy.deepcopy(self.injections)
         
@@ -174,9 +214,31 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             log_den = np.inf
 
         return log_den, np.log(z_prior_norm)
-                       
+
     def log_combined_event_likelihood(self):
+
+        #self.denominator = {} # initialize the selection effect value for this likelihood computation
+
+        #TODO: add check that the snr threshold is valid for this set of injections
+        #self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut)
+
+        den = 0
+        zprior_norm_log = 0
         
+        for k in self.denominator_type.keys():
+            self.injections.set_selected_idx(self.denominator_type[k]["idx"]) # use the selected injections
+            self.denominator_type[k]["value"], self.denominator_type[k]["zprior_norm_log"] = self.log_likelihood_denominator_single_event()
+            den += self.denominator_type[k]["Nevts"] * self.denominator_type[k]["value"]
+            zprior_norm_log += self.denominator_type[k]["Nevts"] * self.denominator_type[k]["zprior_norm_log"]
+        
+        num = 1.
+        for event_name in self.keys:
+            num += self.log_likelihood_numerator_single_event(event_name)
+        
+        return num - zprior_norm_log - den
+    
+    def log_combined_event_likelihood_old(self):
+
         # carry norm to apply to numerator as well
         den_single, zprior_norm_log = self.log_likelihood_denominator_single_event()
         den = den_single*len(self.keys)
