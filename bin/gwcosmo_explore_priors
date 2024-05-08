@@ -86,6 +86,8 @@ if missing_files:
 for key, value in posterior_samples_dictionary.items():
     save_key = None
     save_key_2 = None
+    if "samples_field" in posterior_samples_dictionary[key].keys():
+        posterior_samples_dictionary[key].pop("samples_field")
     if "PEprior_file_path" in posterior_samples_dictionary[key].keys():
         save_key = posterior_samples_dictionary[key]["PEprior_file_path"]
         # remove key PEprior if it exists, before calling load_posterior_samples, as we want the h5 contents
