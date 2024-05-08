@@ -447,7 +447,7 @@ class load_posterior_samples(object):
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
                         if self.choose_default and (current_key != self.field):
-                              raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
+                              raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could change the approximant or set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
                         else:
                             self.pe_priors_object = analytic_PE_priors(ldict)
                             self.posterior_samples[self.sampling_vars] = {}
@@ -474,8 +474,8 @@ class load_posterior_samples(object):
                     for k in show_keys:
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
-                self.posterior_samples[self.sampling_vars] = {}
-                self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
+                    self.posterior_samples[self.sampling_vars] = {}
+                    self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
             else: # status if False, from get_priors
                 self.posterior_samples[self.has_analytic_priors] = False
                 #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
