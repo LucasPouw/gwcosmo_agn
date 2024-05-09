@@ -55,7 +55,6 @@ class Injections():
         """
         # Saves what you provided in the class
         self.condition_check = condition_check
-        self.snr_cut = snr_cut
         self.ntotal = 1.*ntotal # floating value to prevent an overflow when computing ntotal**2
         self.ntotal_original = 1.*ntotal # floating value
         self.dl_original = dl
@@ -64,49 +63,37 @@ class Injections():
         self.snr_original = snr_det
         self.ini_prior_original = prior_vals
         self.ifar = ifar
-        self.ifar_cut = ifar_cut
         self.Tobs = Tobs
         self.Nobs = Nobs # needed for the check on Neff >= 4*Nobs, the check will give True in the default case (Nobs==-1)
-
-        idet=_np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
-
-        self.idet=idet
-        self.m1det=m1d[idet]
-        self.m2det=m2d[idet]
-        self.dldet=dl[idet]
-        self.snrdet=self.snr_original[idet]
-        self.ini_prior=self.ini_prior_original[idet]
+        self.update_cut(snr_cut,ifar_cut)
 
     def get_selected_idx(self,snr_cut=0,ifar_cut=0):
 
-        print('Selecting injections with SNR {:f} and IFAR {:f} yr'.format(snr_cut,ifar_cut))
-        return _np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
+        print('Selecting injections with SNR {:f} OR IFAR {:f} yr'.format(snr_cut,ifar_cut))
+        self.snr_cut = snr_cut
+        self.ifar_cut = ifar_cut
+        return _np.where((self.snr_original>self.snr_cut) | (self.ifar>self.ifar_cut))[0]
 
     def set_selected_idx(self,idet):
 
         self.idet = idet
-        self.m1det = self.m1d_original[idet]
-        self.m2det = self.m2d_original[idet]
-        self.dldet = self.dl_original[idet]
-        #self.snrdet = self.snr_original[idet]
-        self.ini_prior = self.ini_prior_original[idet]
-        self.log_jacobian_det = self.log_origin_jacobian[idet]
-        
+        self.m1det = self.m1d_original[self.idet]
+        self.m2det = self.m2d_original[self.idet]
+        self.dldet = self.dl_original[self.idet]
+        self.ini_prior = self.ini_prior_original[self.idet]
+        self.log_jacobian_det = self.log_origin_jacobian[self.idet]
     
     def update_cut(self,snr_cut=0,ifar_cut=0,fraction=None):
 
-        idet = get_selected_idx(self,snr_cut,ifar_cut)
+        idet = self.get_selected_idx(snr_cut,ifar_cut)
         
-        #self.snr_cut = snr_cut
-        #self.ifar_cut = ifar_cut
-
         #Sub-sample the selected injections in order to reduce the computational load
         if fraction is not None and (fraction > 0) and (fraction <= 1):
-            idet=_np.random.choice(idet,size=int(len(idet)*fraction),replace=False)
-            self.ntotal=int(self.ntotal_original*fraction)
+            idet = _np.random.choice(idet,size=int(len(idet)*fraction),replace=False)
+            self.ntotal = int(self.ntotal_original*fraction)
             print('Working with a total of {:d} injections'.format(len(idet)))
 
-        set_selected_idx(idet)
+        self.set_selected_idx(idet)
     
     def detector_frame_to_source_frame(self,cosmo,m1det,m2det,dldet):
         
