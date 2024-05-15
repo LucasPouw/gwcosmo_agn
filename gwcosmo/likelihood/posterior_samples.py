@@ -232,11 +232,6 @@ class analytic_PE_priors(object):
         """
         return self.prior['luminosity_distance'].prob(dL) # no axis=0 here
     
-
-def get_selection_criteria():
-    return ["SNR","IFAR","SNR|IFAR"]
-
-
 def get_default_approximants():
     return ['PublicationSamples',
             'C01:Mixed',
@@ -270,8 +265,6 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
         self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
         self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
-        self.selection_key = "selection_criteria" # value can be SNR (SNR>SNRth) or IFAR (IFAR>IFARth)
-        self.selection_string = get_selection_criteria()
         # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
         self.analysis_type = "analysis_type"
@@ -306,14 +299,6 @@ class load_posterior_samples(object):
             self.skip_me = True # we skip this event
             return # stop the init
 
-        self.selection_criteria = None # default value
-        if self.selection_key in self.posterior_samples.keys(): # the user specified the selection criteria
-            if self.posterior_samples[self.selection_key] in self.selection_string: # check if user's selection criteria is known
-                self.selection_criteria = self.posterior_samples[self.selection_key]
-            else:
-                raise ValueError("Invalid selection criteria {}. Possible values are {}.".format(self.posterior_samples[self.selection_key],
-                                                                                                 self.selection_string))
-                
         # deal with the PE priors:
         user_defined_PE = False
         if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
