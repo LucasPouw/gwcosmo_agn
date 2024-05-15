@@ -53,7 +53,7 @@ parser = create_parser("--cpus",
 opts = parser.parse_args()
 
 cpus = str(opts.cpus)
-if opts.ram < 3000: opts.ram = 3000
+if opts.ram < 3000: opts.ram = 5000
 ram = str(opts.ram)
 search_tag = opts.search_tag
 disk = str(opts.disk)
