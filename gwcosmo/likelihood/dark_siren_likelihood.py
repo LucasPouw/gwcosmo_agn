@@ -63,8 +63,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.samples_dictionary = {}
         self.samples_indices_dictionary = {}
         self.keys = []
-        self.denominator_type = {}
-        default_cut = "SNR+IFAR"
         
         for key, value in posterior_samples_dictionary.items():            
             try:
@@ -115,22 +113,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             self.samples_indices_dictionary[key] = samp_ind
             self.keys.append(key)
 
-            # check event'selection kind: SNR or IFAR
-            if self.samples_dictionary[key].selection_criteria is not None:
-                print("GW event {}: cut = {}".format(key,self.samples_dictionary[key].selection_criteria))
-                if self.samples_dictionary[key].selection_criteria in self.denominator_type.keys():                    
-                    self.denominator_type[self.samples_dictionary[key].selection_criteria]['Nevts'] += 1
-                else:
-                    self.denominator_type[self.samples_dictionary[key].selection_criteria] = {}
-                    self.denominator_type[self.samples_dictionary[key].selection_criteria]['Nevts'] = 1
-            else: # use default selection criteria, i.e. those set by the snr_cut and the ifar_cut
-                print("GW event {}: setting default cut {}".format(key,default_cut))
-                if default_cut in self.denominator_type.keys():
-                    self.denominator_type[default_cut]['Nevts'] += 1
-                else:
-                    self.denominator_type[default_cut] = {}
-                    self.denominator_type[default_cut]['Nevts'] = 1
-                    
         LOS_catalog.close()
 
         Nobs = len(self.keys)
@@ -143,20 +125,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.injections = injections
         # set the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
         self.injections.Nobs = Nobs
-        print("len(ifar) = {}".format(len(self.injections.ifar)))
-        # record the indices of injections with the requested selection critera
-        for k in self.denominator_type.keys():
-            if k == "SNR":
-                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut)
-            elif k == "IFAR":
-                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(ifar_cut=self.ifar_cut)
-            elif k == "SNR|IFAR":
-                self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut,ifar_cut=self.ifar_cut)
-            else:
-                raise ValueError("Selection of type {} is not available.".format(k))
-            
+        self.injections.update_cut(self.snr_cut,self.ifar_cut)
         print(self.keys)
-        print("\nDenominator types:\n",self.denominator_type)
                       
                       
     def log_likelihood_numerator_single_event(self,event_name):
@@ -216,28 +186,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         return log_den, np.log(z_prior_norm)
 
     def log_combined_event_likelihood(self):
-
-        #self.denominator = {} # initialize the selection effect value for this likelihood computation
-
-        #TODO: add check that the snr threshold is valid for this set of injections
-        #self.injections.update_cut(snr_cut=network_snr_threshold,ifar_cut=ifar_cut)
-
-        den = 0
-        zprior_norm_log = 0
-        
-        for k in self.denominator_type.keys():
-            self.injections.set_selected_idx(self.denominator_type[k]["idx"]) # use the selected injections
-            self.denominator_type[k]["value"], self.denominator_type[k]["zprior_norm_log"] = self.log_likelihood_denominator_single_event()
-            den += self.denominator_type[k]["Nevts"] * self.denominator_type[k]["value"]
-            zprior_norm_log += self.denominator_type[k]["Nevts"] * self.denominator_type[k]["zprior_norm_log"]
-        
-        num = 1.
-        for event_name in self.keys:
-            num += self.log_likelihood_numerator_single_event(event_name)
-        
-        return num - zprior_norm_log - den
-    
-    def log_combined_event_likelihood_old(self):
 
         # carry norm to apply to numerator as well
         den_single, zprior_norm_log = self.log_likelihood_denominator_single_event()
