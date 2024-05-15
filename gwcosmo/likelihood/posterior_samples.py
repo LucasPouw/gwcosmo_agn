@@ -90,13 +90,14 @@ class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(
     """
     def __init__(self):
 
-        self.name = "m1d_m2d:uniform --- dL:uniform_merger_rate_comoving_H0:67.9, Om0:0.3065"
-        self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc), # value indicated in https://zenodo.org/records/6513631
-                                   Om0=0.3065, # value indicated in https://zenodo.org/records/6513631
-                                   Tcmb0=2.7255 * u.K,
-                                   Neff=3.046,
-                                   m_nu=[0.,0.,0.06] * u.eV,
-                                   Ob0=0.0486)
+        self.name = "m1d_m2d:uniform --- dL:uniform_merger_rate_comoving_H0:67.9, Om0:0.3065, Planck15"
+        self.cosmo = astropy.cosmology.Planck15
+        #self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc), # value indicated in https://zenodo.org/records/6513631
+        #                           Om0=0.3065, # value indicated in https://zenodo.org/records/6513631
+        #                           Tcmb0=2.7255 * u.K,
+        #                           Neff=3.046,
+        #                           m_nu=[0.,0.,0.06] * u.eV,
+        #                           Ob0=0.0486)
 
     def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
         """
@@ -233,7 +234,7 @@ class analytic_PE_priors(object):
     
 
 def get_selection_criteria():
-    return ["SNR","IFAR","SNR+IFAR"]
+    return ["SNR","IFAR","SNR|IFAR"]
 
 
 def get_default_approximants():
@@ -269,7 +270,7 @@ class load_posterior_samples(object):
         self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
         self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
         self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
-        self.selection_key = "selection_criteria" # value can be SNR (SNR>SNRth) or FAR (FAR<FARth)
+        self.selection_key = "selection_criteria" # value can be SNR (SNR>SNRth) or IFAR (IFAR>IFARth)
         self.selection_string = get_selection_criteria()
         # additional fields for the 'posterior_samples' dict
         self.PE_prior_class_name = "PE_priors"
