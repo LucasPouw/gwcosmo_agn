@@ -115,7 +115,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             self.samples_indices_dictionary[key] = samp_ind
             self.keys.append(key)
 
-            # check event'selection kind: SNR, IFAR, SNR+IFAR
+            # check event'selection kind: SNR or IFAR
             if self.samples_dictionary[key].selection_criteria is not None:
                 print("GW event {}: cut = {}".format(key,self.samples_dictionary[key].selection_criteria))
                 if self.samples_dictionary[key].selection_criteria in self.denominator_type.keys():                    
@@ -150,7 +150,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut)
             elif k == "IFAR":
                 self.denominator_type[k]['idx'] = self.injections.get_selected_idx(ifar_cut=self.ifar_cut)
-            elif k == "SNR+IFAR":
+            elif k == "SNR|IFAR":
                 self.denominator_type[k]['idx'] = self.injections.get_selected_idx(snr_cut=self.snr_cut,ifar_cut=self.ifar_cut)
             else:
                 raise ValueError("Selection of type {} is not available.".format(k))
