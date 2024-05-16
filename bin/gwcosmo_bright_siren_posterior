@@ -85,27 +85,6 @@ else:  # a json file is required
 if opts.parameter_dict:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
-    if opts.posterior_samples is None and opts.skymap is not None:
-        mass_parameters = [
-            "alpha",
-            "delta_m",
-            "mu_g",
-            "sigma_g",
-            "lambda_peak",
-            "alpha_1",
-            "alpha_2",
-            "b",
-            "mminbh",
-            "mmaxbh",
-            "beta",
-            "alphans",
-            "mminns",
-            "mmaxns",
-        ]
-        for key in mass_parameters:
-            if key in parameter_dict.keys():
-                if isinstance(parameter_dict[key]["value"], list):
-                    parser.error(f"Mass parameter({key}) cannot be inferred while using GW skymap.")
 else:
     parser.error("Missing parameters file")
 
