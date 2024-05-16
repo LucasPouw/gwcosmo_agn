@@ -157,6 +157,7 @@ me = gwcosmo.likelihood.bright_siren_likelihood.MultipleEventLikelihoodEM(
     cosmo,
     mass_priors,
     network_snr_threshold=opts.snr,
+    ifar_cut=opts.ifar,
 )
 
 for key in parameter_dict:
