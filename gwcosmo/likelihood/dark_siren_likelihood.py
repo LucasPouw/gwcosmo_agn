@@ -38,7 +38,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             provides p(x|Omega) and skymap properties
         LOS_prior :
         """
-        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None})
+        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None, 'D':None, 'logRc':None, 'nD':None, 'cM':None})
 
         self.zrates = zrates
         
@@ -191,7 +191,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
 
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
 
-        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n']}
+        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
