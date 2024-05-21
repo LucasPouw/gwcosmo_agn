@@ -1448,7 +1448,7 @@ class Create_injections(object):
         h.create_dataset('snr',data=inj['SNR'])
         h.create_dataset('Tobs',data=inj['Tobs'])
         h.create_dataset('ntotal',data=inj['NsimTot_total'])
-        h.create_dataset('ifar',data=np.inf*inj['SNR'])
+        h.create_dataset('ifar',data=-1+0*inj['SNR']) # no IFAR computed with these injections
         h.create_dataset('run',data=inj['run_integer']) # keep the information on the run id, needed when merging nsbh, bbh... inj files
         
         # write prob_of_run, rescale factors and other data
