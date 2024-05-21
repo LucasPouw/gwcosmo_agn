@@ -107,14 +107,22 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 print(f"Event '{event_name}' not used in the analysis")
                 continue
 
+            if meta.get("posterior_file_path") and meta.get("skymap_path"):
+                raise ValueError(
+                    "Posterior sample mode can not live together with skymap mode! "
+                    + "Within your json file, choose either 'posterior_file_path' "
+                    + f"or 'skymap_path' for '{event_name}'."
+                )
+
             # Add new empty event
             event = self.events.setdefault(event_name, {})
 
             # Add posterior samples if any
             if meta.get("posterior_file_path"):
-                event.update(posterior_samples=load_posterior_samples(meta))
-                # This is only need with posterior samples
-                self.reweight_samps = reweight_posterior_samples(self.cosmo, self.mass_priors)
+                event.update(
+                    posterior_samples=load_posterior_samples(meta),
+                    log_likelihood_numerator=self.log_likelihood_numerator_single_event_from_samples,
+                )
 
             # Counterpart settings
             if counterpart_redshift := meta.get("counterpart_redshift"):
@@ -126,9 +134,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     f"Missing either 'counterpart_redshift' or 'counterpart_velocity' for '{event_name}' event!"
                 )
             counterpart_muz, counterpart_sigmaz = redshift
-            zmin = counterpart_muz - 5 * counterpart_sigmaz
-            if zmin < 0:
-                zmin = 0
+            zmin = max(0.0, counterpart_muz - 5 * counterpart_sigmaz)
             zmax = counterpart_muz + 5 * counterpart_sigmaz
             a = (zmin - counterpart_muz) / counterpart_sigmaz
             b = (zmax - counterpart_muz) / counterpart_sigmaz
@@ -142,6 +148,11 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     raise ValueError(f"Missing 'counterpart_ra_dec' for '{event_name}' event!")
                 ra_los, dec_los = counterpart_ra_dec
 
+                if not (samples := event.get("posterior_samples")):
+                    raise ValueError(
+                        "Posterior los option set to False but no posterior samples found ! "
+                        + "Make sure to add a 'posterior_file_path' field in the json file."
+                    )
                 nsamp_event = int(meta.get("nsamps", 1000))
                 sample_index, ang_rad_max = identify_samples_from_posterior(
                     ra_los, dec_los, samples.ra, samples.dec, nsamp_event
@@ -152,18 +163,22 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 )
 
             if skymap_path := meta.get("skymap_path"):
-                skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
                 if not (counterpart_ra_dec := meta.get("counterpart_ra_dec")):
                     raise ValueError(f"Missing 'counterpart_ra_dec' for '{event_name}' event!")
+                skymap = gwcosmo.likelihood.skymap.skymap(skymap_path)
                 ra_los, dec_los = counterpart_ra_dec
                 dlmin, dlmax, dlpost = skymap.lineofsight_posterior_dl(ra_los, dec_los)
                 dl_array = np.linspace(dlmin if dlmin > 0 else 0, dlmax, 10000)
-                event.update(posterior_dl_skymap=dlpost, dlarray=dl_array)
+                event.update(
+                    posterior_dl_skymap=dlpost,
+                    dlarray=dl_array,
+                    log_likelihood_numerator=self.log_likelihood_numerator_single_event_from_skymap,
+                )
 
                 skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare")
                 if skymap_prior_distance not in ["Uniform", "UniformComoving", "dlSquare"]:
                     raise ValueError(
-                        f"Unkown '{skymap_prior_distance}' skymap prior distance for event '{event_name}'!"
+                        f"Unkown '{skymap_prior_distance}' skymap prior distance for event '{event_name}'! "
                         + "Must be either ['Uniform', 'UniformComoving', 'dlSquare']"
                     )
                 event.update(skymap_prior_distance=skymap_prior_distance)
@@ -176,6 +191,13 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     dl_array = cosmo_skymap.dgw_z(z_array)
                     z_prior_skymap = cosmo_skymap.p_z(z_array)
                     event.update(dl_prior_skymap=interp1d(dl_array, z_prior_skymap))
+
+            # Sanity check
+            if not event.get("log_likelihood_numerator"):
+                raise ValueError(
+                    f"Something is mis-configured for event '{event_name}'! "
+                    + "Missing either posterior samples or skymap."
+                )
 
         # redshift evolution model
         self.zrates = zrates
@@ -288,35 +310,19 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 + f"cosmo_prior_dict: {self.cosmo_param_dict}"
             )
             print("returning infinite denominator")
-            print("exit!")
             log_den = np.inf
-            # sys.exit()
 
         return log_den, np.log(z_prior_norm)
 
     def log_combined_event_likelihood(self):
 
-        num = 0.0
-
         den_single, zprior_norm_log = self.log_likelihood_denominator_single_event()
         den = den_single * len(self.events)
 
+        num = 0.0
         for event_name, meta in self.events.items():
-            if meta.get("posterior_samples"):
-                num += (
-                    self.log_likelihood_numerator_single_event_from_samples(event_name)
-                    - zprior_norm_log
-                )
-            elif meta.get("posterior_dl_skymap"):
-                num += (
-                    self.log_likelihood_numerator_single_event_from_skymap(event_name)
-                    - zprior_norm_log
-                )
-            else:
-                raise ValueError(
-                    f"Something is mis-configured for event '{event_name}'! "
-                    + "Missing either posterior samples or skymap."
-                )
+            log_likelihood_numerator = meta.get("log_likelihood_numerator")
+            num += log_likelihood_numerator(event_name) - zprior_norm_log
 
         return num - den
 
@@ -349,6 +355,14 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
             ]
         }
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
+
+        # This is only needed by posterior samples mode. The reweight_posterior_samples class
+        # initialization is just a reference assignation of self.cosmo and self.mass_prior: since
+        # self.cosmo and self.mass_priors remains the same during all the likelihood computation, we
+        # can create the self.reweight_samps object at the beginning once and for all. For clarity
+        # reasons, we create it here every time just to reflect the change of cosmology and mass
+        # prior contents.
+        self.reweight_samps = reweight_posterior_samples(self.cosmo, self.mass_priors)
 
         return self.log_combined_event_likelihood()
 
