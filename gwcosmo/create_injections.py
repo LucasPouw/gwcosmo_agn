@@ -23,6 +23,7 @@ import string
 import scipy.integrate as integrate
 import h5py
 import json
+from gwcosmo.utilities.injections_utilities import *
 
 class Counter(object):
     '''
@@ -536,13 +537,6 @@ class Create_injections(object):
                                   'Mmax_det':500.,
                                   'power_index_m1_det':-2.,
                                   'power_index_m2_det':1.,
-                                  'Mmin_source':2.,
-                                  'Mmax_source':300.,
-                                  'power_index_m1_source':-2.,
-                                  'power_index_m2_source':1.,
-                                  'zmin':0.001,
-                                  'zmax':4,
-                                  'z_alpha':2.,
                                   'power_index_dL':2.,
                                   'dLmin':0.1,
                                   'dLmax':80e3} # same value for all runs
@@ -844,40 +838,6 @@ class Create_injections(object):
         return prior_dict
         
  
-    
-    def generate_priors_source(self): # not used in the current version
-
-        '''
-        Define the priors in the source frame
-        '''
-        
-        if priors == None:
-            prior_dict = bl.gw.prior.BBHPriorDict()
-            prior_dict.pop('mass_1')
-            prior_dict.pop('mass_2')
-            prior_dict.pop('mass_ratio')
-            prior_dict.pop('chirp_mass')
-            prior_dict.pop('luminosity_distance')
-
-            prior_dict['mass_1'] = bl.core.prior.PowerLaw(alpha=self.priors_limits['power_index_m1_source'],
-                                                          minimum=self.priors_limits['Mmin_source'],
-                                                          maximum=self.priors_limits['Mmax_source'],
-                                                          name='mass_1')
-            prior_dict['mass_2'] = bl.core.prior.PowerLaw(alpha=self.priors_limits['power_index_m2_source'],
-                                                          minimum=self.priors_limits['Mmin_source'],
-                                                          maximum=self.priors_limits['Mmax_source'],
-                                                          name='mass_2')
-            #prior_dict['redshift'] = bl.gw.prior.UniformComovingVolume(minimum=0.01, maximum=4, name="redshift")
-            prior_dict['redshift'] = bl.core.prior.PowerLaw(alpha=self.priors_limits['z_alpha'],
-                                                            minimum=self.priors_limits['zmin'],
-                                                            maximum=self.priors_limits['zmax'],
-                                                            name='redshift')
-            prior_dict['luminosity_distance'] = 1
-
-        
-        return prior_dict
-
-    
     def do_injections(self,
                       Nsamps=100,
                       output_dir='./injection_files',
@@ -1448,7 +1408,7 @@ class Create_injections(object):
         h.create_dataset('snr',data=inj['SNR'])
         h.create_dataset('Tobs',data=inj['Tobs'])
         h.create_dataset('ntotal',data=inj['NsimTot_total'])
-        h.create_dataset('ifar',data=-1+0*inj['SNR']) # no IFAR computed with these injections
+        h.create_dataset('ifar',data=default_ifar_value+0*inj['SNR']) # no IFAR computed with these injections
         h.create_dataset('run',data=inj['run_integer']) # keep the information on the run id, needed when merging nsbh, bbh... inj files
         
         # write prob_of_run, rescale factors and other data
