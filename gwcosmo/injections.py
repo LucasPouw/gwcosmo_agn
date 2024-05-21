@@ -98,16 +98,17 @@ class Injections():
     def detector_frame_to_source_frame(self,cosmo,m1det,m2det,dldet):
         
         z_samples = cosmo.z_dgw(dldet)
-
-        ms1 = m1det/(1+z_samples)
-        ms2 = m2det/(1+z_samples)
+        den = 1+z_samples
+        ms1 = m1det/den
+        ms2 = m2det/den
 
         return ms1, ms2, z_samples
 
 
     def detector_to_source_jacobian(self,z,cosmo):
         
-        jacobian = _np.power(1+z,2)*cosmo.ddgw_dz(z)
+        zp1 = z+1
+        jacobian = zp1*zp1*cosmo.ddgw_dz(z)
 
         return jacobian
 
