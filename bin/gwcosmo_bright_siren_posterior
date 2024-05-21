@@ -20,6 +20,7 @@ from gwcosmo.utilities.arguments import create_parser
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.utilities.cosmology import *
 from gwcosmo.utilities.posterior_utilities import str2bool
+from gwcosmo.utilities.injections_utilities import *
 from tqdm import tqdm
 
 matplotlib.use("agg")
@@ -32,7 +33,6 @@ matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 import seaborn as sns
 
 sns.set(context="paper", style="ticks", palette="colorblind")
-
 
 parser = create_parser(
     "--method",
@@ -96,13 +96,15 @@ except OSError:
 if "ifar" in injdata:
     ifar = np.array(injdata["ifar"])
 else:
-    ifar = np.inf + 0 * np.array(injdata["m1d"])
+    ifar = default_ifar_value + 0 * np.array(injdata["m1d"])
 
 if not opts.snr and not opts.ifar:
     parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
 opts.snr = opts.snr or 0.0
 opts.ifar = opts.ifar or 0.0
 print(f"Analysis will be run with cuts on SNR: {opts.snr} and IFAR: {opts.ifar}")
+print("For software injections, the IFAR is know: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
+
 
 injections = injections_at_detector(
     m1d=np.array(injdata["m1d"]),
