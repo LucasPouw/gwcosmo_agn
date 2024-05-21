@@ -154,13 +154,6 @@ else:
                      'Mmax_det':1000.,
                      'power_index_m1_det':-2.,
                      'power_index_m2_det':1.,
-                     'Mmin_source':2.,
-                     'Mmax_source':300.,
-                     'power_index_m1_source':-2.,
-                     'power_index_m2_source':1.,
-                     'zmin':0.001,
-                     'zmax':4,
-                     'z_alpha':2.,
                      'power_index_dL':2.,
                      'dLmin':0.1, # Mpc
                      'dLmax':80e3} # Mpc, case of the constant dLmax, independently of m1, dummy O4 value
