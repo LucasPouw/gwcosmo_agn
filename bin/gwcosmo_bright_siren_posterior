@@ -102,7 +102,7 @@ if not opts.snr and not opts.ifar:
     parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
 opts.snr = opts.snr or 0.0
 opts.ifar = opts.ifar or 0.0
-print(f"Analysis will be run with cuts on SNR: {opts.snr} and IFAR: {opts.ifar}")
+print(f"Analysis will be run with cuts on SNR: {opts.snr} OR IFAR: {opts.ifar}")
 print("For software injections, the IFAR is know: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
 
 
