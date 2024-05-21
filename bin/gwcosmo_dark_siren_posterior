@@ -18,6 +18,7 @@ from tqdm import tqdm
 from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.arguments import create_parser
 from gwcosmo.utilities.cosmology import *
+from gwcosmo.utilities.injections_utilities import *
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.injections import injections_at_detector
 
@@ -36,10 +37,28 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--redshift_evolution", "--reweight_posterior_samples",
-                       "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot",
-                       "--injections_path", "--mass_model", "--snr", "--ifar", "--gravity_model", '--sampler', "--nwalkers",
-                       "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
+parser = create_parser("--method",
+                       "--posterior_samples",
+                       "--redshift_evolution",
+                       "--reweight_posterior_samples",
+                       "--sky_area",
+                       "--min_pixels",
+                       "--outputfile",
+                       "--LOS_catalog",
+                       "--parameter_dict",
+                       "--plot",
+                       "--injections_path",
+                       "--mass_model",
+                       "--snr",
+                       "--ifar",
+                       "--gravity_model",
+                       "--sampler",
+                       "--nwalkers",
+                       "--npool",
+                       "--walks",
+                       "--nsteps",
+                       "--nlive",
+                       "--dlogz")
 
 opts = parser.parse_args()
 
@@ -117,7 +136,7 @@ except OSError:
 if 'ifar' in injdata.keys():
     ifar = np.array(injdata['ifar'])
 else:
-    ifar = np.inf+0*np.array(injdata['m1d'])
+    ifar = default_ifar_value+0*np.array(injdata['m1d'])
 
 if opts.snr == None and opts.ifar != None:
     opts.snr = 0
@@ -125,7 +144,8 @@ elif opts.snr != None and opts.ifar == None:
     opts.ifar = 0
 elif opts.snr == None and opts.ifar == None:
     parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
-print("Analysis will be run with cuts on SNR: {} and IFAR: {}".format(opts.snr,opts.ifar))
+print("Analysis will be run with cuts on SNR: {} OR IFAR: {}".format(opts.snr,opts.ifar))
+print("For software injections, the IFAR is know: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
 
 injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     m2d=np.array(injdata['m2d']),
