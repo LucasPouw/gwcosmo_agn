@@ -14,7 +14,7 @@ from astropy import units as _u
 from scipy.special import logsumexp as _logsumexp
 
 
-__all__=['injections_at_detector','injections_at_source']
+__all__=['injections_at_detector']
 
 
 class Injections():
@@ -188,32 +188,3 @@ class injections_at_detector(Injections):
         
         self.log_origin_jacobian = _np.zeros(len(m1d))
         Injections.__init__(self,m1d,m2d,dl,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False)
-
-    
-class injections_at_source(Injections):
-    """
-    A class to handle a list of detected GW signals from simulations in source frame. This can be used to
-    evaluate selection effects or detection expectations under some priors
-    """
-
-    def __init__(self,cosmo_ref,m1s,m2s,z,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False):
-
-        self.cosmo_ref = cosmo_ref
-        self.z_original = z
-        self.m1s_original = m1s
-        self.m2s_original = m2s
-        
-        # Convert from source frame to detector frame and select injections according to SNR and IFAR
-        m1d, m2d, dl = self.source_frame_to_detector_frame(self.cosmo_ref,self.m1s_original,self.m2s_original,self.z_original)
-        self.log_origin_jacobian = _np.log(_np.abs(self.detector_to_source_jacobian(self.z_original,self.cosmo_ref)))
-        Injections.__init__(self,m1d,m2d,dl,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False)
-        
-        
-    def source_frame_to_detector_frame(self,cosmo,ms_1,ms_2,z_samples):
-        
-        dl = cosmo.dgw_z(self, z_samples)
-
-        md1 = ms_1*(1+z_samples)
-        md2 = ms_2*(1+z_samples)
-
-        return md1, md2, dl
