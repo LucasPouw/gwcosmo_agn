@@ -20,7 +20,7 @@ from gwcosmo.utilities.arguments import create_parser
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.utilities.cosmology import *
 from gwcosmo.utilities.posterior_utilities import str2bool
-from gwcosmo.utilities.injections_utilities import *
+from gwcosmo.utilities.injections_utilities import default_ifar_value
 from tqdm import tqdm
 
 matplotlib.use("agg")
@@ -103,7 +103,7 @@ if not opts.snr and not opts.ifar:
 opts.snr = opts.snr or 0.0
 opts.ifar = opts.ifar or 0.0
 print(f"Analysis will be run with cuts on SNR: {opts.snr} OR IFAR: {opts.ifar}")
-print("For software injections, the IFAR is know: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
+print("For software injections, the IFAR is known: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
 
 
 injections = injections_at_detector(
