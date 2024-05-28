@@ -140,9 +140,10 @@ class Injections():
         log_jacobian_term = _np.log(_np.abs(self.detector_to_source_jacobian(self.z_samples, cosmo)))-self.log_jacobian_det
         self.log_weights_astro = log_numer-_np.log(self.ini_prior)-log_jacobian_term
         self.log_weights = self.log_weights_astro - _np.log(z_prior_norm)
-        # This is the Volume-Time in which we expect to detect. You can multiply it by R_0 Tobs to get the expected number of detections in Gpc^3 yr
+        # CAREFUL: VT_sens is not the number of expected events (detected) as z_prior is not normalized in gwcosmo
+        # to have Nexp, you have to divide VT_sens by z_prior_norm and multiply by the total number of mergers in the universe
         self.VT_sens=_np.exp(_logsumexp(self.log_weights_astro))/self.ntotal
-        # This is the fraction of events we expect to detect, a.k.a. the selection effect
+        # This is the fraction of events we expect to detect, Nexp/N, a.k.a. the selection effect
         self.VT_fraction=self.VT_sens/z_prior_norm
 
     def calculate_Neff(self):
@@ -156,16 +157,21 @@ class Injections():
         Neff = (mean**2)/var
         return Neff, (Neff >= 4*self.Nobs), var
 
-    def expected_number_detection(self,R0):
+    def expected_number_detection(self,R0,NtotMergers):
         """
-        This method will return the expected number of GW detection given the injection set. Tobs is automatically saved in the class creation
+        This method will return the expected number of GW detection given the injection set, population and rate models.
+        You must provide the rate of mergers at z=0 (R0 in Gpc-3 yr-1).
+        Ntotmergers 
 
         Parameters
         ----------
         R0 : float
-            Merger rate in comoving volume in Gpc-3yr-1
+            Merger rate in comoving volume in Gpc-3 yr-1
+        Ntotmergers : float
+            is the total number of mergers in the universe occuring during 1 year with a rate equals to 1 merger Gpc-3 yr-1 at z=0
+            the scaling by the actual R0 and the actual Tobs is done in the function
         """
-        return self.VT_sens*R0*self.Tobs
+        return self.VT_fraction*R0*self.Tobs*NtotMergers
 
     def gw_only_selection_effect(self):
         """
