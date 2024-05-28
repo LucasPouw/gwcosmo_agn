@@ -6,12 +6,11 @@ Rachel Gray
 
 import numpy as np
 
-from scipy.integrate import simpson
+from scipy.integrate import simpson, quad
 from scipy.interpolate import interp1d
 from gwcosmo.utilities.zprior_utilities import get_zprior_full_sky, get_zprior
 from gwcosmo.likelihood.posterior_samples import *
 import gwcosmo
-
 from .skymap import ra_dec_from_ipix,ipix_from_ra_dec
 import healpy as hp
 import bilby
@@ -128,7 +127,56 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.injections.update_cut(self.snr_cut,self.ifar_cut)
         print(self.keys)
                       
-                      
+
+    def MergersPerYearPerGpc3_z(self,z,H0):
+
+        """
+        number density of mergers per redshift bin per time bin (detector frame):
+        dN/(d t_det dz) = dN/(dVc dts) x dVc/dz / (1+z)
+        dN/(dVc dts) is R0 x  Madau
+        we fix here R0 = 1 (arbitrary normalization at z=0)
+        is gwcosmo:
+        1) p_z is (dVc/dz)/(4pi (c/H0)^3) so that dVc/dz = p_z x (4pi (c/H0)^3)
+        2) zrates is Madau/(1+z)
+        the result is in Gpc^{-3} yr^{-1}
+        """
+        
+        return self.zrates(z)*self.cosmo.p_z(z)*4*np.pi*(299792.458/H0)**3/1e9
+
+    
+    def NtotMergers(self,H0,R0=1,Tobs=1):
+
+        """
+        Compute the true number of mergers occurring during time Tobs with a rate R0 at z=0, given H0, between z=0 and z = cosmo.zmax (=10 by default)
+        default: return the number of mergers in the universe during 1 year with R0=1 (1 merger per Gpc3 per yr) 
+        """
+
+        return R0*Tobs*quad(self.MergersPerYearPerGpc3_z,self.cosmo.zmin,self.cosmo.zmax,args=(H0))[0]
+
+
+    def Get_Nmergers_Nexp(self,H0):
+        
+        z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,
+                           fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
+        dz = np.diff(self.z_array)
+        z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
+        injections = copy.deepcopy(self.injections)
+        Nmergers = self.NtotMergers(H0,R0=1,Tobs=1)
+        cosmo = copy.deepcopy(self.cosmo)
+        cosmo.H0 = H0
+        injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
+        Nexp = injections.VT_sens*Nmergers/z_prior_norm # for R0=1 and Tobs=1
+        
+        Neff, Neff_is_ok, var = injections.calculate_Neff()
+        if not Neff_is_ok: # Neff >= 4*Nobs    
+            print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
+                  .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
+            print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
+            print("returning infinite denominator")
+
+        return Nexp, Nmergers
+
+    
     def log_likelihood_numerator_single_event(self,event_name):
 
         pixel_indices = self.pixel_indices_dictionary[event_name]
@@ -170,12 +218,12 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
         injections = copy.deepcopy(self.injections)
-        
         # Update the sensitivity estimation with the new model
         injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
         Neff, Neff_is_ok, var = injections.calculate_Neff()
         if Neff_is_ok: # Neff >= 4*Nobs    
             log_den = np.log(injections.gw_only_selection_effect())
+            #print(injections.expected_number_detection(1),np.exp(log_den+np.log(z_prior_norm)),injections.expected_number_detection(1)/np.exp(log_den+np.log(z_prior_norm)))
         else:
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
                   .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
@@ -194,6 +242,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         num = 1.
         for event_name in self.keys:
             num += self.log_likelihood_numerator_single_event(event_name)-zprior_norm_log
+            #Nexp, Nmergers = self.Get_Nmergers_Nexp(self.cosmo_param_dict['H0'])
+            #print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
 
         return num-den
         
