@@ -156,8 +156,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
 
     def Get_Nmergers_Nexp(self,H0):
         
-        z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,
-                           fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
+        values = self.zprior_full_sky*self.zrates(self.z_array)
+        z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
         injections = copy.deepcopy(self.injections)
@@ -213,8 +213,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         
     def log_likelihood_denominator_single_event(self):
 
-        z_prior = interp1d(self.z_array,self.zprior_full_sky*self.zrates(self.z_array),bounds_error=False,
-                           fill_value=(0,(self.zprior_full_sky*self.zrates(self.z_array))[-1]))
+        values = self.zprior_full_sky*self.zrates(self.z_array)
+        z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
         injections = copy.deepcopy(self.injections)
@@ -223,7 +223,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         Neff, Neff_is_ok, var = injections.calculate_Neff()
         if Neff_is_ok: # Neff >= 4*Nobs    
             log_den = np.log(injections.gw_only_selection_effect())
-            #print(injections.expected_number_detection(1),np.exp(log_den+np.log(z_prior_norm)),injections.expected_number_detection(1)/np.exp(log_den+np.log(z_prior_norm)))
         else:
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
                   .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
@@ -242,8 +241,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         num = 1.
         for event_name in self.keys:
             num += self.log_likelihood_numerator_single_event(event_name)-zprior_norm_log
-            #Nexp, Nmergers = self.Get_Nmergers_Nexp(self.cosmo_param_dict['H0'])
-            #print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
+            Nexp, Nmergers = self.Get_Nmergers_Nexp(self.cosmo_param_dict['H0'])
+            print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
 
         return num-den
         
