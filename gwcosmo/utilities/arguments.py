@@ -86,6 +86,8 @@ def create_parser(*config):
             help="index of the healpix pixel to analyse"),
         "--min_pixels": argument(None, default=30, type=int,
             help="minimum number of pixels desired to cover sky area of event (for use with pixel method only), (default=30)"),
+        "--min_samps_in_pixel": argument(None, default=100, type=int,
+            help="minimum number of posterior samples in a pixel (default=100)"),
         "--outputfile": argument(None, default='Posterior',
             help="Name of output file (default='Posterior')"),
         "--seed": argument(None, default=None, type=int, 
