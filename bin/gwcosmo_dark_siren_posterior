@@ -43,6 +43,7 @@ parser = create_parser("--method",
                        "--reweight_posterior_samples",
                        "--sky_area",
                        "--min_pixels",
+                       "--min_samps_in_pixel",
                        "--outputfile",
                        "--LOS_catalog",
                        "--parameter_dict",
@@ -206,8 +207,14 @@ min_pixels = int(opts.min_pixels)
 sky_area = float(opts.sky_area)
 
 me = gwcosmo.likelihood.dark_siren_likelihood.PixelatedGalaxyCatalogMultipleEventLikelihood(posterior_samples_dictionary, \
-                                                                                            injections, LOS_catalog_path, ps_z, cosmo, mass_priors,
-                                                                                            min_pixels=min_pixels, sky_area=sky_area, \
+                                                                                            injections,
+                                                                                            LOS_catalog_path,
+                                                                                            ps_z,
+                                                                                            cosmo,
+                                                                                            mass_priors,
+                                                                                            min_pixels=min_pixels,
+                                                                                            min_samps_in_pixel=opts.min_samps_in_pixel,
+                                                                                            sky_area=sky_area, \
                                                                                             network_snr_threshold=opts.snr,
                                                                                             ifar_cut=opts.ifar)
 
