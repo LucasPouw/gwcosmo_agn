@@ -241,8 +241,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         num = 1.
         for event_name in self.keys:
             num += self.log_likelihood_numerator_single_event(event_name)-zprior_norm_log
-            Nexp, Nmergers = self.Get_Nmergers_Nexp(self.cosmo_param_dict['H0'])
-            print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
+            #Nexp, Nmergers = self.Get_Nmergers_Nexp(self.cosmo_param_dict['H0'])
+            #print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
 
         return num-den
         
