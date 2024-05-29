@@ -91,13 +91,14 @@ class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(
     def __init__(self):
 
         self.name = "m1d_m2d:uniform --- dL:uniform_merger_rate_comoving_H0:67.9, Om0:0.3065, Planck15"
-        self.cosmo = astropy.cosmology.Planck15
-        #self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc), # value indicated in https://zenodo.org/records/6513631
-        #                           Om0=0.3065, # value indicated in https://zenodo.org/records/6513631
-        #                           Tcmb0=2.7255 * u.K,
-        #                           Neff=3.046,
-        #                           m_nu=[0.,0.,0.06] * u.eV,
-        #                           Ob0=0.0486)
+        # self.cosmo = astropy.cosmology.Planck15 # CAREFUL: Planck15 in astropy is NOT the LVK reference which is PLanck 2015 TT+lowP+lensing+ext cosmology
+        # we use the values for H0 and Om0 reported in https://dcc.ligo.org/DocDB/0167/T2000185/005/LVC_symbol_convention.pdf and https://zenodo.org/records/6513631
+        self.cosmo = FlatLambdaCDM(H0=67.90 * (u.km/u.s/u.Mpc),
+                                   Om0=0.3065,
+                                   Tcmb0=2.7255 * u.K,
+                                   Neff=3.046,
+                                   m_nu=[0.,0.,0.06] * u.eV,
+                                   Ob0=0.0486)
 
     def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
         """
