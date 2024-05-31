@@ -23,7 +23,7 @@ import string
 import scipy.integrate as integrate
 import h5py
 import json
-from gwcosmo.utilities.injections_utilities import *
+default_ifar_value = -1
 
 class Counter(object):
     '''
@@ -534,7 +534,7 @@ class Create_injections(object):
         if self.priors_limits == None:
             # use the same values as the default ones in gwcosmo/bin/create_injections
             self.priors_limits = {'Mmin_det':1.,
-                                  'Mmax_det':500.,
+                                  'Mmax_det':1000.,
                                   'power_index_m1_det':-2.,
                                   'power_index_m2_det':1.,
                                   'power_index_dL':2.,
