@@ -23,7 +23,7 @@ import string
 import scipy.integrate as integrate
 import h5py
 import json
-default_ifar_value = -1
+from gwcosmo.utilities.injections_utilities import default_ifar_value
 
 class Counter(object):
     '''
@@ -302,7 +302,7 @@ class Create_injections(object):
                  tmp_to_dict=None,
                  tmp_to_stdout=None,
                  tmpfile_to_dict=None,
-                 approx='IMRPhenomXPHM',
+                 approx='IMRPhenomPv2',
                  priors=None,
                  priors_limits=None,
                  fmin=20,
