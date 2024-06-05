@@ -560,7 +560,7 @@ class load_posterior_samples(object):
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
         self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance) # we compute all PE priors values -> pi(m1d,m2d,dL)
-        anomalies = np.where( ( self.pe_priors <= 0 ) |
+        anomalies = np.where( ( self.pe_priors < 0 ) |
                               ( sum(np.isnan(self.pe_priors) > 0 ) ) |
                               ( sum(np.isinf(self.pe_priors) > 0) ) )[0]
         if len(anomalies) > 0:
