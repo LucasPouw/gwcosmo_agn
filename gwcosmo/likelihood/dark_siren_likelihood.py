@@ -143,7 +143,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         dN/(d t_det dz) = dN/(dVc dts) x dVc/dz / (1+z)
         dN/(dVc dts) is R0 x  Madau
         we fix here R0 = 1 (arbitrary normalization at z=0)
-        is gwcosmo:
+        in gwcosmo:
         1) p_z is (dVc/dz)/(4pi (c/H0)^3) so that dVc/dz = p_z x (4pi (c/H0)^3)
         2) zrates is Madau/(1+z)
         the result is in Gpc^{-3} yr^{-1}
