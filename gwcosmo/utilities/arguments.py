@@ -185,7 +185,7 @@ def create_parser(*config):
         "--sampling_frequency": argument(None, default=4096, type=int,
             help="The sampling frequency of the waveforms in Hz (default is 4096)."),
         "--approximant": argument(None, default='IMRPhenomPv2', type=str,
-            help="The waveform approximant to be used for the waveform calculation (default is 'IMRPhenomXPHM')."),
+            help="The waveform approximant to be used for the waveform calculation (default is 'IMRPhenomPv2')."),
         "--output_dir": argument(None, default='./injection_files', type=str,
             help="The name of the output folder (default is './injection_files')."),
         "--offset": argument(None, default=1., type=float,
