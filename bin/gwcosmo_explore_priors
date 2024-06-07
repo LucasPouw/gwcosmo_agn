@@ -96,7 +96,7 @@ for key, value in posterior_samples_dictionary.items():
         save_key_2 = posterior_samples_dictionary[key]["PEprior_kind"]
         posterior_samples_dictionary[key].pop("PEprior_kind")
     try:
-        samples = load_posterior_samples(posterior_samples_dictionary[key],choose_default=False)
+        samples = load_posterior_samples(posterior_samples_dictionary[key],choose_default_waveform_for_analysis=False)
     except ValueError as ve:
         print(ve)
     if save_key: posterior_samples_dictionary[key]["PEprior_file_path"] = save_key
