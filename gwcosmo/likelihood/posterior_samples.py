@@ -250,14 +250,22 @@ class load_posterior_samples(object):
 
     Parameters
     ----------
-    posterior_samples : dict for each GW event, the dict can contain the following fields:
-    "posterior_file_path" => path to the PE posteriors, h5, hdf, json, dat...
-    "samples_field" => name of the waveform approximant (CO1:Mixed, C01:IMRPhenomXPHM...)
-    "PEprior_file_path" => path to the PE prior file (optional)
-    "skymap_path" => path to the GW event skymap (fits file)
+    posterior_samples: dict for each GW event, the dict can contain the following fields:
+        "posterior_file_path" => path to the PE posteriors, h5, hdf, json, dat...
+        "samples_field" => name of the waveform approximant (CO1:Mixed, C01:IMRPhenomXPHM...)
+        "PEprior_file_path" => path to the PE prior file (optional)
+        "PEprior_kind" => string that can be the name of the pre-defined PE priors, three are available:
+           1) m1d_m2d_uniform_dL_square_PE_priors
+           2) chirp_det_frame_q_uniform_dL_square_PE_priors
+           3) m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors
+        "skymap_path" => path to the GW event skymap (fits file)
+        "use_event" => if equals to "false", "False", the event is skipped
+
+    choose_default_waveform_for_analysis: if equals to True, tells the code to select itself the waveform model for an actual analysis.
+        if set to False then the code doesn't run an actual analysis but explores the h5 file
     """
     
-    def __init__(self,posterior_samples,choose_default=True):
+    def __init__(self,posterior_samples,choose_default_waveform_for_analysis=True):
 
         # list of keys that can be used in the posterior_samples json file
         self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
@@ -286,7 +294,7 @@ class load_posterior_samples(object):
                                   "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
 
 
-        self.choose_default = choose_default
+        self.choose_default_waveform_for_analysis = choose_default_waveform_for_analysis
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
         self.default_approximants = get_default_approximants()
@@ -366,7 +374,7 @@ class load_posterior_samples(object):
             self.posterior_samples[self.analysis_type] = self.multi_analysis
             self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
-                if self.choose_default: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore_priors run
+                if self.choose_default_waveform_for_analysis: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore_priors run
                     for approximant in self.default_approximants:
                         try:
                             data = pes.samples_dict[approximant]
@@ -433,7 +441,7 @@ class load_posterior_samples(object):
                         for k in show_keys:
                             if k in ldict.keys():
                                 print("\t {}:{}".format(k,ldict[k]))
-                        if self.choose_default and (current_key != self.field):
+                        if self.choose_default_waveform_for_analysis and (current_key != self.field):
                               raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could change the approximant or set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
                         else:
                             self.pe_priors_object = analytic_PE_priors(ldict)
@@ -462,6 +470,9 @@ class load_posterior_samples(object):
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
                     self.posterior_samples[self.sampling_vars] = {}
+                    if len(self.posterior_samples[self.approximants_available]) == 1: # if type is MultiAnalysis but there's a single waveform
+                        self.field = self.posterior_samples[self.approximants_available][0]
+
                     self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
             else: # status if False, from get_priors
                 self.posterior_samples[self.has_analytic_priors] = False
@@ -549,7 +560,7 @@ class load_posterior_samples(object):
             self.nsamples = len(self.distance)
             file.close()
 
-        if (self.field is None) and (self.choose_default == False):
+        if self.choose_default_waveform_for_analysis == False:
             # then it's a gwcosmo_explore_priors run, stop here
             return
             
