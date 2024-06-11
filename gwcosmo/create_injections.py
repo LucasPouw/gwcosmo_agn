@@ -1404,6 +1404,7 @@ class Create_injections(object):
         h.create_dataset('dl',data=inj['luminosity_distance'])
         h.create_dataset('ra',data=inj['ra'])
         h.create_dataset('dec',data=inj['dec'])
+        h.create_dataset('theta_jn',data=inj['theta_jn'])
         h.create_dataset('pini',data=inj['pi_rescaled'])
         h.create_dataset('snr',data=inj['SNR'])
         h.create_dataset('Tobs',data=inj['Tobs'])
