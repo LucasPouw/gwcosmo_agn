@@ -134,6 +134,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.injections.Nobs = Nobs
         self.injections.update_cut(self.snr_cut,self.ifar_cut)
         print(self.keys)
+        print("Analysing {} GW events...".format(len(self.keys)))
                       
 
     def MergersPerYearPerGpc3_z(self,z,H0):
