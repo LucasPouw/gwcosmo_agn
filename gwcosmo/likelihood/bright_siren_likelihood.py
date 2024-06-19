@@ -175,7 +175,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     log_likelihood_numerator=self.log_likelihood_numerator_single_event_from_skymap,
                 )
 
-                skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare")
+                skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare") # search for "skymap_prior_distance", if not found set it to "dlSquare"
                 if skymap_prior_distance not in ["Uniform", "UniformComoving", "dlSquare"]:
                     raise ValueError(
                         f"Unkown '{skymap_prior_distance}' skymap prior distance for event '{event_name}'! "
@@ -184,7 +184,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 event.update(skymap_prior_distance=skymap_prior_distance)
                 if skymap_prior_distance == "UniformComoving":
                     cosmo_skymap = standard_cosmology(
-                        meta.get("skymap_H0", 70.0), meta.get("skymap_Omega_m", 0.3065)
+                        meta.get("skymap_H0", 67.90), meta.get("skymap_Omega_m", 0.3065) # see default values in https://dcc.ligo.org/DocDB/0167/T2000185/005/LVC_symbol_convention.pdf
                     )
                     zmin, zmax = 0, 10
                     z_array = np.linspace(zmin, zmax, 10000)
@@ -293,16 +293,18 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         z_prior = interp1d(z_array, self.zprior(z_array) * self.zrates(z_array))
         dz = np.diff(z_array)
         z_prior_norm = np.sum((z_prior(z_array)[:-1] + z_prior(z_array)[1:]) * (dz) / 2)
-        injections = deepcopy(self.injections)
+        # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
+        # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
+        #injections = deepcopy(self.injections)
 
         # Update the sensitivity estimation with the new model
-        injections.update_VT(self.cosmo, self.mass_priors, z_prior, z_prior_norm)
-        Neff, Neff_is_ok, var = injections.calculate_Neff()
+        self.injections.update_VT(self.cosmo, self.mass_priors, z_prior, z_prior_norm)
+        Neff, Neff_is_ok, var = self.injections.calculate_Neff()
         if Neff_is_ok:  # Neff >= 4*Nobs
             log_den = np.log(injections.gw_only_selection_effect())
         else:
             print(
-                f"Not enough Neff ({Neff}) compared to Nobs ({injections.Nobs}) "
+                f"Not enough Neff ({Neff}) compared to Nobs ({self.injections.Nobs}) "
                 + f"for current mass-model {self.mass_priors} and z-model {z_prior}"
             )
             print(
