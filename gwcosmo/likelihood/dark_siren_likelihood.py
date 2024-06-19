@@ -20,6 +20,8 @@ import ast
 import sys
 # import pickle
 import copy
+from lal import C_SI
+import gwcosmo.utilities.posterior_utilities as pu # get the PE samples keys
 
 class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     """
@@ -82,12 +84,19 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             if samples.skip_me:
                 print("Skip event {} as requested by the user.".format(key))
                 continue
+
+            if not pu.PE_min_pixels in posterior_samples_dictionary[key]: # search for the "min_pixels" key
+                posterior_samples_dictionary[key][pu.PE_min_pixels] = min_pixels # add key and use the global value for min_pixels if not specific to the current GW event
+            else:
+                posterior_samples_dictionary[key][pu.PE_min_pixels] = int(posterior_samples_dictionary[key][pu.PE_min_pixels])
+
+            print(key,posterior_samples_dictionary[key][pu.PE_min_pixels])
             
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
             
-            pixelated_samples = make_pixel_px_function(samples, skymap, npixels=min_pixels, thresh=sky_area)
+            pixelated_samples = make_pixel_px_function(samples, skymap, npixels=posterior_samples_dictionary[key][pu.PE_min_pixels], thresh=sky_area)
             nside_low_res = pixelated_samples.nside
             if nside_low_res > nside:
                 raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels for event {key}.')
@@ -149,8 +158,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         2) zrates is Madau/(1+z)
         the result is in Gpc^{-3} yr^{-1}
         """
-        
-        return self.zrates(z)*self.cosmo.p_z(z)*4*np.pi*(299792.458/H0)**3/1e9
+        light_speed_in_km_per_sec = C_SI/1000.
+        return self.zrates(z)*self.cosmo.p_z(z)*4*np.pi*(light_speed_in_km_per_sec/H0)**3/1e9
 
     
     def NtotMergers(self,H0,R0=1,Tobs=1):
@@ -169,19 +178,20 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
-        injections = copy.deepcopy(self.injections)
+        # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
+        # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
+        # injections = copy.deepcopy(self.injections)
         Nmergers = self.NtotMergers(H0,R0=1,Tobs=1)
         cosmo = copy.deepcopy(self.cosmo)
         cosmo.H0 = H0
-        injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
-        Nexp = injections.VT_sens*Nmergers/z_prior_norm # for R0=1 and Tobs=1
+        self.injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
+        Nexp = self.injections.VT_sens*Nmergers/z_prior_norm # for R0=1 and Tobs=1
         
-        Neff, Neff_is_ok, var = injections.calculate_Neff()
+        Neff, Neff_is_ok, var = self.injections.calculate_Neff()
         if not Neff_is_ok: # Neff >= 4*Nobs    
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
-                  .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
+                  .format(Neff,self.injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
-            print("returning infinite denominator")
 
         return Nexp, Nmergers
 
@@ -226,15 +236,17 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
-        injections = copy.deepcopy(self.injections)
+        # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
+        # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
+        # injections = copy.deepcopy(self.injections)
         # Update the sensitivity estimation with the new model
-        injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
-        Neff, Neff_is_ok, var = injections.calculate_Neff()
+        self.injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
+        Neff, Neff_is_ok, var = self.injections.calculate_Neff()
         if Neff_is_ok: # Neff >= 4*Nobs    
-            log_den = np.log(injections.gw_only_selection_effect())
+            log_den = np.log(self.injections.gw_only_selection_effect())
         else:
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
-                  .format(Neff,injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
+                  .format(Neff,self.injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
             print("returning infinite denominator")
             log_den = np.inf
