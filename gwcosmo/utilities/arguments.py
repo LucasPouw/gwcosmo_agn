@@ -226,8 +226,8 @@ def create_parser(*config):
             help="number of samples from posterior, not conditioned over line-of-sight (default is 1000)"),
         "--skymap_prior_distance": argument(None, default="dlSquare", type=str,
             help="Distance prior used when generating the GW skymap. Choose from 'dlSquare', 'Uniform' or 'UniformComoving' (default dlSquare)"), 
-        "--skymap_H0": argument(None, default=70, type=float,
-            help="H0 when distance prior of skymap is uniform in comoving volume (default is 70)"), 
+        "--skymap_H0": argument(None, default=67.90, type=float,
+            help="H0 when distance prior of skymap is uniform in comoving volume (default is 67.90)"), 
         "--skymap_Omega_m": argument(None, default=0.3065, type=float,
                                      help="Omega_m when distance prior of skymap is uniform in comoving volume (default is 0.3065)"),
 
