@@ -268,33 +268,7 @@ class load_posterior_samples(object):
     
     def __init__(self,posterior_samples,choose_default_waveform_for_analysis=True):
 
-        # list of keys that can be used in the posterior_samples json file
-        #self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
-        #self.PE_skymap_file_key = "skymap_path" # path to the event skymap (needed)
-        #self.samples_field_key = "samples_field" # name of the approximant (online, CO1:...) (optional)
-        #self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
-        #self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
-        #self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
-        # additional fields for the 'posterior_samples' dict
-        #self.PE_prior_class_name = "PE_priors"
-        #self.analysis_type = "analysis_type"
-        #self.sampling_vars = "sampling_variables"
-        #self.multi_analysis = "multi"
-        #self.single_analysis = "single"
-        #self.approximants_available = "approximants_available"
-        #self.approximant_requested = "approximant_requested"
-        #self.approximant_selected = "approximant_selected"
-        #self.has_analytic_priors = "has_analytic_priors"
-        #self.search_analytic_priors_str = "search_analytic_priors"
-        #self.could_read_with_pesummary = "could_read_with_pesummary"
-        #self.user_defined_PE = "user_defined_PE_priors"
         self.skip_me = False
-        # list of available PE priors kind if no PE priors file
-        #self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
-        #                          "chirp_det_frame_q_uniform_dL_square_PE_priors",
-        #                          "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
-
-
         self.choose_default_waveform_for_analysis = choose_default_waveform_for_analysis
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
