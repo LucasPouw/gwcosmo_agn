@@ -20,6 +20,7 @@ from pesummary.io import read
 from bilby.core.prior.analytical import *
 from bilby.gw.prior import *
 import re
+import gwcosmo.utilities.posterior_utilities as pu # get the PE samples keys
 
 from scipy.interpolate import RegularGridInterpolator
 
@@ -268,30 +269,30 @@ class load_posterior_samples(object):
     def __init__(self,posterior_samples,choose_default_waveform_for_analysis=True):
 
         # list of keys that can be used in the posterior_samples json file
-        self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
-        self.PE_skymap_file_key = "skymap_path" # path to the event skymap (needed)
-        self.samples_field_key = "samples_field" # name of the approximant (online, CO1:...) (optional)
-        self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
-        self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
-        self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
+        #self.PE_file_key = "posterior_file_path" # path to the posteriors file (needed)
+        #self.PE_skymap_file_key = "skymap_path" # path to the event skymap (needed)
+        #self.samples_field_key = "samples_field" # name of the approximant (online, CO1:...) (optional)
+        #self.PE_prior_file_key = "PEprior_file_path" # path to the PE prior file (optional)
+        #self.PE_prior_kind_key = "PEprior_kind" # to use the PE priors internally defined in posterior_samples.py (optional)
+        #self.use_event_key = "use_event" # to consider or skip the current event in the analysis (optional)
         # additional fields for the 'posterior_samples' dict
-        self.PE_prior_class_name = "PE_priors"
-        self.analysis_type = "analysis_type"
-        self.sampling_vars = "sampling_variables"
-        self.multi_analysis = "multi"
-        self.single_analysis = "single"
-        self.approximants_available = "approximants_available"
-        self.approximant_requested = "approximant_requested"
-        self.approximant_selected = "approximant_selected"
-        self.has_analytic_priors = "has_analytic_priors"
-        self.search_analytic_priors_str = "search_analytic_priors"
-        self.could_read_with_pesummary = "could_read_with_pesummary"
-        self.user_defined_PE = "user_defined_PE_priors"
+        #self.PE_prior_class_name = "PE_priors"
+        #self.analysis_type = "analysis_type"
+        #self.sampling_vars = "sampling_variables"
+        #self.multi_analysis = "multi"
+        #self.single_analysis = "single"
+        #self.approximants_available = "approximants_available"
+        #self.approximant_requested = "approximant_requested"
+        #self.approximant_selected = "approximant_selected"
+        #self.has_analytic_priors = "has_analytic_priors"
+        #self.search_analytic_priors_str = "search_analytic_priors"
+        #self.could_read_with_pesummary = "could_read_with_pesummary"
+        #self.user_defined_PE = "user_defined_PE_priors"
         self.skip_me = False
         # list of available PE priors kind if no PE priors file
-        self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
-                                  "chirp_det_frame_q_uniform_dL_square_PE_priors",
-                                  "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
+        #self.existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
+        #                          "chirp_det_frame_q_uniform_dL_square_PE_priors",
+        #                          "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
 
 
         self.choose_default_waveform_for_analysis = choose_default_waveform_for_analysis
@@ -300,56 +301,59 @@ class load_posterior_samples(object):
         self.default_approximants = get_default_approximants()
                 
         self.posterior_samples = posterior_samples
-        self.posterior_samples[self.search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
+        self.posterior_samples[pu.PE_search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
 
         print("\n\nTreating event: {}".format(posterior_samples))
 
-        if (self.use_event_key in self.posterior_samples.keys()) and (self.posterior_samples[self.use_event_key].lower() == "false"):
+        if (pu.PE_use_event_key in self.posterior_samples.keys()) and \
+           (self.posterior_samples[pu.PE_use_event_key].lower() == "false"):
             self.skip_me = True # we skip this event
             return # stop the init
 
         # deal with the PE priors:
         user_defined_PE = False
-        if self.PE_prior_file_key in self.posterior_samples.keys() and self.PE_prior_kind_key in self.posterior_samples.keys():
+        if pu.PE_prior_file_key in self.posterior_samples.keys() and \
+           pu.PE_prior_kind_key in self.posterior_samples.keys():
             raise ValueError("PE prior set with file and kind. Choose one method, not both. Exiting.")
-        elif self.PE_prior_file_key in self.posterior_samples.keys():
+        elif pu.PE_prior_file_key in self.posterior_samples.keys():
             user_defined_PE = True
-            print("PE prior file provided: {}".format(self.posterior_samples[self.PE_prior_file_key]))
+            print("PE prior file provided: {}".format(self.posterior_samples[pu.PE_prior_file_key]))
             try:
-                spec = importlib.util.spec_from_file_location(self.PE_prior_class_name,self.posterior_samples[self.PE_prior_file_key])
+                spec = importlib.util.spec_from_file_location(pu.PE_prior_class_name,
+                                                              self.posterior_samples[pu.PE_prior_file_key])
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 self.pe_priors_object = module.PE_priors()
                 print("PE priors loaded: prior name = {}".format(self.pe_priors_object.name))
             except:
-                raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[self.PE_prior_file_key]))
-        elif self.PE_prior_kind_key in self.posterior_samples.keys():
+                raise ValueError("Could not find class named \"PE_priors\" in file {}. Exiting.".format(self.posterior_samples[pu.PE_prior_file_key]))
+        elif pu.PE_prior_kind_key in self.posterior_samples.keys():
             user_defined_PE = True
-            print("PE prior kind requested: {}".format(self.posterior_samples[self.PE_prior_kind_key]))
+            print("PE prior kind requested: {}".format(self.posterior_samples[pu.PE_prior_kind_key]))
             try:
-                self.pe_priors_object = globals()[self.posterior_samples[self.PE_prior_kind_key]]()
+                self.pe_priors_object = globals()[self.posterior_samples[pu.PE_prior_kind_key]]()
             except:
-                raise ValueError("Could not find PE prior kind {}. Available PE prior kinds are: {}. Exiting.".format(self.posterior_samples[self.PE_prior_kind_key],
-                                                                                                                      self.existing_PE_kinds))
+                raise ValueError("Could not find PE prior kind {}. Available PE prior kinds are: {}. Exiting.".format(self.posterior_samples[pu.PE_prior_kind_key],
+                                                                                                                      pu.PE_existing_PE_kinds))
         else:
             print("NO PE prior file user-provided.")
             self.pe_priors_object = None # the object self.pe_priors_object will be initialized later
 
         # deal with the field for the PE analysis (C01:Mixed etc.):
         self.field = None
-        self.posterior_samples[self.approximant_requested] = None
-        if self.samples_field_key in self.posterior_samples.keys(): # i.e. if the user specified the 'C01:...' waveform model
-            if self.posterior_samples[self.samples_field_key].lower() != "none":
-                self.field = self.posterior_samples[self.samples_field_key]
-                self.posterior_samples[self.approximant_requested] = self.posterior_samples[self.samples_field_key]
+        self.posterior_samples[pu.PE_approximant_requested] = None
+        if pu.PE_samples_field_key in self.posterior_samples.keys(): # i.e. if the user specified the 'C01:...' waveform model
+            if self.posterior_samples[pu.PE_samples_field_key].lower() != "none":
+                self.field = self.posterior_samples[pu.PE_samples_field_key]
+                self.posterior_samples[pu.PE_approximant_requested] = self.posterior_samples[pu.PE_samples_field_key]
 
 
-        self.posterior_samples[self.user_defined_PE] = user_defined_PE
+        self.posterior_samples[pu.PE_user_defined_PE] = user_defined_PE # update dict key
         # deal with the skymap:
         # for dark_siren: the key 'skymap_path' must exists in the dictionary => already check for that in bin/gwcosmo_dark...
         # but the bright siren case can have no skymap
-        if self.PE_skymap_file_key in self.posterior_samples.keys():
-            self.skymap_path = self.posterior_samples[self.PE_skymap_file_key]
+        if pu.PE_skymap_file_key in self.posterior_samples.keys():
+            self.skymap_path = self.posterior_samples[pu.PE_skymap_file_key]
                 
         self.load_posterior_samples()
 
@@ -360,19 +364,19 @@ class load_posterior_samples(object):
         '''
 
         data = None
-        self.posterior_samples[self.search_analytic_priors_str] = True # record the fact we try to find analytic prior
+        self.posterior_samples[pu.PE_search_analytic_priors_str] = True # record the fact we try to find analytic prior
         print(posterior_file)
         try:
             pes = read(posterior_file,package="core")
             print("Posterior file {} correctly read with pesummary.".format(posterior_file))
-            self.posterior_samples[self.could_read_with_pesummary] = True
+            self.posterior_samples[pu.PE_could_read_with_pesummary] = True
         except:
-            self.posterior_samples[self.could_read_with_pesummary] = False
+            self.posterior_samples[pu.PE_could_read_with_pesummary] = False
             raise ValueError("Could not read posterior file {} with pesummary. Check the file. Exiting.".format(posterior_file))
 
         if isinstance(pes.samples_dict,pesummary.utils.samples_dict.MultiAnalysisSamplesDict): # check if we have a multianalysis file
-            self.posterior_samples[self.analysis_type] = self.multi_analysis
-            self.posterior_samples[self.approximants_available] = list(pes.samples_dict.keys())
+            self.posterior_samples[pu.PE_analysis_type] = pu.PE_multi_analysis
+            self.posterior_samples[pu.PE_approximants_available] = list(pes.samples_dict.keys())
             if self.field is None:
                 if self.choose_default_waveform_for_analysis: # then it's an actual analysis, try to find a default key. It's not a gwcosmo_explore_priors run
                     for approximant in self.default_approximants:
@@ -380,17 +384,17 @@ class load_posterior_samples(object):
                             data = pes.samples_dict[approximant]
                             print("No waveform field provided -> setting model: "+approximant)
                             self.field = approximant # record the approximant
-                            self.posterior_samples[self.approximant_selected] = self.field
+                            self.posterior_samples[pu.PE_approximant_selected] = self.field
                             break
                         except KeyError:
                             continue
                     if self.field == None:
                         data = None # no analysis to perform
-                        self.posterior_samples[self.approximant_selected] = None
+                        self.posterior_samples[pu.PE_approximant_selected] = None
                         raise ValueError("No pre-defined approximant found in file. Exiting.")
                 else:
                     print("Exploratory run. No approximant chosen.")
-                    self.posterior_samples[self.approximant_selected] = None
+                    self.posterior_samples[pu.PE_approximant_selected] = None
             elif self.field in pes.samples_dict.keys(): # check if required key exists
                 data = pes.samples_dict[self.field]
                 print("Requested approximant {} found.".format(self.field))
@@ -401,8 +405,8 @@ class load_posterior_samples(object):
         else: # single analysis in file
             if self.field is not None:
                 print("WARNING: you specified the approximant {} but it's a single analysis posterior file. Ignoring your approximant.".format(self.field))
-            self.posterior_samples[self.analysis_type] = self.single_analysis
-            self.posterior_samples[self.approximant_selected] = None
+            self.posterior_samples[pu.PE_analysis_type] = pu.PE_single_analysis
+            self.posterior_samples[pu.PE_approximant_selected] = None
             data = pes.samples_dict
             
         if data != None:
@@ -418,9 +422,9 @@ class load_posterior_samples(object):
         # deal with PE prior values for each sample
         if self.pe_priors_object is None: # no prior file provided by the user so the prior object may be stored in the posterior file
             status, subdict, pdicts = get_priors(pes) # try to find a prior in the posterior file
-            self.posterior_samples[self.has_analytic_priors] = False
+            self.posterior_samples[pu.PE_has_analytic_priors] = False
             if status:
-                self.posterior_samples[self.has_analytic_priors] = True
+                self.posterior_samples[pu.PE_has_analytic_priors] = True
                 print("Analytic priors found in file...")                    
                 #print(pdicts)
                 non_empty_dicts_keys = []
@@ -445,8 +449,8 @@ class load_posterior_samples(object):
                               raise ValueError("Found one prior dict with key {} but you have requested key {} => Check carefully! You could change the approximant or set the PE priors either by kind or by file. Exiting.".format(current_key,self.field))
                         else:
                             self.pe_priors_object = analytic_PE_priors(ldict)
-                            self.posterior_samples[self.sampling_vars] = {}
-                            self.posterior_samples[self.sampling_vars][current_key] = self.pe_priors_object.sampling_vars
+                            self.posterior_samples[pu.PE_sampling_vars] = {}
+                            self.posterior_samples[pu.PE_sampling_vars][current_key] = self.pe_priors_object.sampling_vars
 
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
@@ -454,8 +458,8 @@ class load_posterior_samples(object):
                         print("Available keys: {}".format(non_empty_dicts_keys.keys()))
                         for field in non_empty_dicts_keys.keys():
                             record_priors = analytic_PE_priors(pdicts[self.field])
-                            self.posterior_samples[self.sampling_vars] = {}
-                            self.posterior_samples[self.sampling_vars][field] = record_priors.sampling_vars
+                            self.posterior_samples[pu.PE_sampling_vars] = {}
+                            self.posterior_samples[pu.PE_sampling_vars][field] = record_priors.sampling_vars
                         if self.field in non_empty_dicts_keys.keys():
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
@@ -469,13 +473,13 @@ class load_posterior_samples(object):
                     for k in show_keys:
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
-                    self.posterior_samples[self.sampling_vars] = {}
-                    if len(self.posterior_samples[self.approximants_available]) == 1: # if type is MultiAnalysis but there's a single waveform
-                        self.field = self.posterior_samples[self.approximants_available][0]
+                    self.posterior_samples[pu.PE_sampling_vars] = {}
+                    if len(self.posterior_samples[pu.PE_approximants_available]) == 1: # if type is MultiAnalysis but there's a single waveform
+                        self.field = self.posterior_samples[pu.PE_approximants_available][0]
 
-                    self.posterior_samples[self.sampling_vars][self.field] = self.pe_priors_object.sampling_vars
+                    self.posterior_samples[pu.PE_sampling_vars][self.field] = self.pe_priors_object.sampling_vars
             else: # status if False, from get_priors
-                self.posterior_samples[self.has_analytic_priors] = False
+                self.posterior_samples[pu.PE_has_analytic_priors] = False
                 #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 raise ValueError("No analytic priors in file and no user-defined PE. You could set the PE priors either by kind or by file. Exiting.")
 
@@ -487,7 +491,7 @@ class load_posterior_samples(object):
         Currently it supports .dat (LALinference), .hdf5 (GWTC-1),
         .h5 (PESummary) and .hdf (pycbcinference) formats.
         """
-        posterior_file = self.posterior_samples[self.PE_file_key]
+        posterior_file = self.posterior_samples[pu.PE_file_key]
 
         # deal with cosmologically-reweighted samples, and warn the user
         cosmo_reweight = re.findall('_cosmo.h',posterior_file)
