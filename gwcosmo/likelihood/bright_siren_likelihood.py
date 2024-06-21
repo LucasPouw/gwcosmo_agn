@@ -62,7 +62,6 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         network_snr_threshold : float
             Network SNR threshold of GW events which are used for analysis.
         ifar_cut : float
-
         """
 
         super().__init__(
@@ -87,6 +86,10 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 "alphans": None,
                 "mminns": None,
                 "mmaxns": None,
+                "D": None,
+                "logRc": None,
+                "nD": None,
+                "cM": None,
             }
         )
 
@@ -175,7 +178,8 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     log_likelihood_numerator=self.log_likelihood_numerator_single_event_from_skymap,
                 )
 
-                skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare") # search for "skymap_prior_distance", if not found set it to "dlSquare"
+                # search for "skymap_prior_distance", if not found set it to "dlSquare"
+                skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare")
                 if skymap_prior_distance not in ["Uniform", "UniformComoving", "dlSquare"]:
                     raise ValueError(
                         f"Unkown '{skymap_prior_distance}' skymap prior distance for event '{event_name}'! "
@@ -184,7 +188,9 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                 event.update(skymap_prior_distance=skymap_prior_distance)
                 if skymap_prior_distance == "UniformComoving":
                     cosmo_skymap = standard_cosmology(
-                        meta.get("skymap_H0", 67.90), meta.get("skymap_Omega_m", 0.3065) # see default values in https://dcc.ligo.org/DocDB/0167/T2000185/005/LVC_symbol_convention.pdf
+                        # see default values in https://dcc.ligo.org/DocDB/0167/T2000185/005/LVC_symbol_convention.pdf
+                        meta.get("skymap_H0", 67.90),
+                        meta.get("skymap_Omega_m", 0.3065)
                     )
                     zmin, zmax = 0, 10
                     z_array = np.linspace(zmin, zmax, 10000)
@@ -330,7 +336,9 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
     def log_likelihood(self):
 
-        self.cosmo_param_dict = {par: self.parameters[par] for par in ["H0", "Xi0", "n"]}
+        self.cosmo_param_dict = {
+            par: self.parameters[par] for par in ["H0", "Xi0", "n", "D", "logRc", "nD", "cM"]
+        }
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.zrates.gamma = self.parameters["gamma"]

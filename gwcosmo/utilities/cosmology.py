@@ -191,6 +191,18 @@ class standard_cosmology(object):
         """
         return 0
 
+    def ddl_dz(self, z):
+        """
+        Returns the derivative of the luminosity distance w.r.t. redshift
+
+        Parameters
+        ----------
+        z : redshift
+        """
+        H_z = self.H0*h(z, self.Omega_m, self.w0, self.wa)
+
+        return self.dl_zH0(z)/(1+z) + c*(1+z)/H_z
+
     def ddgw_dz(self, z):
         """
         Returns the derivative of the GW distance w.r.t. redshift
@@ -364,6 +376,186 @@ class Xi0_n_cosmology(standard_cosmology):
         d(dgw(z) / dL(z)) / dz
         """
         return -1 * self.__n*(1-self.__Xi0)/((1+z)**(self.__n+1))
+
+
+    def z_dgw(self, dgw):
+        """
+        Returns redshift given GW distance
+
+        Parameters
+        ----------
+        dgw : GW distance in Mpc
+
+        Returns
+        -------
+        redshift, z
+        """
+        zgw = self.z_of_dgw(dgw*self.H0/c)
+
+        return zgw
+
+
+class extra_dimension_cosmology(standard_cosmology):
+    # Modified cosmology with extra dimensions, inheriting features from standard cosmology.
+
+    def __init__(self, H0=70, D=4, logRc=2, nD=1, Omega_m=0.3065, w0=-1., wa=0., zmax=10.0, zmin=1.e-5, zbin=5000):
+
+        super().__init__(H0, Omega_m, w0, wa, zmax, zmin, zbin)
+
+        self.H0 = 70
+        self.__D = 0
+        self.__logRc = 0
+        self.__nD = 0
+
+        self.update_parameters(param_dict={'H0': H0, 'D': D, 'logRc': logRc, 'nD': nD})
+
+    def update_parameters(self, param_dict):
+        """
+        Update values of cosmological parameters. 
+        Keys in param_dict: H0, D, log10(Rc/Mpc), nD
+        """
+        if 'H0' in param_dict:
+            if param_dict['H0'] != self.H0:
+                self.H0 = param_dict['H0']
+
+        update_dgw_dL_ratio = False
+        if 'D' in param_dict:
+            if param_dict['D'] != self.__D:
+                self.__D = param_dict['D']
+                update_dgw_dL_ratio = True
+        if 'logRc' in param_dict:
+            if param_dict['logRc'] != self.__logRc:
+                self.__logRc = param_dict['logRc']
+                update_dgw_dL_ratio = True
+        if 'nD' in param_dict:
+            if param_dict['nD'] != self.__nD:
+                self.__nD = param_dict['nD']
+                update_dgw_dL_ratio = True
+        if update_dgw_dL_ratio:
+            self.z_of_dgw = interp1d(self.dgw_dL_ratio(self.z_array)*self.dlH0overc_z_arr, self.z_array, kind='cubic')
+
+
+    def dgw_dL_ratio(self, z):
+        """
+        Returns the ratio of GW distance and luminosity distance
+        in modified gravity.
+        Parametrization for extra dimensions:
+        dgw(z) / dL(z) = [1 + (dL/(1+z)Rc)^n]^((D-4)/2n)
+
+        Parameters
+        ----------
+        z : redshift
+        D, Rc, nD : modified gravity parameters
+
+        Returns
+        -------
+        dgw(z) / dL(z)
+        """
+        return (1 + (self.dl_zH0(z)/(1+z)/10**(self.__logRc))**self.__nD)**((self.__D-4)/2/self.__nD)
+
+
+    def dgw_dL_ratio_dbyz(self, z):
+        """
+        Returns the derivative of ratio of GW distance and 
+        luminosity distance w.r.t. redshift in modified gravity.
+
+        Parameters
+        ----------
+        z : redshift
+        Xi0, n : modified gravity parameters
+
+        Returns
+        -------
+        d(dgw(z) / dL(z)) / dz
+        """
+        return ((self.__D-4)/2/self.__nD)*(1 + (self.dl_zH0(z)/(1+z)/10**(self.__logRc))**self.__nD)**((self.__D-4)/2/self.__nD-1) * self.__nD*(self.dl_zH0(z)/(1+z)/10**(self.__logRc))**(self.__nD-1) * (self.ddl_dz(z)/(1+z)/10**(self.__logRc)-self.dl_zH0(z)/(1+z)**2/10**(self.__logRc))
+
+
+    def z_dgw(self, dgw):
+        """
+        Returns redshift given GW distance
+
+        Parameters
+        ----------
+        dgw : GW distance in Mpc
+
+        Returns
+        -------
+        redshift, z
+        """
+        zgw = self.z_of_dgw(dgw*self.H0/c)
+
+        return zgw
+
+
+class cM_cosmology(standard_cosmology):
+    # Modified cosmology in cM parameterization, inheriting features from standard cosmology.
+
+    def __init__(self, H0=70, cM=0, Omega_m=0.3065, w0=-1., wa=0., zmax=10.0, zmin=1.e-5, zbin=5000):
+
+        super().__init__(H0, Omega_m, w0, wa, zmax, zmin, zbin)
+
+        if w0!=-1 or wa!=0:
+            raise ValueError('The change in w0 and wa is currently not supported.')
+
+        self.H0 = 0
+        self.__cM = 0
+        self.Omega_L = 1-self.Omega_m
+
+        self.update_parameters(param_dict={'H0': H0, 'cM': cM})
+
+    def update_parameters(self, param_dict):
+        """
+        Update values of cosmological parameters. 
+        Keys in param_dict: H0, cM
+        """
+        if 'H0' in param_dict:
+            if param_dict['H0'] != self.H0:
+                self.H0 = param_dict['H0']
+
+        update_dgw_dL_ratio = False
+        if 'cM' in param_dict:
+            if param_dict['cM'] != self.__cM:
+                self.__cM = param_dict['cM']
+                update_dgw_dL_ratio = True
+        if update_dgw_dL_ratio:
+            self.z_of_dgw = interp1d(self.dgw_dL_ratio(self.z_array)*self.dlH0overc_z_arr, self.z_array, kind='cubic')
+
+
+    def dgw_dL_ratio(self, z):
+        """
+        Returns the ratio of GW distance and luminosity distance
+        in modified gravity.
+        c_M parametrization:
+        dgw(z) / dL(z) = exp[cM/(2*Omega_L) log((1+z)/(Omega_m(1+z)^3+Omega_L)^(1/3))]
+
+        Parameters
+        ----------
+        z : redshift
+        cM : modified gravity parameters
+
+        Returns
+        -------
+        dgw(z) / dL(z)
+        """
+        return np.exp(self.__cM/(2*self.Omega_L) * np.log((1+z)/(self.Omega_m*(1+z)**3+self.Omega_L)**(1/3)))
+
+
+    def dgw_dL_ratio_dbyz(self, z):
+        """
+        Returns the derivative of ratio of GW distance and 
+        luminosity distance w.r.t. redshift in modified gravity.
+
+        Parameters
+        ----------
+        z : redshift
+        cM : modified gravity parameters
+
+        Returns
+        -------
+        d(dgw(z) / dL(z)) / dz
+        """
+        return self.dgw_dL_ratio(z) * self.__cM/2/self.Omega_L*(1/(1+z)-self.Omega_m*(1+z)**2/(self.Omega_m*(1+z)**3+self.Omega_L))
 
 
     def z_dgw(self, dgw):
