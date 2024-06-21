@@ -1405,13 +1405,17 @@ class Create_injections(object):
         h.create_dataset('ra',data=inj['ra'])
         h.create_dataset('dec',data=inj['dec'])
         h.create_dataset('theta_jn',data=inj['theta_jn'])
+        h.create_dataset('a_1',data=inj['a_1'])
+        h.create_dataset('a_2',data=inj['a_2'])
+        h.create_dataset('tilt_1',data=inj['tilt_1'])
+        h.create_dataset('tilt_2',data=inj['tilt_2'])
         h.create_dataset('pini',data=inj['pi_rescaled'])
         h.create_dataset('snr',data=inj['SNR'])
         h.create_dataset('Tobs',data=inj['Tobs'])
         h.create_dataset('ntotal',data=inj['NsimTot_total'])
         h.create_dataset('ifar',data=default_ifar_value+0*inj['SNR']) # no IFAR computed with these injections
         h.create_dataset('run',data=inj['run_integer']) # keep the information on the run id, needed when merging nsbh, bbh... inj files
-        
+
         # write prob_of_run, rescale factors and other data
         for k in prob_of_run.keys():
             kname = 'prob_'+k
