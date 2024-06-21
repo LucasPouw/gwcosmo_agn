@@ -1424,6 +1424,8 @@ class Create_injections(object):
         h.create_dataset('tilt_1',data=inj['tilt_1'])
         h.create_dataset('tilt_2',data=inj['tilt_2'])
         h.create_dataset('pini',data=inj['pi_rescaled'])
+        h.create_dataset('pini_theta_jn',data=inj['pi_theta_jn_rescaled'])
+        h.create_dataset('pini_spins',data=inj['pi_spins_rescaled'])
         h.create_dataset('snr',data=inj['SNR'])
         h.create_dataset('Tobs',data=inj['Tobs'])
         h.create_dataset('ntotal',data=inj['NsimTot_total'])
