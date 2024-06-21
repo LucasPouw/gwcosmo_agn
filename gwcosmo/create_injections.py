@@ -1216,12 +1216,26 @@ class Create_injections(object):
                 ini_prob = self.priors_dict_R[run_LVC].prob({'mass_1':injection_parameters['mass_1'],
                                                              'mass_2':injection_parameters['mass_2'],
                                                              'luminosity_distance':injection_parameters['luminosity_distance']})
+                ini_prob_theta_jn = self.priors_dict_R[run_LVC].prob({'mass_1':injection_parameters['mass_1'],
+                                                                      'mass_2':injection_parameters['mass_2'],
+                                                                      'luminosity_distance':injection_parameters['luminosity_distance'],
+                                                                      'theta_jn':injection_parameters['theta_jn']})
+                ini_prob_spins = self.priors_dict_R[run_LVC].prob({'mass_1':injection_parameters['mass_1'],
+                                                                   'mass_2':injection_parameters['mass_2'],
+                                                                   'luminosity_distance':injection_parameters['luminosity_distance'],
+                                                                   'a_1':injection_parameters['a_1'],
+                                                                   'tilt_1':injection_parameters['tilt_1'],
+                                                                   'a_2':injection_parameters['a_2'],
+                                                                   'tilt_2':injection_parameters['tilt_2']})
+                                                                   
             
                 # add new keys to injections
                 #injection_parameters['idx'] = idx_result # don't record the idx, never used afterwards
                 injection_parameters['SNR'] = SNR
                 #injection_parameters['dt'] = duration # don't record the dt, never used afterwards
                 injection_parameters['pi'] = ini_prob
+                injection_parameters['pi_theta_jn'] = ini_prob_theta_jn
+                injection_parameters['pi_spins'] = ini_prob_spins
                 injection_parameters['run'] = run_LVC
                 injection_parameters['NdetTot'] = ndet_global_tot # write the value recorded previously (at the time of detected injection)
                 injection_parameters['NsimTot'] = nsim_global_tot # write the value recorded previously (at the time of detected injection)
@@ -1739,6 +1753,8 @@ def rescale_initial_probabilites(dict_detected,prob_of_run):
     '''
         
     dict_detected['pi_rescaled'] = copy.deepcopy(dict_detected['pi'])
+    dict_detected['pi_theta_jn_rescaled'] = copy.deepcopy(dict_detected['pi_theta_jn'])
+    dict_detected['pi_spins_rescaled'] = copy.deepcopy(dict_detected['pi_spins'])
     check_ndet = 0
     dict_detected['rescale'] = {}
     for k in prob_of_run.keys(): # loop over the runs O1, O2...
@@ -1752,6 +1768,8 @@ def rescale_initial_probabilites(dict_detected,prob_of_run):
             # ini_prob *= (NOi/Ntotal)*(TObs/TobsOi) = (NOi/Ntotal)/prob_of_run[Oi]
             dict_detected['rescale'][k] = (dict_detected['NsimCombined'][k]/dict_detected['NsimTot_total'])/prob_of_run[k]
             dict_detected['pi_rescaled'][ww] *= dict_detected['rescale'][k]
+            dict_detected['pi_theta_jn_rescaled'][ww] *= dict_detected['rescale'][k]
+            dict_detected['pi_spins_rescaled'][ww] *= dict_detected['rescale'][k]
             #print((dict_detected['NsimCombined'][k]/dict_detected['NsimTot_total'])/prob_of_run[k])
             #print("prob_of_run {}: {}".format(k,prob_of_run[k]))
             #print("ratio N{}/Ntot: {}".format(k,dict_detected['NsimCombined'][k]/dict_detected['NsimTot_total']))
