@@ -47,14 +47,14 @@ class m1d_m2d_uniform_dL_square_PE_priors(object):
     """
     This is the class handling the default PE priors, being uniform in pi(m1d, m2d) and \propto dL^2 for the luminosity distance
 
-    Reminder: 
-    For other PE priors, the user must create another file user_prior.py but 
-    the name of the class must always be "PE_priors" with a member function 
-    called def get_prior(self,m1d,m2d,dL) that returns a floating value (or an array)    
+    Reminder:
+    For other PE priors, the user must create another file user_prior.py but
+    the name of the class must always be "PE_priors" with a member function
+    called def get_prior(self,m1d,m2d,dL) that returns a floating value (or an array)
     """
-    
+
     def __init__(self):
-        
+
         self.name = "m1d_m2d:uniform --- dL:square"
 
     def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
@@ -117,7 +117,7 @@ class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(
         return dL_pdf.prob(dL)
 
 
-    
+
 def check_sampling(prior_dict, samp_vars):
     """
     This function detects if the variables in argument samp_vars are sampled in the prior_dict
@@ -131,15 +131,15 @@ def check_sampling(prior_dict, samp_vars):
             if sd: # actual sampling
                 is_sampled[sv] = True
     return is_sampled
-                
+
 class analytic_PE_priors(object):
     """
     This is the class handling the analytic PE priors
     these analytic priors were found in the posteriors file of events, when Bilby has been used to sample them
 
-    Reminder: 
-    For other PE priors, the user must create another file user_prior.py but 
-    the name of the class must always be "PE_priors" with a member function 
+    Reminder:
+    For other PE priors, the user must create another file user_prior.py but
+    the name of the class must always be "PE_priors" with a member function
     called def get_prior_m1d_m2d_dL(self,m1d,m2d,dL) that returns a floating value (or an array)
 
     Example prior file: (CIT:/home/cbc.cosmology/MDC/population_only_MDC_gwsim_2023/Events/event_99/priors.priors)
@@ -154,18 +154,18 @@ class analytic_PE_priors(object):
     theta_jn = Sine(minimum=0, maximum=3.141592653589793, name='theta_jn', latex_label='$\\theta_{JN}$', unit=None, boundary=None)
     psi = Uniform(minimum=0, maximum=3.141592653589793, name='psi', latex_label='$\\psi$', unit=None, boundary='periodic')
     phase = Uniform(minimum=0, maximum=6.283185307179586, name='phase', latex_label='$\\phi$', unit=None, boundary='periodic')
-    a_1 = 0.0 
-    a_2 = 0.0 
-    tilt_1 = 0.0 
-    tilt_2 = 0.0 
-    phi_12 = 0.0 
-    phi_jl = 0.0 
+    a_1 = 0.0
+    a_2 = 0.0
+    tilt_1 = 0.0
+    tilt_2 = 0.0
+    phi_12 = 0.0
+    phi_jl = 0.0
     geocent_time = Uniform(minimum=62928.38062513391, maximum=62928.58062513391, name='mass_2', latex_label='$m_2$', unit=None, boundary=None)
     seed = 1988
     """
-    
+
     def __init__(self,analytic_dict):
-        
+
         self.name = "analytic_PE_prior_from_PE_file"
         # analytic_dict must be an objet having a .prob() function, like Bilby prior dicts
         self.prior = analytic_dict
@@ -173,7 +173,7 @@ class analytic_PE_priors(object):
         # we expect the sampling to be done either or (Mc,q) or (m1d,m2d)
         sampling_OK = False
         self.sampling_vars = {}
-        
+
         # check if Mc and q are in the keys
         svars = ['chirp_mass','mass_ratio']
         sampling_vars = {}
@@ -207,7 +207,7 @@ class analytic_PE_priors(object):
         self.sampling_vars = sampling_vars
         # add luminosity distance prior
         self.sampling_vars['luminosity_distance'] = str(self.prior['luminosity_distance'])
-                
+
     def get_prior_actual_Mc_q_dL_to_m1d_m2d_dL(self,m1d,m2d,dL):
         """
         This function returns something proportional to p(m1d,m2d,dL)
@@ -233,16 +233,16 @@ class analytic_PE_priors(object):
         This function returns something proportional to p(dL) assuming p(m1d,m2d) is uniform
         """
         return self.prior['luminosity_distance'].prob(dL) # no axis=0 here
-    
+
 def get_default_approximants():
     return ['PublicationSamples',
             'C01:Mixed',
-            'C01:PhenomPNRT-HS', 
+            'C01:PhenomPNRT-HS',
             'C01:NRSur7dq4',
             'C01:IMRPhenomPv3HM',
             'C01:IMRPhenomPv2',
             'C01:IMRPhenomD',
-            'C01:IMRPhenomPv2_NRTidal:LowSpin', 
+            'C01:IMRPhenomPv2_NRTidal:LowSpin',
             'C01:IMRPhenomPv2_NRTidal:HighSpin']
 
 class load_posterior_samples(object):
@@ -265,7 +265,7 @@ class load_posterior_samples(object):
     choose_default_waveform_for_analysis: if equals to True, tells the code to select itself the waveform model for an actual analysis.
         if set to False then the code doesn't run an actual analysis but explores the h5 file
     """
-    
+
     def __init__(self,posterior_samples,choose_default_waveform_for_analysis=True):
 
         self.skip_me = False
@@ -273,7 +273,7 @@ class load_posterior_samples(object):
         # define the default approximant to consider if the user did not specify one
         # the approximants will be search for in this order
         self.default_approximants = get_default_approximants()
-                
+
         self.posterior_samples = posterior_samples
         self.posterior_samples[pu.PE_search_analytic_priors_str] = False # initliaze the value to False. Will be set to true for recent PE files containing analytic priors
 
@@ -328,7 +328,7 @@ class load_posterior_samples(object):
         # but the bright siren case can have no skymap
         if pu.PE_skymap_file_key in self.posterior_samples.keys():
             self.skymap_path = self.posterior_samples[pu.PE_skymap_file_key]
-                
+
         self.load_posterior_samples()
 
 
@@ -382,7 +382,7 @@ class load_posterior_samples(object):
             self.posterior_samples[pu.PE_analysis_type] = pu.PE_single_analysis
             self.posterior_samples[pu.PE_approximant_selected] = None
             data = pes.samples_dict
-            
+
         if data != None:
             self.distance = data['luminosity_distance']
             self.ra = data['ra']
@@ -390,7 +390,7 @@ class load_posterior_samples(object):
             self.mass_1 = data['mass_1']
             self.mass_2 = data['mass_2']
             self.nsamples = len(self.distance)
-            
+
         show_keys = ['mass_1','mass_2','chirp_mass','mass_ratio','luminosity_distance']
         print("Searching for sample field: {}".format(self.field))
         # deal with PE prior values for each sample
@@ -399,7 +399,7 @@ class load_posterior_samples(object):
             self.posterior_samples[pu.PE_has_analytic_priors] = False
             if status:
                 self.posterior_samples[pu.PE_has_analytic_priors] = True
-                print("Analytic priors found in file...")                    
+                print("Analytic priors found in file...")
                 #print(pdicts)
                 non_empty_dicts_keys = []
                 if subdict: # this is the multianalysis case, {'C01:Mixed':{}, 'C01:other':{}...}
@@ -457,8 +457,8 @@ class load_posterior_samples(object):
                 #self.pe_priors_object = m1d_m2d_uniform_dL_square_PE_priors()
                 raise ValueError("No analytic priors in file and no user-defined PE. You could set the PE priors either by kind or by file. Exiting.")
 
-                    
-        
+
+
     def load_posterior_samples(self):
         """
         Method to handle different types of posterior samples file formats.
@@ -474,10 +474,10 @@ class load_posterior_samples(object):
                 raise ValueError("Seems like you are using a cosmologically-reweighted samples file. Be careful as the PE prior dict could indicated a p(dL) \propto dL^2 and this is NOT what was used to get the dL samples. You may want to set a PE prior.")
             else:
                 print("WARNING: seems like you are using a cosmologically-reweighted samples files, check carefully the PE prior used to get the samples.")
-        
+
         if posterior_file[-3:] == 'dat':
             samples = np.genfromtxt(posterior_file, names = True)
-           
+
             self.distance = np.array([var for var in samples['luminosity_distance']])
             self.ra =  np.array([var for var in samples['ra']])
             self.dec =  np.array([var for var in samples['dec']])
@@ -515,9 +515,9 @@ class load_posterior_samples(object):
             dl_ind=PE_struct['parameter_names'].index('luminosity_distance')
             ra_ind=PE_struct['parameter_names'].index('ra')
             dec_ind=PE_struct['parameter_names'].index('dec')
-                        
+
             nsamp=len(PE_struct['samples'])
-            
+
             self.distance = np.array(PE_struct['samples'])[:,dl_ind].reshape(-1)
             self.ra = np.array(PE_struct['samples'])[:,ra_ind].reshape(-1)
             self.dec = np.array(PE_struct['samples'])[:,dec_ind].reshape(-1)
@@ -541,11 +541,11 @@ class load_posterior_samples(object):
         if self.choose_default_waveform_for_analysis == False:
             # then it's a gwcosmo_explore_priors run, stop here
             return
-            
+
         if self.pe_priors_object is None:
             # case where no prior has been found: neither user-provided nor in the posterior file
             raise ValueError("WARNING !!!!!!!!!!! No PE-prior has been set. Cannot run the analysis.")
-        
+
         print("Computing PE prior(m1d,m2d,dL) using object: {} with name: {}"
               .format(self.pe_priors_object,self.pe_priors_object.name))
         self.pe_priors = self.pe_priors_object.get_prior_m1d_m2d_dL(self.mass_1,self.mass_2,self.distance) # we compute all PE priors values -> pi(m1d,m2d,dL)
@@ -565,7 +565,7 @@ class load_posterior_samples(object):
         else:
             print("PE priors values for posterior samples are computed.")
 
-            
+
     def marginalized_sky(self):
         """
         Computes the marginalized sky localization posterior KDE.
@@ -573,7 +573,7 @@ class load_posterior_samples(object):
         return gaussian_kde(np.vstack((self.ra, self.dec)))
 
 
-    
+
 def get_priors(pes):
     '''
     This function searches for prior dictionnaries in a posterior file (.hdf5 or .h5).
@@ -595,7 +595,7 @@ def get_priors(pes):
                 subdict = True
                 print("\tsubdict!")
                 for key in pes.priors['analytic'].keys():
-                    print("\tChecking key {}".format(key))                    
+                    print("\tChecking key {}".format(key))
                     if len(pes.priors['analytic'][key].keys())>0: # it's a non-empty dict
                         dict_count += 1
                         ndict = copy.deepcopy(pes.priors['analytic'][key])
@@ -617,7 +617,7 @@ def get_priors(pes):
                         pdicts[key].from_dictionary(ndict)
                     else:
                         print("\tKey {} is an empty dict. Ignoring.".format(key))
-                        
+
             else: # it's a single analysis h5 file
                 print("Single analysis posterior file. Getting analytic prior data.")
                 bdict = pes.priors['analytic']
@@ -625,7 +625,7 @@ def get_priors(pes):
                     subdict_key = list(bdict.keys())[0]
                     print("Sub-dictionary with key: {}".format(subdict_key))
                     bdict = bdict[subdict_key]
-                    
+
                 ndict = copy.deepcopy(bdict)
                 print(ndict['luminosity_distance'])
                 dLprior, PEcosmo = get_dL_prior(str(ndict['luminosity_distance']))
@@ -639,8 +639,8 @@ def get_priors(pes):
                 for k in allkeys:
                     pdicts.pop(k) # remove all keys, in order to keep only those of the PE file
                 pdicts.from_dictionary(ndict)
-                
-                
+
+
     return status, subdict, pdicts
 
 
@@ -667,7 +667,7 @@ def get_dL_prior(dl_prior):
     if fc == -1: # it's not a prior using an astropy object, no need to go further
         print("\tdL prior is not an astropy object, no special treatment.")
         return eval(dl_prior),None
-    
+
     for ic, c in enumerate(thestr[fc+len(cosmostr):]):
         keep += c
         if c == '(': # first parenthesis
@@ -699,6 +699,7 @@ def get_dL_prior(dl_prior):
     #print("func: PE_dl and PE_cosmo types= {}, {}".format(type(dl_prior),type(PE_cosmo)))
     #print("func: obj and PE_cosmo types= {}, {}".format(type(PE_dl),type(PE_cosmo)))
     #print(PE_dl)
+    PE_dl = PE_dl.replace('Unit("Mpc")', '"Mpc"')
     PE_dl = eval(str(PE_dl))
     return PE_dl, PE_cosmo
 
@@ -712,7 +713,7 @@ class reweight_posterior_samples(object):
     cosmo : Fast cosmology class
     mass_priors: Fast mass_distributions class
     """
-    
+
     def __init__(self,cosmo,mass_priors):
         self.cosmo = cosmo
         # Prior distribution used in this work
@@ -722,8 +723,8 @@ class reweight_posterior_samples(object):
         """
         (1+z)^2 * ddL/dz
         """
-        return np.power(1+z,2)*self.cosmo.ddgw_dz(z)    
-        
+        return np.power(1+z,2)*self.cosmo.ddgw_dz(z)
+
     def compute_source_frame_samples(self, GW_distance, det_mass_1, det_mass_2):
         """
         Posterior samples class and methods.
@@ -754,9 +755,9 @@ class reweight_posterior_samples(object):
                 kde = gaussian_kde(data)
         else:
             kde = gaussian_kde(data)
-            
+
         return kde, norm
-                    
+
     def ignore_weights(self, weights):
 
         weights = np.ones(len(weights))
@@ -781,7 +782,7 @@ class reweight_posterior_samples(object):
             else:
                 norm = np.sum(weights)/len(weights)
         return weights, norm, neff
-    
+
     def marginalized_redshift_reweight(self, redshift, mass_1_source, mass_2_source, PEpriors_detframe):
         """
         Computes the marginalized distance posterior KDE.
@@ -806,7 +807,7 @@ class make_pixel_px_function(object):
     Identify the posterior samples which lie within some angular radius
     (depends on skymap pixel size) of the centre of each pixel
     """
-    
+
     def __init__(self, samples, skymap, npixels=30, thresh=0.999):
         """
         Parameters
@@ -821,43 +822,43 @@ class make_pixel_px_function(object):
         thresh : float, optional
             The sky area threshold (default=0.999)
         """
-        
+
         self.skymap = skymap
         self.samples = samples
         nside=1
         indices,prob = skymap.above_percentile(thresh, nside=nside)
-    
+
         while len(indices) < npixels:
             nside = nside*2
             indices,prob = skymap.above_percentile(thresh, nside=nside)
-        
+
         self.nside = nside
         print('{} pixels to cover the {}% sky area (nside={})'.format(len(indices),thresh*100,nside))
-        
+
         dicts = {}
         for i,idx in enumerate(indices):
             dicts[idx] = prob[i]
         self.indices = indices
         self.prob = dicts # dictionary - given a pixel index, returns skymap prob
 
-        
+
     def identify_samples(self, idx, minsamps=100):
         """
-        Find the samples required 
-        
+        Find the samples required
+
         Parameters
         ----------
         idx : int
             The pixel index
         minsamps : int, optional
             The threshold number of samples to reach per pixel
-            
+
         Return
         ------
         sel : array of ints
             The indices of posterior samples for pixel idx
         """
-        
+
         ipix_samples = hp.pixelfunc.ang2pix(self.nside, np.pi/2-self.samples.dec, self.samples.ra, nest=self.skymap.nested)
         sel = np.where(ipix_samples == idx)[0]
         if len(sel) >= minsamps:
@@ -869,7 +870,7 @@ class make_pixel_px_function(object):
         separations = angular_sep(racent,deccent,self.samples.ra,self.samples.dec)
         sep = hp.pixelfunc.max_pixrad(self.nside)/2. # choose initial separation
         step = sep/2. # choose step size for increasing radius
-        
+
         sel = np.where(separations<sep)[0] # find all the samples within the angular radius sep from the pixel centre
         nsamps = len(sel)
         while nsamps < minsamps:
@@ -879,16 +880,16 @@ class make_pixel_px_function(object):
             if sep > np.pi:
                 raise ValueError("Problem with the number of posterior samples.")
         print('pixel idx {}: angular radius: {} radians, No. samples: {}'.format(idx,sep,len(sel)))
-         
+
         return sel
-        
+
 
 def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
     """
     Find the angular separation between all posterior samples and a specific
-    LOS. Return the indices of the nsamps closest samples, as well as the 
+    LOS. Return the indices of the nsamps closest samples, as well as the
     maximum separation of those samples.
-    
+
     Parameters
     ----------
     ra_los : float
@@ -901,7 +902,7 @@ def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
         declinations of a set of samples (radians)
     nsamps : int, optional
         The number of samples to select (default=1000)
-        
+
     Return
     ------
     index : array of ints
@@ -917,12 +918,12 @@ def identify_samples_from_posterior(ra_los, dec_los, ra, dec, nsamps=1000):
 
     return index, ang_rad_max
 
-        
-    
+
+
 def angular_sep(ra1,dec1,ra2,dec2):
     """Find the angular separation between two points, (ra1,dec1)
     and (ra2,dec2), in radians."""
-    
+
     cos_angle = np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)
     angle = np.arccos(cos_angle)
     return angle

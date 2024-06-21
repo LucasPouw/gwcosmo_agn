@@ -177,7 +177,6 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     dlarray=dl_array,
                     log_likelihood_numerator=self.log_likelihood_numerator_single_event_from_skymap,
                 )
-
                 # search for "skymap_prior_distance", if not found set it to "dlSquare"
                 skymap_prior_distance = meta.get("skymap_prior_distance", "dlSquare")
                 if skymap_prior_distance not in ["Uniform", "UniformComoving", "dlSquare"]:
@@ -190,7 +189,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                     cosmo_skymap = standard_cosmology(
                         # see default values in https://dcc.ligo.org/DocDB/0167/T2000185/005/LVC_symbol_convention.pdf
                         meta.get("skymap_H0", 67.90),
-                        meta.get("skymap_Omega_m", 0.3065)
+                        meta.get("skymap_Omega_m", 0.3065),
                     )
                     zmin, zmax = 0, 10
                     z_array = np.linspace(zmin, zmax, 10000)
@@ -301,7 +300,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         z_prior_norm = np.sum((z_prior(z_array)[:-1] + z_prior(z_array)[1:]) * (dz) / 2)
         # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
         # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
-        #injections = deepcopy(self.injections)
+        # injections = deepcopy(self.injections)
 
         # Update the sensitivity estimation with the new model
         self.injections.update_VT(self.cosmo, self.mass_priors, z_prior, z_prior_norm)
