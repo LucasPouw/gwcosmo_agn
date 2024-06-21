@@ -25,7 +25,7 @@ import gwcosmo.utilities.posterior_utilities as pu # get the PE samples keys
 
 class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     """
-    Class for preparing and carrying out the computation of the likelihood on 
+    Class for preparing and carrying out the computation of the likelihood on
     H0 for a single GW event
     """
     def __init__(self, posterior_samples_dictionary,
@@ -52,10 +52,11 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None,
                                      'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None,
                                      'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None,
-                                     'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None})
+                                     'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None,
+                                     'D':None, 'logRc':None, 'nD':None, 'cM':None})
 
         self.zrates = zrates
-        
+
         #TODO make min_pixels an optional dictionary
         LOS_catalog = h5py.File(LOS_catalog_path, 'r')
         temp = LOS_catalog.attrs['opts']
@@ -73,8 +74,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         self.samples_dictionary = {}
         self.samples_indices_dictionary = {}
         self.keys = []
-        
-        for key, value in posterior_samples_dictionary.items():            
+
+        for key, value in posterior_samples_dictionary.items():
             try:
                 samples = load_posterior_samples(posterior_samples_dictionary[key])
             except ValueError as ve:
@@ -91,11 +92,11 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 posterior_samples_dictionary[key][pu.PE_min_pixels] = int(posterior_samples_dictionary[key][pu.PE_min_pixels])
 
             print(key,posterior_samples_dictionary[key][pu.PE_min_pixels])
-            
+
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
-            
+
             pixelated_samples = make_pixel_px_function(samples, skymap, npixels=posterior_samples_dictionary[key][pu.PE_min_pixels], thresh=sky_area)
             nside_low_res = pixelated_samples.nside
             if nside_low_res > nside:
@@ -106,7 +107,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             samp_ind ={}
             for i,pixel_index in enumerate(pixel_indices):
                 samp_ind[pixel_index] = pixelated_samples.identify_samples(pixel_index, minsamps=min_samps_in_pixel)
-            
+
             no_sub_pix_per_pixel = int(4**(np.log2(nside/nside_low_res)))
 
             # Get the coordinates of the hi-res pixel centres
@@ -134,17 +135,17 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         Nobs = len(self.keys)
         if Nobs == 0:
             raise ValueError("No events to analyse.")
-        
+
         # take care of the SNR/FAR selections
         self.snr_cut = network_snr_threshold
-        self.ifar_cut = ifar_cut                
+        self.ifar_cut = ifar_cut
         self.injections = injections
         # set the actual number of selected GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
         self.injections.Nobs = Nobs
         self.injections.update_cut(self.snr_cut,self.ifar_cut)
         print(self.keys)
         print("Analysing {} GW events...".format(len(self.keys)))
-                      
+
 
     def MergersPerYearPerGpc3_z(self,z,H0):
 
@@ -161,19 +162,19 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         light_speed_in_km_per_sec = C_SI/1000.
         return self.zrates(z)*self.cosmo.p_z(z)*4*np.pi*(light_speed_in_km_per_sec/H0)**3/1e9
 
-    
+
     def NtotMergers(self,H0,R0=1,Tobs=1):
 
         """
         Compute the true number of mergers occurring during time Tobs with a rate R0 at z=0, given H0, between z=0 and z = cosmo.zmax (=10 by default)
-        default: return the number of mergers in the universe during 1 year with R0=1 (1 merger per Gpc3 per yr) 
+        default: return the number of mergers in the universe during 1 year with R0=1 (1 merger per Gpc3 per yr)
         """
 
         return R0*Tobs*quad(self.MergersPerYearPerGpc3_z,self.cosmo.zmin,self.cosmo.zmax,args=(H0))[0]
 
 
     def Get_Nmergers_Nexp(self,H0):
-        
+
         values = self.zprior_full_sky*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
@@ -186,23 +187,23 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         cosmo.H0 = H0
         self.injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
         Nexp = self.injections.VT_sens*Nmergers/z_prior_norm # for R0=1 and Tobs=1
-        
+
         Neff, Neff_is_ok, var = self.injections.calculate_Neff()
-        if not Neff_is_ok: # Neff >= 4*Nobs    
+        if not Neff_is_ok: # Neff >= 4*Nobs
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
                   .format(Neff,self.injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
 
         return Nexp, Nmergers
 
-    
+
     def log_likelihood_numerator_single_event(self,event_name):
 
         pixel_indices = self.pixel_indices_dictionary[event_name]
         samples = self.samples_dictionary[event_name]
         samp_ind = self.samples_indices_dictionary[event_name]
         zprior = self.zprior_times_pxOmega_dict[event_name]
-                
+
         # set up KDEs for this value of the parameter to be analysed
         px_zOmegaparam = np.zeros((len(pixel_indices),len(self.z_array)))
         for i,pixel_index in enumerate(pixel_indices):
@@ -215,21 +216,21 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             zmin_temp = np.min(z_samps)*0.5
             zmax_temp = np.max(z_samps)*2.
             z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
-            
+
             kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
 
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
                 px_zOmegaparam[i,:] = px_zOmegaparam_interp(self.z_array)*norm
-        
+
         # make p(s|z) have the same shape as p(x|z,Omega,param) and p(z|Omega,s)
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
-        
+
         Inum_vals = np.sum(px_zOmegaparam*zprior*ps_z_array,axis=0)
         num = simpson(Inum_vals,self.z_array)
 
         return np.log(num)
-        
+
     def log_likelihood_denominator_single_event(self):
 
         values = self.zprior_full_sky*self.zrates(self.z_array)
@@ -242,7 +243,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         # Update the sensitivity estimation with the new model
         self.injections.update_VT(self.cosmo,self.mass_priors,z_prior,z_prior_norm)
         Neff, Neff_is_ok, var = self.injections.calculate_Neff()
-        if Neff_is_ok: # Neff >= 4*Nobs    
+        if Neff_is_ok: # Neff >= 4*Nobs
             log_den = np.log(self.injections.gw_only_selection_effect())
         else:
             print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
@@ -258,7 +259,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         # carry norm to apply to numerator as well
         den_single, zprior_norm_log = self.log_likelihood_denominator_single_event()
         den = den_single*len(self.keys)
-        
+
         num = 1.
         for event_name in self.keys:
             num += self.log_likelihood_numerator_single_event(event_name)-zprior_norm_log
@@ -266,32 +267,30 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             #print(self.cosmo_param_dict['H0'],num-den,num,den,Nexp,Nmergers,Nexp/Nmergers)
 
         return num-den
-        
+
     def log_likelihood(self):
 
         self.zrates.gamma = self.parameters['gamma']
         self.zrates.k = self.parameters['Madau_k']
         self.zrates.zp = self.parameters['Madau_zp']
-        
-        self.mass_priors_param_dict = {'alpha':self.parameters['alpha'], 'delta_m':self.parameters['delta_m'], 
-                                         'mu_g':self.parameters['mu_g'], 'sigma_g':self.parameters['sigma_g'], 
+
+        self.mass_priors_param_dict = {'alpha':self.parameters['alpha'], 'delta_m':self.parameters['delta_m'],
+                                         'mu_g':self.parameters['mu_g'], 'sigma_g':self.parameters['sigma_g'],
                                          'lambda_peak':self.parameters['lambda_peak'],
-                                         'alpha_1':self.parameters['alpha_1'], 
-                                         'alpha_2':self.parameters['alpha_2'], 'b':self.parameters['b'], 
-                                         'mminbh':self.parameters['mminbh'], 'mmaxbh':self.parameters['mmaxbh'], 
+                                         'alpha_1':self.parameters['alpha_1'],
+                                         'alpha_2':self.parameters['alpha_2'], 'b':self.parameters['b'],
+                                         'mminbh':self.parameters['mminbh'], 'mmaxbh':self.parameters['mmaxbh'],
                                          'beta':self.parameters['beta'], 'alphans':self.parameters['alphans'],
                                          'mminns':self.parameters['mminns'], 'mmaxns':self.parameters['mmaxns']}
 
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
 
-        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n']}
+        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
 
         return self.log_combined_event_likelihood()
-        
+
     def __call__(self):
         return np.exp(self.log_likelihood())
-
-

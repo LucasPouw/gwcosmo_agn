@@ -132,6 +132,10 @@ if gravity_model == "GR":
     cosmo = standard_cosmology()
 elif gravity_model == "Xi0_n":
     cosmo = Xi0_n_cosmology()
+elif gravity_model == 'extra_dimension':
+    cosmo = extra_dimension_cosmology()
+elif gravity_model == 'cM':
+    cosmo = cM_cosmology()
 else:
     parser.error(f"Unrecognized '{gravity_model}' gravity model")
 print(f"Using the {gravity_model} gravity model")
