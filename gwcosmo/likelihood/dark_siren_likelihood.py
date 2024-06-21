@@ -212,14 +212,13 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
             PEprior = samples.pe_priors[samp_ind[pixel_index]]
-
-            zmin_temp = np.min(z_samps)*0.5
-            zmax_temp = np.max(z_samps)*2.
-            z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
-
             kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
 
             if norm != 0: # px_zOmegaH0 is initialized to 0
+                zmin_temp = np.min(z_samps)*0.5
+                zmax_temp = np.max(z_samps)*2.
+                z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
+
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
                 px_zOmegaparam[i,:] = px_zOmegaparam_interp(self.z_array)*norm
 
