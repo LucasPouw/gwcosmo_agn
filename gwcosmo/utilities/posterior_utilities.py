@@ -1,6 +1,6 @@
 # Global Imports
 import numpy as np
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.optimize import fmin
 from scipy.interpolate import interp1d, UnivariateSpline
 
@@ -14,7 +14,7 @@ class confidence_interval(object):
         self.lower_level, self.upper_level = self.HDI()
         self.interval = self.upper_level - self.lower_level
         self.map = self.MAP()
-        
+
     def HDI(self):
         cdfvals = cumtrapz(self.posterior, self.param)
         sel = cdfvals > 0.
@@ -37,7 +37,7 @@ class confidence_interval(object):
         x_highres = np.linspace(self.param[0], self.param[-1], 100000)
         y_highres = sp(x_highres)
         return x_highres[np.argmax(y_highres)]
-        
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
