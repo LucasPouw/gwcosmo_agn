@@ -178,7 +178,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         values = self.zprior_full_sky*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
-        z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
+        z_prior_norm = np.sum((values[:-1]+values[1:])*(dz)/2)
         # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
         # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
         # injections = copy.deepcopy(self.injections)
@@ -207,7 +207,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         # set up KDEs for this value of the parameter to be analysed
         px_zOmegaparam = np.zeros((len(pixel_indices),len(self.z_array)))
         for i,pixel_index in enumerate(pixel_indices):
-
             z_samps,m1_samps,m2_samps = self.reweight_samps.compute_source_frame_samples(samples.distance[samp_ind[pixel_index]],
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
@@ -219,8 +218,13 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 zmax_temp = np.max(z_samps)*2.
                 z_array_temp = np.linspace(zmin_temp,zmax_temp,100)
 
-                px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic',bounds_error=False,fill_value=0)
-                px_zOmegaparam[i,:] = px_zOmegaparam_interp(self.z_array)*norm
+                # interp1d is deprecated see
+                # https://docs.scipy.org/doc/scipy/tutorial/interpolate/1D.html#legacy-interface-for-1-d-interpolation-interp1d
+                # The next line could be replaced by
+                # px_zOmegaparam_interp = interpolate.CubicSpline(z_array_temp, kde(z_array_temp))
+                px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic')
+                mask = (zmin_temp < self.z_array) & (self.z_array < zmax_temp)
+                px_zOmegaparam[i,mask] = px_zOmegaparam_interp(self.z_array[mask]) * norm
 
         # make p(s|z) have the same shape as p(x|z,Omega,param) and p(z|Omega,s)
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
@@ -235,7 +239,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         values = self.zprior_full_sky*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
-        z_prior_norm = np.sum((z_prior(self.z_array)[:-1]+z_prior(self.z_array)[1:])*(dz)/2)
+        z_prior_norm = np.sum((values[:-1]+values[1:])*(dz)/2)
         # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
         # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
         # injections = copy.deepcopy(self.injections)
