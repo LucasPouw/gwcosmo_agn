@@ -274,7 +274,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
             likelihood_x_z_H0 = posterior_dl_skymap.pdf(dlarr_given_H0) / current_event[
                 "dl_prior_skymap"
             ](dlarr_given_H0)
-        likelihood_x_z_H0 /= simpson(likelihood_x_z_H0, z_array_temp)
+        likelihood_x_z_H0 /= simpson(likelihood_x_z_H0, x=z_array_temp)
 
         px_zOmegaH0_interp = interp1d(
             z_array_temp, likelihood_x_z_H0, kind="linear", bounds_error=False, fill_value=0

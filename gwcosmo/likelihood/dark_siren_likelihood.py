@@ -230,7 +230,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
 
         Inum_vals = np.sum(px_zOmegaparam*zprior*ps_z_array,axis=0)
-        num = simpson(Inum_vals,self.z_array)
+        num = simpson(Inum_vals, x=self.z_array)
 
         return np.log(num)
 
