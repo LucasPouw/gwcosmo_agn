@@ -13,6 +13,6 @@ numpy>=1.19,<=1.23.5
 pandas
 pesummary
 progressbar
-scipy
+scipy<1.14.0
 seaborn
 tqdm
