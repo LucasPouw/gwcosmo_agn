@@ -24,7 +24,7 @@ Documentation = "https://lscsoft.docs.ligo.org/gwcosmo/"
 [tool.setuptools_scm]
 
 [tool.setuptools]
-script-files = ['bin/gwcosmo_compute_redshift_prior', 'bin/gwcosmo_dark_siren_posterior', 'bin/gwcosmo_bright_siren_posterior', 'bin/gwcosmo_create_injections', 'bin/gwcosmo_create_injections_dag']
+script-files = ['bin/gwcosmo_compute_redshift_prior', 'bin/gwcosmo_dark_siren_posterior', 'bin/gwcosmo_bright_siren_posterior', 'bin/gwcosmo_create_injections', 'bin/gwcosmo_create_injections_dag', 'bin/gwcosmo_explore_priors']
 
 [tool.setuptools.packages.find]
 include = ['gwcosmo*']

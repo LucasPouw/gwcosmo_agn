@@ -4,7 +4,7 @@ import pkg_resources
 import os
 import sys
 from optparse import Option, OptionParser, OptionGroup, make_option
-from gwcosmo.create_injections import Create_injections, get_dLmax_params
+from gwcosmo.create_injections import Create_injections
 import argparse
 
 data_path = pkg_resources.resource_filename('gwcosmo', 'data/')
@@ -41,6 +41,7 @@ parser = create_parser("--run",
                        "--duty_factor_O2_V1",
                        "--duty_factor_O1_H1",
                        "--duty_factor_O1_L1",
+                       #"--ifos_config",
                        "--frame",
                        "--snr",
                        "--fmin",
@@ -55,12 +56,14 @@ parser = create_parser("--run",
                        "--path_combine",
                        "--cpus",
                        "--merge_tmpfile_list",
-                       "--dLmax_depends_on_m1")
+                       "--dLmax_depends_on_m1",
+                       "--nsbh")
 
 opts = parser.parse_args()
 
 
 combine = str2bool(opts.combine)
+nsbh = str2bool(opts.nsbh)
 asd_path = str(opts.asd_path)
 if opts.asd_path == 'None': asd_path = data_path
 if opts.psd == 'O4':
@@ -76,7 +79,7 @@ if (opts.tmp_to_stdout == None) and (opts.tmp_to_dict == None) and (combine == F
 if combine:
     Tobs = opts.Tobs
     if opts.Tobs!=None: Tobs = float(opts.Tobs)    
-    injections = Create_injections(asd_path=asd_path)
+    injections = Create_injections(asd_path=asd_path,combine=True)
     injections.combine(path=opts.path_combine,output=opts.output_combine,Tobs=Tobs)
 
 elif opts.merge_tmpfile_list != None:
@@ -131,32 +134,26 @@ else:
     # the paramaters a0, a1, a2, a3 (in this order) are those of the empirical function obtained for SNR = 9
     # dLmax(m1) = (a0+a1 m1)exp(-(m1+a2)^2/(2*a3^2))
     dLmax_m1_params = None
+    '''
     if opts.dLmax_depends_on_m1 == True:
-        if ((opts.snr != 9) and ((opts.snr != 10) and (opts.snr != 11) and (opts.snr != 12)) ):
-            print("The dLmax(m1) case is usable only for SNR = 9, 10, 11 or 12. Exiting.")
-            sys.exit()
-        else:
-            dLmax_m1_params = get_dLmax_params(opts.snr)
-            if opts.O4sensitivity == 'low':
-                dLmax_m1_params['O4'] = dLmax_m1_params['O4low']
-            else:
-                dLmax_m1_params['O4'] = dLmax_m1_params['O4high']
-                
+    if ((opts.snr != 9) and ((opts.snr != 10) and (opts.snr != 11) and (opts.snr != 12)) ):
+    print("The dLmax(m1) case is usable only for SNR = 9, 10, 11 or 12. Exiting.")
+    sys.exit()
+    else:
+    dLmax_m1_params = get_dLmax_params(opts.snr)
+    if opts.O4sensitivity == 'low':
+    dLmax_m1_params['O4'] = dLmax_m1_params['O4low']
+    else:
+    dLmax_m1_params['O4'] = dLmax_m1_params['O4high']
+    '''                
     # default values for Mmin, Mmax and power laws in detector frame
     # mass unit is solar mass
     # luminosity distance unit is Mpc
     # the constant limit for dLmax is used in the case            
     priors_limits = {'Mmin_det':1.,
-                     'Mmax_det':500.,
+                     'Mmax_det':1000.,
                      'power_index_m1_det':-2.,
                      'power_index_m2_det':1.,
-                     'Mmin_source':2.,
-                     'Mmax_source':300.,
-                     'power_index_m1_source':-2.,
-                     'power_index_m2_source':1.,
-                     'zmin':0.001,
-                     'zmax':4,
-                     'z_alpha':2.,
                      'power_index_dL':2.,
                      'dLmin':0.1, # Mpc
                      'dLmax':80e3} # Mpc, case of the constant dLmax, independently of m1, dummy O4 value
@@ -178,7 +175,8 @@ else:
                                    sampling_frequency=opts.sampling_frequency,
                                    dLmax_depends_on_m1=opts.dLmax_depends_on_m1,
                                    dLmax_m1_params=dLmax_m1_params,
-                                   SNR_thres=opts.snr)
+                                   SNR_thres=opts.snr,
+                                   nsbh=nsbh)
 
     # compute injections
     injections.do_injections(Nsamps=opts.Nsamps,
