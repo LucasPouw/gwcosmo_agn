@@ -8,7 +8,7 @@ import copy as _copy
 from scipy.interpolate import interp1d as _interp1d
 from scipy.special import erf as _erf
 from scipy.special import logsumexp as _logsumexp
-from scipy.integrate import cumtrapz as _cumtrapz
+from scipy.integrate import cumulative_trapezoid as _cumtrapz
 
 def _S_factor(mass, mmin,delta_m):
     '''
@@ -130,7 +130,7 @@ class SmoothedProb(object):
         cdf_numeric = _cumtrapz(self.prob(x_eval),x_eval)
         self.cached_cdf_window = _interp1d(x_eval[:-1:],cdf_numeric,fill_value='extrapolate',bounds_error=False,kind='linear')
 
-        
+
     def prob(self,x):
         """
         Returns the probability density function normalized
@@ -185,7 +185,7 @@ class SmoothedProb(object):
         if len(wok)>0: # the pdf can be normalized
             to_ret[wok] -= _np.log(new_norm[wok])
         wnull = _np.where(new_norm <= 0)[0]
-        if len(wnull)>0:            
+        if len(wnull)>0:
             to_ret[wnull] = -_np.inf
 
         to_ret[(x<a) | (x>b)] = -_np.inf
