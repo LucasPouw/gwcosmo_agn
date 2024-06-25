@@ -35,7 +35,7 @@ requirements:
     - numpy <=1.23.5,>=1.19
     - pandas
     - progressbar
-    - scipy < 1.14.0
+    - scipy <1.14.0
     - seaborn
     - tqdm
 
