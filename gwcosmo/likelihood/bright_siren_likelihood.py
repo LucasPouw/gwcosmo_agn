@@ -295,9 +295,10 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         zmin = 0
         zmax = 10
         z_array = np.linspace(zmin, zmax, 10000)
-        z_prior = interp1d(z_array, self.zprior(z_array) * self.zrates(z_array))
+        values = self.zprior(z_array) * self.zrates(z_array)
+        z_prior = interp1d(z_array, values)
         dz = np.diff(z_array)
-        z_prior_norm = np.sum((z_prior(z_array)[:-1] + z_prior(z_array)[1:]) * (dz) / 2)
+        z_prior_norm = np.sum((values[:-1] + values[1:]) * (dz) / 2)
         # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
         # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
         # injections = deepcopy(self.injections)
