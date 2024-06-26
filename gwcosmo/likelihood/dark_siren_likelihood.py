@@ -91,12 +91,32 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             else:
                 posterior_samples_dictionary[key][pu.PE_min_pixels] = int(posterior_samples_dictionary[key][pu.PE_min_pixels])
 
-            print("Event {}: min_pixels = {}".format(key,posterior_samples_dictionary[key][pu.PE_min_pixels]))
+            print("Event {}: requested min_pixels = {}".format(key,posterior_samples_dictionary[key][pu.PE_min_pixels]))
 
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
+            print("Got GW event skymap with nside: {}".format(skymap.nside))
+
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
-
+            
+            # compute the sky area covered by the GW event and find an estimate of the min_pixels value to help the user
+            skyprob = low_res_skyprob
+            if skymap.nside > 4*nside:
+                # when the GW skymap has a much higher resolution than the LOS skymap, degrade it but not too much, use new_nside = 4*LOS_nside
+                # to get a quite precise estimation of the GW area on the sky and avoid at the same time to work on the full resolution skymap that may take some time
+                skyprob = hp.pixelfunc.ud_grade(skymap.prob, 4*nside, order_in='NESTED', order_out='NESTED')
+                skyprob = skyprob/np.sum(skyprob)
+            
+            gw_probs = np.sort(skyprob)[::-1] # sort with decreasing order
+            csp = np.cumsum(gw_probs)
+            dd = np.abs(csp-sky_area)
+            npix_area = np.where(dd == np.min(dd))[0] # number of pixels needed to cover the GW's sky_area
+            sky_area_square_rad = npix_area[0]*4*np.pi/len(skyprob)
+            sky_area_square_deg = sky_area_square_rad*(180/np.pi)**2            
+            min_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
+            print("Sky aera with proba closest to {}: {} square degrees, corresponding to {} pixels at LOS file resolution (nside: {}).".format(sky_area,sky_area_square_deg,min_pixels_at_LOS_resolution,nside))
+            print("You should ask for min_pixels around {} (mayber smaller), depends on the exact GW skymap.".format(min_pixels_at_LOS_resolution))
+            
             pixelated_samples = make_pixel_px_function(samples, skymap, npixels=posterior_samples_dictionary[key][pu.PE_min_pixels], thresh=sky_area)
             nside_low_res = pixelated_samples.nside
             if nside_low_res > nside:
