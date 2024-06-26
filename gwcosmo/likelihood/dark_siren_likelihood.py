@@ -91,7 +91,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             else:
                 posterior_samples_dictionary[key][pu.PE_min_pixels] = int(posterior_samples_dictionary[key][pu.PE_min_pixels])
 
-            print(key,posterior_samples_dictionary[key][pu.PE_min_pixels])
+            print("Event {}: min_pixels = {}".format(key,posterior_samples_dictionary[key][pu.PE_min_pixels]))
 
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
