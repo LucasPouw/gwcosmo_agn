@@ -113,14 +113,17 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             npix_area = np.where(dd == np.min(dd))[0] # number of pixels needed to cover the GW's sky_area
             sky_area_square_rad = npix_area[0]*4*np.pi/len(skyprob)
             sky_area_square_deg = sky_area_square_rad*(180/np.pi)**2            
-            min_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
-            print("Sky aera with proba closest to {}: {} square degrees, corresponding to {} pixels at LOS file resolution (nside: {}).".format(sky_area,sky_area_square_deg,min_pixels_at_LOS_resolution,nside))
-            print("You should ask for min_pixels around {} (mayber smaller), depends on the exact GW skymap.".format(min_pixels_at_LOS_resolution))
+            n_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
+            print("Sky aera with proba closest to {}: {} square degrees, corresponding to {} pixels at LOS file resolution (nside: {}).".format(sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
+            print("A reasonable value for min_pixels is around {} (mayber smaller), depending on the exact GW skymap.".format(n_pixels_at_LOS_resolution))
+            n_pixels_warning = 15
+            if n_pixels_at_LOS_resolution < n_pixels_warning:
+                print("Warning: the GW sky area corresponds to less than {} pixels at the LOS resolution (nside:{}). You could use a higher resolution LOS if available.".format(n_pixels_warning,nside))
             
             pixelated_samples = make_pixel_px_function(samples, skymap, npixels=posterior_samples_dictionary[key][pu.PE_min_pixels], thresh=sky_area)
             nside_low_res = pixelated_samples.nside
             if nside_low_res > nside:
-                raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels for event {key}.')
+                raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels for event {key}, or use a higher resolution LOS if available.')
 
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
