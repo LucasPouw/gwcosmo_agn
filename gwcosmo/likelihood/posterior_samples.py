@@ -528,7 +528,7 @@ class load_posterior_samples(object):
         if posterior_file[-2:] == 'h5':
             self.extract_data_and_PEprior(posterior_file)
 
-        if posterior_file == 'hdf':
+        if posterior_file[-3:] == 'hdf':
             file = h5py.File(posterior_file,'r')
             self.distance = file['samples/distance'][:]
             self.ra = file['samples/ra'][:]
