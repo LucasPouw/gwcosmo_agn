@@ -234,7 +234,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
             PEprior = samples.pe_priors[samp_ind[pixel_index]]
-            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
+            kde, norm, status = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
 
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 zmin_temp = np.min(z_samps)*0.5
@@ -248,6 +248,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic')
                 mask = (zmin_temp < self.z_array) & (self.z_array < zmax_temp)
                 px_zOmegaparam[i,mask] = px_zOmegaparam_interp(self.z_array[mask]) * norm
+
+            else: # get information on the GW event and pixel that gave norm == 0
+                if status == False: # norm is 0 and status = False ie KDE not reliable
+                    print("KDE problem was for GW id {} and pixel {} with cosmo params: {}".format(event_name,pixel_index,self.cosmo_param_dict))
 
         # make p(s|z) have the same shape as p(x|z,Omega,param) and p(z|Omega,s)
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
