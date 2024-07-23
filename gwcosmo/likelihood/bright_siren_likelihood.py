@@ -225,12 +225,12 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         )
         PEprior = samples.pe_priors
         if current_event["posterior_los"]:
-            kde, norm = self.reweight_samps.marginalized_redshift_reweight(
+            kde, norm, status  = self.reweight_samps.marginalized_redshift_reweight(
                 z_samps, m1_samps, m2_samps, PEprior
             )
         else:
             sample_index = current_event["sample_index"]
-            kde, norm = self.reweight_samps.marginalized_redshift_reweight(
+            kde, norm, status  = self.reweight_samps.marginalized_redshift_reweight(
                 z_samps[sample_index],
                 m1_samps[sample_index],
                 m2_samps[sample_index],
