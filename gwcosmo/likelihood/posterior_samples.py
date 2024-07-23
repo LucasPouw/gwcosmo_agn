@@ -744,19 +744,22 @@ class reweight_posterior_samples(object):
     def get_kde(self, data, weights):
         # deal first with the weights
         weights, norm, neff = self.check_weights(weights)
+        status = True
         if norm != 0:
             try:
                 kde = gaussian_kde(data, weights=weights)
             except:
                 anomalies = np.where((weights <= 0) | np.isinf(weights)) [0]
-                print("KDE problem! {} values of the weights are 0 or infinity. create a default KDE with norm=0".format(len(anomalies)))
+                print("KDE problem! {} values of the weights (over {}) are 0 or infinity. Create a default KDE with norm=0"
+                      .format(len(anomalies),len(weights)))
                 print("norm: {} -> 0, neff: {}".format(norm,neff))
+                status = False
                 norm = 0
                 kde = gaussian_kde(data)
         else:
             kde = gaussian_kde(data)
 
-        return kde, norm
+        return kde, norm, status
 
     def ignore_weights(self, weights):
 
