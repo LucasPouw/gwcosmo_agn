@@ -501,6 +501,8 @@ class Create_injections(object):
                                 raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
                         elif self.psd_opts == 'O4b':
                             asd_file = asd_path+ifo+"_O4b_avg.txt"
+                        else:
+                            raise ValueError("No O4 sensitivity with name {}. You can choose among 'high', 'low', 'MDC', 'actual', 'avg',  'late', 'O4b'.")
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -514,7 +516,7 @@ class Create_injections(object):
                                                                                        psd_array=self.psd_dict[LVCrun][ifo]['psd'])
                     nfiles_ok += 1
                 except Exception as e:
-                    print('Problem in loading asd file for  {:},{:}. Setting up without it.'.format(LVCrun,ifo))
+                    print('Problem in loading asd file for  {:}, {:}. Setting up without it.'.format(LVCrun,ifo))
                     print(e)
 
         if nfiles_ok == 0:
@@ -1552,7 +1554,8 @@ class detector_config(object):
                     elif pair == 1: ifos = ['H1','V1']
                     else: ifos = ['L1','V1']
                 elif (lucky >= p3+p2) & (lucky < p3+p2+p1):
-                    ifos = np.random.choice(aifos,size=1,replace=False,p=np.array(p_single))
+                    ifos = list(np.random.choice(aifos,size=1,replace=False,p=np.array(p_single)))
+                    ifos[0] = str(ifos[0]) # cast to built-in 'str' instead of numpy.str to avoid a crash with bilby.gw.detector.InterferometerList(dets)
                 else:
                     ifos = []
                     
