@@ -641,6 +641,9 @@ class Create_injections(object):
                 elif self.psd_opts == 'late':
                     print("WARNING LATE case: Using 'O4high' sensitivity for the random draws")
                     dLmax_m1['O4'] = dLmax_m1['O4high']
+                elif self.psd_opts == 'O4b':
+                    print("WARNING O4b case: Using 'O4high' sensitivity for the random draws")
+                    dLmax_m1['O4'] = dLmax_m1['O4high']
                 else:
                     print("ERROR in psd_opts.")
                     
