@@ -468,7 +468,7 @@ class Create_injections(object):
                     continue
                 try:
                     # load strain data, these files have 2 columns: frequency - ASD
-                    if LVCrun == 'O4': # there can be several psds for O4, 'actual', 'avg', 'high', 'low' or 'MDC' sensitivities
+                    if LVCrun == 'O4': # there can be several psds for O4, 'actual', 'avg', 'high', 'low', 'O4b' sensitivities
                         if self.psd_opts == 'high' or self.psd_opts == 'low':
                             asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
                         elif self.psd_opts == 'actual':
@@ -499,6 +499,8 @@ class Create_injections(object):
                                 asd_file = asd_path+'LHO_1388988918.txt'
                             elif ifo == 'V1':
                                 raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
+                        elif self.psd_opts == 'O4b':
+                            asd_file = asd_path+ifo+"_O4b_avg.txt"
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -1522,7 +1524,39 @@ class detector_config(object):
                 else:
                     ifos = []
 
-            else:
+            elif isrun == 'O4b': # https://gwosc.org/detector_status/O4b/
+                # I'm using the values as of 20240728200000 CEST = 20240728180000 UTC
+                p1 = 0.154 # 1-fold
+                p2 = 0.365 # 2-fold
+                p3 = 0.379 # 3-fold
+                pH = 0.518 # H1 uptime
+                pL = 0.742 # L1 uptime
+                pV = 0.760 # V1 uptime
+                # we need the probas for 2-fold 'HL', 'HV', 'LV' and the probas for 1-fold 'H', 'L', 'V'
+                # have to fix 2 values as the system is degenerated, for instance we fix the 1-fold pH1 and pL1
+                pH1 = 0.03
+                pL1 = 0.05
+                res = np.array([pL-2*p3-p2-pL1-pH1+pH,p2-pL+p3+pL1,p2+p3-pH+pH1,p1-pH1-pL1]) # compute the probas [pHL,pHV,pLV,pV1]
+                pV1 = res[3]
+                p_pairs = res[0:3]/np.sum(res[0:3]) # normalized probas for 2-fold [pHL,pHV,pLV]
+                p_single = np.array([pH1,pL1,pV1])/p1 # normalized probas for 1-fold [H,L,V]
+                lucky = np.random.rand()
+                aifos = ['H1','L1','V1']
+                pairs = [0,1,2]
+                lucky = np.random.rand()
+                if lucky < p3: # 3 ifos online
+                    ifos = aifos
+                elif (lucky >= p3) & (lucky < p3+p2): # 2 ifos online
+                    pair = np.random.choice(pairs,size=1,replace=False,p=p_pairs)
+                    if pair == 0: ifos = ['H1','L1']
+                    elif pair == 1: ifos = ['H1','V1']
+                    else: ifos = ['L1','V1']
+                elif (lucky >= p3+p2) & (lucky < p3+p2+p1):
+                    ifos = np.random.choice(aifos,size=1,replace=False,p=np.array(p_single))
+                else:
+                    ifos = []
+                    
+            else: # 'O4a'
                 # we refine the random draw of H1, L1 using 1-fold and 2-fold uptimes, see https://gwosc.org/detector_status/O4a/
                 # warning: on this web page, the probabilities don't add-up to 1: 53.4 + 29.7 + 16.6 = 99.7%
                 # Derek Davis on mattermost DetCharTools 20230325: the missing 0.3% should be considered as 0 ifo
