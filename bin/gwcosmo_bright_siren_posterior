@@ -13,6 +13,7 @@ import bilby
 from itertools import product
 from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.arguments import create_parser
+from gwcosmo.utilities.mass_prior_utilities import *
 from gwcosmo.utilities.cosmology import *
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.utilities.host_galaxy_merger_relations import RedshiftEvolutionConstant, RedshiftEvolutionPowerLaw, RedshiftEvolutionMadau
@@ -196,12 +197,17 @@ if opts.posterior_samples is not None:
         for key in posterior_samples_dictionary.keys():
             posterior_samples_field_dictionary[key] = None 
 
+mass_model = str(opts.mass_model)
+mass_priors = mass_model_selector(mass_model, parser)
+print(f'Using the {mass_model} mass model')
+
 # parameter(s) file
 if opts.parameter_dict is not None:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
     if opts.posterior_samples is None and opts.skymap is not None :
-        mass_parameters = ['alpha', 'delta_m', 'mu_g', 'sigma_g', 'lambda_peak', 'alpha_1', 'alpha_2', 'b', 'mminbh', 'mmaxbh', 'beta', 'alphans', 'mminns', 'mmaxns']
+        keys = extract_parameters_from_instance(mass_priors)
+        mass_parameters = list(keys)
         for key in mass_parameters :
             if key in parameter_dict.keys() :
                 if isinstance(parameter_dict[key]['value'], list):
@@ -226,25 +232,6 @@ injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     Tobs=np.array(injdata['Tobs']))
 
 injdata.close()
-
-mass_model = str(opts.mass_model)
-if mass_model == 'BBH-powerlaw':
-    mass_priors = BBH_powerlaw()
-elif mass_model == 'NSBH-powerlaw':
-    mass_priors = NSBH_powerlaw()
-elif mass_model == 'BBH-powerlaw-gaussian':
-    mass_priors = BBH_powerlaw_gaussian()
-elif mass_model == 'NSBH-powerlaw-gaussian':
-    mass_priors = NSBH_powerlaw_gaussian()
-elif mass_model == 'BBH-broken-powerlaw':
-    mass_priors = BBH_broken_powerlaw()
-elif mass_model == 'NSBH-broken-powerlaw':
-    mass_priors = NSBH_broken_powerlaw()
-elif mass_model == 'BNS':
-    mass_priors = BNS()
-else:
-    parser.error('Unrecognized mass model')
-print(f'Using the {mass_model} mass model')
 
 gravity_model = str(opts.gravity_model)
 if gravity_model == 'GR':
@@ -330,6 +317,9 @@ if method == "sampling" :
         else:
             priors[key] = float(parameter_dict[key]['value'])
 
+    # Check prior constraints for the mass distribution, does nothing if not required 
+    priors = me.mass_priors.sampling_constraint(priors)
+
     sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
     
     bilbyresult = bilby.run_sampler(
@@ -388,12 +378,16 @@ elif method == "gridded" :
         indices.append(items)
 	
     print(f'Computing the likelihood on a grid over {names}')
+    
+    # Constraint check, raises value error if priors not allowed by a constraint 
+    constraint_grid = np.zeros(shape)
+    me.mass_priors.grid_constraint(constraint_grid, values, parameter_grid, fixed_params)
     for i, value in enumerate(tqdm(values)):
         n=0
         for name in names:
             me.parameters[name] = value[n]
             n += 1
-        likelihood[indices[i]] = me.log_likelihood()
+        likelihood[indices[i]] = constraint_grid[indices[i]] if constraint_grid[indices[i]] == -np.inf else me.log_likelihood()
 
     # rescale values of the log-likelihood before exponentiating
     likelihood -= np.nanmax(likelihood) #np.nanmin(likelihood[likelihood != -np.inf])

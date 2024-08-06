@@ -12,13 +12,14 @@ import bilby
 import h5py
 from itertools import product
 from tqdm import tqdm
+import sys
 
 from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.arguments import create_parser
+from gwcosmo.utilities.mass_prior_utilities import *
 from gwcosmo.utilities.cosmology import *
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.injections import injections_at_detector
-
 from gwcosmo.prior.priors import *
 
 import matplotlib
@@ -111,22 +112,7 @@ injections = injections_at_detector(m1d=np.array(injdata['m1d']),
 injdata.close()
 
 mass_model = str(opts.mass_model)
-if mass_model == 'BBH-powerlaw':
-    mass_priors = BBH_powerlaw()
-elif mass_model == 'NSBH-powerlaw':
-    mass_priors = NSBH_powerlaw()
-elif mass_model == 'BBH-powerlaw-gaussian':
-    mass_priors = BBH_powerlaw_gaussian()
-elif mass_model == 'NSBH-powerlaw-gaussian':
-    mass_priors = NSBH_powerlaw_gaussian()
-elif mass_model == 'BBH-broken-powerlaw':
-    mass_priors = BBH_broken_powerlaw()
-elif mass_model == 'NSBH-broken-powerlaw':
-    mass_priors = NSBH_broken_powerlaw()
-elif mass_model == 'BNS':
-    mass_priors = BNS()
-else:
-    parser.error('Unrecognized mass model')
+mass_priors = mass_model_selector(mass_model, parser)
 print(f'Using the {mass_model} mass model')
 
 gravity_model = str(opts.gravity_model)
@@ -178,7 +164,7 @@ if method == 'sampling':
     dlogz = float(opts.dlogz)
     npool = int(opts.npool)
     
-    priors = {}
+    priors = bilby.core.prior.PriorDict()
 
     for key in parameter_dict:
         if isinstance(parameter_dict[key]['value'],list):
@@ -191,11 +177,14 @@ if method == 'sampling':
             elif parameter_dict[key]['prior'] == 'Gaussian':
                 priors[key] = bilby.core.prior.Gaussian(parameter_dict[key]['value'][0],parameter_dict[key]['value'][1],name=key,latex_label=label)
             else:
-                raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'.")
+                raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'.)")
         else:
             priors[key] = float(parameter_dict[key]['value'])
 
-    sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
+    # Check prior constraints for the mass distribution, does nothing if not required 
+    priors = me.mass_priors.sampling_constraint(priors)
+
+    sampling_method = "rwalk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
 
     bilbyresult = bilby.run_sampler(
     likelihood=me,
@@ -210,8 +199,7 @@ if method == 'sampling':
     walks=walks,
     nsteps=nsteps,
     npool=npool,
-    sample=sampling_method
-    #injection_parameters={"m": m, "c": c},  # (optional) true values for adding to plots
+    sample=sampling_method,
     )
 
 
@@ -254,13 +242,18 @@ elif method == 'gridded':
     for items in product(*parameter_grid_indices.values()):
         indices.append(items)
 
+
     print(f'Computing the likelihood on a grid over {names}')
+
+    # Constraint check, raises value error if priors not allowed by a constraint 
+    constraint_grid = np.zeros(shape)
+    me.mass_priors.grid_constraint(constraint_grid, values, parameter_grid, fixed_params)
     for i, value in enumerate(tqdm(values)):
         n=0
         for name in names:
             me.parameters[name] = value[n]
             n += 1
-        likelihood[indices[i]] = me.log_likelihood()
+        likelihood[indices[i]] = constraint_grid[indices[i]] if constraint_grid[indices[i]] == -np.inf else me.log_likelihood()
 
     # rescale values of the log-likelihood before exponentiating
     likelihood -= np.nanmax(likelihood[likelihood < np.inf])

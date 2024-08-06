@@ -7,6 +7,8 @@ from __future__ import absolute_import
 import numpy as np
 
 from scipy.interpolate import interp1d
+import bilby 
+from gwcosmo.utilities.mass_prior_utilities import multipeak_constraint
 
 from . import custom_math_priors as _cmp
 
@@ -74,52 +76,10 @@ class m_priors(object):
 
     def update_parameters(self,param_dict):
         """
-        Update values of mass priors parameters.
-        For more details about functions/parameter definitions see 2111.03604
+        Method to dynamically determine attributes in a mass prior class and use these.
         """
-        #Minimum mass of the PL component of the black hole mass distribution
-        if 'mminbh' in param_dict:
-            self.mminbh = param_dict['mminbh']
-        #Maximum mass of the PL component of the black hole mass distribution
-        if 'mmaxbh' in param_dict:
-            self.mmaxbh = param_dict['mmaxbh']
-        #Spectral index for the PL of the primary mass distribution
-        if 'alpha' in param_dict:
-            self.alpha = param_dict['alpha']
-        #Mean of the Gaussian component in the primary mass distribution
-        if 'mu_g' in param_dict:
-            self.mu_g = param_dict['mu_g']
-        #Width of the Gaussian component in the primary mass distribution
-        if 'sigma_g' in param_dict:
-            self.sigma_g = param_dict['sigma_g']
-        #Fraction of the model in the Gaussian component
-        if 'lambda_peak' in param_dict:
-            self.lambda_peak = param_dict['lambda_peak']
-        #PL slope of the primary mass distribution for masses below mbreak
-        if 'alpha_1' in param_dict:
-            self.alpha_1 = param_dict['alpha_1']
-        #PL slope for the primary mass distribution for masses above mbreak
-        if 'alpha_2' in param_dict:
-            self.alpha_2 = param_dict['alpha_2']
-        #The fraction of the way between mminbh and mmaxbh at which the primary mass distribution breaks
-        if 'b' in param_dict:
-            self.b = param_dict['b']
-        #Range of mass tapering on the lower end of the mass distribution
-        if 'delta_m' in param_dict:
-            self.delta_m = param_dict['delta_m']
-        #Spectral index for the PL of the mass ratio distribution
-        if 'beta' in param_dict:
-            self.beta = param_dict['beta']        
-        #Minimum mass of the neutron star distribution
-        if 'mminns' in param_dict:
-            self.mminns = param_dict['mminns']
-        #Maximum mass of the neutron star distribution
-        if 'mmaxns' in param_dict:
-            self.mmaxns = param_dict['mmaxns']
-        #Spectral index for the PL of the neutron star mass distribution
-        if 'alphans' in param_dict:
-            self.alphans = param_dict['alphans']
-        #updates the mass prior objects dictionary and some auxiliary variables of the mass children classes
+        for key, value in param_dict.items():
+            setattr(self, key, value)
         self.update_mass_priors()
 
     def joint_prob(self, ms1, ms2):
@@ -183,6 +143,14 @@ class m_priors(object):
         mass_2_samples = 10**interpo_icdf_m2(vals_m2*self.mdis['mass_2'].cdf(mass_1_samples))
 
         return mass_1_samples, mass_2_samples
+    
+    @staticmethod
+    def grid_constraint(*args):
+        pass 
+
+    @staticmethod
+    def sampling_constraint(prior_dict):
+        return prior_dict
 
 class BBH_powerlaw(m_priors):
     """
@@ -225,6 +193,7 @@ class BBH_powerlaw(m_priors):
 
         self.mdis={'mass_1':_cmp.PowerLaw_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh),
                      'mass_2':_cmp.PowerLaw_math(alpha=self.beta,min_pl=self.mminbh,max_pl=self.mmaxbh)}
+        
 
 class NSBH_powerlaw(m_priors):
     """
@@ -270,7 +239,7 @@ class NSBH_powerlaw(m_priors):
 
         self.mdis={'mass_1':_cmp.PowerLaw_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh),
                      'mass_2':_cmp.PowerLaw_math(alpha=-self.alphans,min_pl=self.mminns,max_pl=self.mmaxns)}
-
+   
 class BBH_powerlaw_gaussian(m_priors):
     """
     Child class for BBH power law gaussian distribution.
@@ -282,7 +251,7 @@ class BBH_powerlaw_gaussian(m_priors):
     alpha: Spectral index for the PL of the primary mass distribution    
     mu_g: Mean of the Gaussian component in the primary mass distribution
     sigma_g: Width of the Gaussian component in the primary mass distribution
-    lambda_peak: Fraction of the model in the Gaussian component
+    lambda_g: Fraction of the model in the Gaussian component
     delta_m: Range of mass tapering on the lower end of the mass distribution
     beta: Spectral index for the PL of the mass ratio distribution
 
@@ -294,10 +263,10 @@ class BBH_powerlaw_gaussian(m_priors):
 
     The method m_priors.update_parameters is used in the constructor to initialize the objects.
     """
-    def __init__(self,mminbh=4.98,mmaxbh=112.5,alpha=3.78,mu_g=32.27,sigma_g=3.88,lambda_peak=0.03,delta_m=4.8,beta=0.81):
+    def __init__(self,mminbh=4.98,mmaxbh=112.5,alpha=3.78,mu_g=32.27,sigma_g=3.88,lambda_g=0.03,delta_m=4.8,beta=0.81):
         super().__init__()
-
-        self.update_parameters(param_dict={'alpha':alpha, 'beta':beta, 'mminbh':mminbh, 'mmaxbh':mmaxbh, 'mu_g':mu_g, 'sigma_g':sigma_g, 'lambda_peak':lambda_peak, 'delta_m':delta_m})
+        
+        self.update_parameters(param_dict={'alpha':alpha, 'beta':beta, 'mminbh':mminbh, 'mmaxbh':mmaxbh, 'mu_g':mu_g, 'sigma_g':sigma_g, 'lambda_g':lambda_g, 'delta_m':delta_m})
 
     def update_mass_priors(self):
         ''' 
@@ -310,8 +279,8 @@ class BBH_powerlaw_gaussian(m_priors):
         and mmax, mmin and mmax2 definitions depend on the mass prior model.          
         '''
                        
-        self.m1pr = _cmp.PowerLawGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_peak
-                    ,mean_g=self.mu_g,sigma_g=self.sigma_g,min_g=self.mminbh,max_g=self.mu_g+5*self.sigma_g)
+        self.m1pr = _cmp.PowerLawGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_g
+                    ,mu_g=self.mu_g,sigma_g=self.sigma_g,min_g=self.mminbh,max_g=self.mu_g+5*self.sigma_g)
 
         # The max of the secondary mass is adapted to the primary mass maximum which is desided byt the Gaussian and PL
         self.m2pr = _cmp.PowerLaw_math(alpha=self.beta,min_pl=self.mminbh,max_pl=np.max([self.mu_g+5*self.sigma_g,self.mmaxbh]))
@@ -327,7 +296,6 @@ class BBH_powerlaw_gaussian(m_priors):
         self.mmin = self.mminbh  
         self.mmax2 = self.mmaxbh
 
-
 class NSBH_powerlaw_gaussian(m_priors):
     """
     Child class for NS-BH power law gaussian distribution.
@@ -339,7 +307,7 @@ class NSBH_powerlaw_gaussian(m_priors):
     alpha: Spectral index for the PL of the primary mass distribution    
     mu_g: Mean of the Gaussian component in the primary mass distribution
     sigma_g: Width of the Gaussian component in the primary mass distribution
-    lambda_peak: Fraction of the model in the Gaussian component    
+    lambda_g: Fraction of the model in the Gaussian component    
     delta_m: Range of mass tapering on the lower end of the mass distribution
     mminns: Minimum mass of the neutron star distribution
     mmaxns: Maximum mass of the neutron star distribution
@@ -353,10 +321,10 @@ class NSBH_powerlaw_gaussian(m_priors):
         
     The method m_priors.update_parameters is used in the constructor to initialize the objects.
     """
-    def __init__(self,mminbh=4.98,mmaxbh=112.5,alpha=3.78,mu_g=32.27,sigma_g=3.88,lambda_peak=0.03,delta_m=4.8,mminns=1.0,mmaxns=3.0,alphans=0.0):
+    def __init__(self,mminbh=4.98,mmaxbh=112.5,alpha=3.78,mu_g=32.27,sigma_g=3.88,lambda_g=0.03,delta_m=4.8,mminns=1.0,mmaxns=3.0,alphans=0.0):
         super().__init__()
 
-        self.update_parameters(param_dict={'alpha':alpha, 'mminbh':mminbh, 'mmaxbh':mmaxbh, 'mu_g':mu_g, 'sigma_g':sigma_g, 'lambda_peak':lambda_peak, 'delta_m':delta_m, 'alphans':alphans, 'mminns':mminns, 'mmaxns':mmaxns})
+        self.update_parameters(param_dict={'alpha':alpha, 'mminbh':mminbh, 'mmaxbh':mmaxbh, 'mu_g':mu_g, 'sigma_g':sigma_g, 'lambda_g':lambda_g, 'delta_m':delta_m, 'alphans':alphans, 'mminns':mminns, 'mmaxns':mmaxns})
 
     def update_mass_priors(self):
         ''' 
@@ -369,8 +337,8 @@ class NSBH_powerlaw_gaussian(m_priors):
         and mmax, mmin and mmax2 definitions depend on the mass prior model.          
         '''
                 
-        self.m1pr = _cmp.PowerLawGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_peak
-                    ,mean_g=self.mu_g,sigma_g=self.sigma_g,min_g=self.mminbh,max_g=self.mu_g+5*self.sigma_g)
+        self.m1pr = _cmp.PowerLawGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_g
+                    ,mu_g=self.mu_g,sigma_g=self.sigma_g,min_g=self.mminbh,max_g=self.mu_g+5*self.sigma_g)
 
         # The max of the secondary mass is adapted to the primary mass maximum which is desided byt the Gaussian and PL
         self.m2pr = _cmp.PowerLaw_math(alpha=-self.alphans,min_pl=self.mminns,max_pl=self.mmaxns)
@@ -480,6 +448,222 @@ class NSBH_broken_powerlaw(m_priors):
 
         self.mdis={'mass_1': _cmp.SmoothedProb(origin_prob=self.m1pr,bottom=self.mminbh,bottom_smooth=self.delta_m),
                       'mass_2':self.m2pr}
+             
+
+class BBH_multi_peak_gaussian(m_priors):
+    """
+    Child class for BBH with powerlaw component and two gaussian peaks.
+
+    Parameters
+    -------------
+    mminbh: Minimum mass of the PL component of the black hole mass distribution
+    mmaxbh: Maximum mass of the PL component of the black hole mass distribution
+    alpha: Spectral index for the PL of the primary mass distribution    
+    mu_g_low: Mean of the lower mass Gaussian component in the primary mass distribution
+    sigma_g_low: Width of the lower mass Gaussian component in the primary mass distribution
+    mu_g_high: Mean of the higher mass Gaussian component in the primary mass distribution
+    sigma_g_high: Width of the higher mass Gaussian component in the primary mass distribution
+    lambda_g: Fraction of the model in the Gaussian component
+    lambda_g_low: Fraction of the Gaussian component in the lower mass peak
+    delta_m: Range of mass tapering on the lower end of the mass distribution
+    beta: Spectral index for the PL of the mass ratio distribution
+
+    ************
+    NOTE: The spectral indices passed to PowerLawDoubleGaussian_math, and PowerLaw_math, are alpha=-self.alpha, and alpha=self.beta, according to eqs. A8,A11 in 2111.03604
+    ************* 
+    
+    The method m_priors.update_parameters is used in the constructor to initialize the objects.
+    """
+    def __init__(self,alpha=3.78,beta=0.8,mminbh=4.98,mmaxbh=112.5,lambda_g=0.03,lambda_g_low= 0.5,mu_g_low=10.5,sigma_g_low=3.88,mu_g_high=32.27,sigma_g_high=5,delta_m=5):
+        super().__init__()
+
+        self.update_parameters(param_dict={'alpha':alpha,'beta':beta,'mminbh':mminbh,'mmaxbh':mmaxbh,'lambda_g':lambda_g,'lambda_g_low':lambda_g_low,'mu_g_low':mu_g_low,'sigma_g_low':sigma_g_low,'mu_g_high':mu_g_high,'sigma_g_high':sigma_g_high,'delta_m':delta_m})
+
+    def update_mass_priors(self):
+        ''' 
+        This method creates a dictionary of mass distributions objects.         
+        It sets the maximum value of the primary mass distribution mmax to self.mdis['mass_1'].maximum, 
+        the minimum value of the secondary mass distribution mmin to mminbh, 
+        and the maximum value of the secondary mass distribution mmax2 to mmaxbh.
+        It's called by update_parameters everytime the mass priors parameters are changed.
+        Every mass priors model has a different implementation because the distributions are different,
+        and mmax, mmin and mmax2 definitions depend on the mass prior model.          
+        '''
+
+        self.m1pr =_cmp.PowerLawDoubleGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_g,lambda_g_low=self.lambda_g_low,
+                                                    mu_g_low=self.mu_g_low,sigma_g_low=self.sigma_g_low,mu_g_high=self.mu_g_high,sigma_g_high=self.sigma_g_high,min_g=self.mminbh,max_g=self.mu_g_high+5*self.sigma_g_high)
+        
+
+        self.m2pr =_cmp.PowerLaw_math(alpha=self.beta,min_pl=self.mminbh,max_pl=np.max([self.mu_g_low+5*self.sigma_g_low,self.mmaxbh]))
+
+        self.mdis={'mass_1': _cmp.SmoothedProb(origin_prob=self.m1pr,bottom=self.mminbh,bottom_smooth=self.delta_m),
+                      'mass_2':_cmp.SmoothedProb(origin_prob=self.m2pr,bottom=self.mminbh,bottom_smooth=self.delta_m)}
+
+        self.mmax = self.mdis['mass_1'].maximum
+        self.mmin = self.mminbh
+        self.mmax2 = self.mmaxbh
+
+    @staticmethod
+    def grid_constraint(likelihood, values, parameter_grid, fixed_params):
+        """
+        Function to remove parameter space that does not follow constraint for multi-peak mass prior in gridded method
+        """
+        
+        # constraint for mu_g_low sampling and mu_g_high fixed
+        if ('mu_g_low' in parameter_grid.keys()) & ('mu_g_high' in fixed_params.keys()):
+            if np.max(parameter_grid['mu_g_low']) > fixed_params['mu_g_high']:
+                raise ValueError(f"Value for maximum lower peak {np.max(parameter_grid['mu_g_low'])} is greater than fixed upper peak {fixed_params['mu_g_high']}.")
+        # constraint for mu_g_low fixed and mu_g_high sampling
+        elif ('mu_g_high' in parameter_grid.keys()) & ('mu_g_low' in fixed_params.keys()):
+            if np.min(parameter_grid['mu_g_high']) < fixed_params['mu_g_low']:
+                raise ValueError(f"Value for minimum upper peak {np.min(parameter_grid['mu_g_high'])} is less than fixed lower peak {fixed_params['mu_g_low']}.")
+        # constraint for mu_g_low fixed and mu_g_high fixed
+        elif ('mu_g_low' in fixed_params.keys()) & ('mu_g_high' in fixed_params.keys()): 
+            if fixed_params['mu_g_low'] > fixed_params['mu_g_high']:
+                raise ValueError(f"Value for lower peak {fixed_params['mu_g_low']} is greater than upper peak {fixed_params['mu_g_high']}.")
+        else:
+            names  = list(parameter_grid.keys())
+            idx_low = names.index('mu_g_low')
+            idx_high = names.index('mu_g_high')
+            mask = [x[idx_high] < x[idx_low] for x in values]
+            shape = likelihood.shape
+            reshaped_mask = np.array(mask).reshape(shape)
+            likelihood[reshaped_mask] = -np.inf
+
+    @staticmethod
+    def sampling_constraint(prior_dict):
+        """
+        Function to set up constraint prior dictionary for multi-peak mass prior in sampling method
+        """
+
+        # constraint for mu_g_low sampling and mu_g_high fixed
+        if (type(prior_dict['mu_g_low']) in {bilby.core.prior.Uniform, bilby.core.prior.Gaussian}) & (type(prior_dict['mu_g_high']) == float):
+            if prior_dict['mu_g_low'].maximum > prior_dict['mu_g_high']:
+                raise ValueError(f"Value for maximum lower peak {prior_dict['mu_g_low'].maximum} is greater than fixed upper peak {prior_dict['mu_g_high']}.")
+        # constraint for mu_g_low fixed and mu_g_high sampling
+        elif (type(prior_dict['mu_g_high']) in {bilby.core.prior.Uniform, bilby.core.prior.Gaussian}) & (type(prior_dict['mu_g_low']) == float):
+            if prior_dict['mu_g_low'] > prior_dict['mu_g_high'].minimum:
+                raise ValueError(f"Value for minimum upper peak {prior_dict['mu_g_high'].minimum} is lower than fixed lower peak {prior_dict['mu_g_low']}.")
+        # constraint for mu_g_low fixed and mu_g_high fixed
+        elif(type(prior_dict['mu_g_high']) == float) & (type(prior_dict['mu_g_low']) == float): 
+            if prior_dict['mu_g_low'] > prior_dict['mu_g_high']:
+                raise ValueError(f"Value for lower peak {prior_dict['mu_g_low']} is greater than upper peak {prior_dict['mu_g_high']}.")
+        # constraint for mu_g_low sampling and mu_g_high sampling with constrained prior
+        else :
+            prior_dict = bilby.core.prior.PriorDict(prior_dict, conversion_function = multipeak_constraint)
+            prior_dict['peak_constraint'] = bilby.core.prior.Constraint(minimum = 0, maximum = 5000)   
+        return prior_dict
+
+
+class NSBH_multi_peak_gaussian(m_priors):
+    """
+    Child class for NS-BH with powerlaw component and two gaussian peaks.
+
+    Parameters
+    -------------
+    mminbh: Minimum mass of the PL component of the black hole mass distribution
+    mmaxbh: Maximum mass of the PL component of the black hole mass distribution
+    alpha: Spectral index for the PL of the primary mass distribution    
+    mu_g_low: Mean of the lower mass Gaussian component in the primary mass distribution
+    sigma_g_low: Width of the lower mass Gaussian component in the primary mass distribution
+    mu_g_high: Mean of the higher mass Gaussian component in the primary mass distribution
+    sigma_g_high: Width of the higher mass Gaussian component in the primary mass distribution
+    lambda_g: Fraction of the model in the Gaussian component
+    lambda_g_low: Fraction of the Gaussian component in the lower mass peak
+    delta_m: Range of mass tapering on the lower end of the mass distribution
+    mminns: Minimum mass of the neutron star distribution
+    mmaxns: Maximum mass of the neutron star distribution
+    alphans: Spectral index for the PL of the neutron star mass distribution
+
+    ************
+    NOTE: The spectral indices passed to PowerLawDoubleGaussian_math, and PowerLaw_math, are alpha=-self.alpha, and alpha=-self.alphans, according to eqs. A10,A11 in 2111.03604
+    *************
+    
+    The method m_priors.update_parameters is used in the constructor to initialize the objects.
+    """
+
+    def __init__(self,alpha=3.78,mminbh=4.98,mmaxbh=112.5,lambda_g=0.03,lambda_g_low= 0.5,mu_g_low=10.5,sigma_g_low=3.88,mu_g_high=32.27,sigma_g_high=5,delta_m=5,mminns=1.0,mmaxns=3.0,alphans=0):
+        super().__init__()
+
+        self.update_parameters(param_dict={'alpha':alpha,'mminbh':mminbh,'mmaxbh':mmaxbh,'lambda_g':lambda_g,'lambda_g_low':lambda_g_low,'mu_g_low':mu_g_low,'sigma_g_low':sigma_g_low,'mu_g_high':mu_g_high,'sigma_g_high':sigma_g_high,'delta_m':delta_m,'mminns':mminns,'mmaxns':mmaxns,'alphans':alphans})
+
+    def update_mass_priors(self):
+        ''' 
+        This method creates a dictionary of mass distributions objects.         
+        It sets the maximum value of the primary mass distribution mmax to self.mdis['mass_1'].maximum, 
+        the minimum value of the secondary mass distribution mmin to mminns, 
+        and the maximum value of the secondary mass distribution mmax2 to mmaxns.
+        It's called by update_parameters everytime the mass priors parameters are changed.
+        Every mass priors model has a different implementation because the distributions are different,
+        and mmax, mmin and mmax2 definitions depend on the mass prior model.          
+        '''
+
+
+        self.m1pr =_cmp.PowerLawDoubleGaussian_math(alpha=-self.alpha,min_pl=self.mminbh,max_pl=self.mmaxbh,lambda_g=self.lambda_g,lambda_g_low=self.lambda_g_low,
+                                                    mu_g_low=self.mu_g_low,sigma_g_low=self.sigma_g_low,mu_g_high=self.mu_g_high,sigma_g_high=self.sigma_g_high,min_g=self.mminbh,max_g=self.mu_g_high+5*self.sigma_g_high)
+        
+
+        self.m2pr = _cmp.PowerLaw_math(alpha=-self.alphans,min_pl=self.mminns,max_pl=self.mmaxns)
+
+        self.mdis={'mass_1': _cmp.SmoothedProb(origin_prob=self.m1pr,bottom=self.mminbh,bottom_smooth=self.delta_m),
+                      'mass_2': self.m2pr}
+
+        self.mmax = self.mdis['mass_1'].maximum
+        self.mmin = self.mminns
+        self.mmax2 = self.mmaxns
+
+    @staticmethod
+    def grid_constraint(constraint_grid, values, parameter_grid, fixed_params):
+        """
+        Function to remove parameter space that does not follow constraint for multi-peak mass prior in gridded method
+        """
+        
+        # constraint for mu_g_low sampling and mu_g_high fixed
+        if ('mu_g_low' in parameter_grid.keys()) & ('mu_g_high' in fixed_params.keys()):
+            if np.max(parameter_grid['mu_g_low']) > fixed_params['mu_g_high']:
+                raise ValueError(f"Value for maximum lower peak {np.max(parameter_grid['mu_g_low'])} is greater than fixed upper peak {fixed_params['mu_g_high']}.")
+        # constraint for mu_g_low fixed and mu_g_high sampling
+        elif ('mu_g_high' in parameter_grid.keys()) & ('mu_g_low' in fixed_params.keys()):
+            if np.min(parameter_grid['mu_g_high']) < fixed_params['mu_g_low']:
+                raise ValueError(f"Value for minimum upper peak {np.min(parameter_grid['mu_g_high'])} is less than fixed lower peak {fixed_params['mu_g_low']}.")
+        # constraint for mu_g_low fixed and mu_g_high fixed
+        elif ('mu_g_low' in fixed_params.keys()) & ('mu_g_high' in fixed_params.keys()): 
+            if fixed_params['mu_g_low'] > fixed_params['mu_g_high']:
+                raise ValueError(f"Value for lower peak {fixed_params['mu_g_low']} is greater than upper peak {fixed_params['mu_g_high']}.")
+        else:
+            names  = list(parameter_grid.keys())
+            idx_low = names.index('mu_g_low')
+            idx_high = names.index('mu_g_high')
+            mask = [x[idx_high] < x[idx_low] for x in values]
+            shape = constraint_grid.shape
+            reshaped_mask = np.array(mask).reshape(shape)
+            constraint_grid[reshaped_mask] = -np.inf
+
+        return constraint_grid
+    
+    @staticmethod
+    def sampling_constraint(prior_dict):
+        """
+        Function to set up constraint prior dictionary for multi-peak mass prior in sampling method
+        """
+
+        # constraint for mu_g_low sampling and mu_g_high fixed
+        if (type(prior_dict['mu_g_low']) in {bilby.core.prior.Uniform, bilby.core.prior.Gaussian}) & (type(prior_dict['mu_g_high']) == float):
+            if prior_dict['mu_g_low'].maximum > prior_dict['mu_g_high']:
+                raise ValueError(f"Value for maximum lower peak {prior_dict['mu_g_low'].maximum} is greater than fixed upper peak {prior_dict['mu_g_high']}.")
+        # constraint for mu_g_low fixed and mu_g_high sampling
+        elif (type(prior_dict['mu_g_high']) in {bilby.core.prior.Uniform, bilby.core.prior.Gaussian}) & (type(prior_dict['mu_g_low']) == float):
+            if prior_dict['mu_g_low'] > prior_dict['mu_g_high'].minimum:
+                raise ValueError(f"Value for minimum upper peak {prior_dict['mu_g_high'].minimum} is lower than fixed lower peak {prior_dict['mu_g_low']}.")
+        # constraint for mu_g_low fixed and mu_g_high fixed
+        elif(type(prior_dict['mu_g_high']) == float) & (type(prior_dict['mu_g_low']) == float): 
+            if prior_dict['mu_g_low'] > prior_dict['mu_g_high']:
+                raise ValueError(f"Value for lower peak {prior_dict['mu_g_low']} is greater than upper peak {prior_dict['mu_g_high']}.")
+        # constraint for mu_g_low sampling and mu_g_high sampling with constrained prior
+        else :
+            prior_dict = bilby.core.prior.PriorDict(prior_dict, conversion_function = multipeak_constraint)
+            prior_dict['peak_constraint'] = bilby.core.prior.Constraint(minimum = 0, maximum = 5000)   
+        return prior_dict
 
 class BNS(m_priors):
     """
@@ -573,3 +757,7 @@ class BNS(m_priors):
         mass_1_samples[indx],mass_2_samples[indx] = mass_2_samples[indx],mass_1_samples[indx]
 
         return mass_1_samples, mass_2_samples
+        
+
+
+ 

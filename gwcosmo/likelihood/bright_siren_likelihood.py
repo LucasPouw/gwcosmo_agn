@@ -9,6 +9,7 @@ import numpy as np
 from scipy.integrate import simpson, quad
 from scipy.interpolate import interp1d
 from gwcosmo.utilities.cosmology import standard_cosmology
+from gwcosmo.utilities.mass_prior_utilities import extract_parameters_from_instance
 from gwcosmo.likelihood.posterior_samples import *
 from gwcosmo.likelihood.skymap import *
 import gwcosmo
@@ -63,12 +64,20 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
             Assumed Omega_m (if Flat Lambda CDM cosmology)  while constructing skymap if skymap_prior_distance is "UniformComoving".
         """
 
-        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None, 'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None, 'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None, 'beta':None, 'alphans':None, 'mminns':None, 'mmaxns':None, 'Xi0':None, 'n':None, 'D':None, 'logRc':None, 'nD':None, 'cM':None})
+
+        mass_prior_params = extract_parameters_from_instance(mass_priors)
+        
+        for param_name in mass_prior_params:
+            mass_prior_params[param_name] = None
+
+        super().__init__(parameters={'H0': None, 'Xi0': None, 'n': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'D':None, 'logRc':None, 'nD':None, 'cM':None, **mass_prior_params}) 
+
 
         # em couterpart information
         self.counterpart_dictionary = counterpart_dictionary
         #redshift evolution model
         self.zrates = zrates
+        self.mass_prior_params = mass_prior_params
 
         #selection effect
         self.injections = injections
@@ -256,24 +265,20 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
     def log_likelihood(self):
 
+        # update cosmo parameters
+
         self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
+
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
+        # update redshift evo parameters
         self.zrates.gamma = self.parameters['gamma']
         self.zrates.k = self.parameters['Madau_k']
         self.zrates.zp = self.parameters['Madau_zp']
 
-        self.mass_priors_param_dict = {'alpha':self.parameters['alpha'], 'delta_m':self.parameters['delta_m'], 
-                                         'mu_g':self.parameters['mu_g'], 'sigma_g':self.parameters['sigma_g'], 
-                                         'lambda_peak':self.parameters['lambda_peak'],
-                                         'alpha_1':self.parameters['alpha_1'], 
-                                         'alpha_2':self.parameters['alpha_2'], 'b':self.parameters['b'], 
-                                         'mminbh':self.parameters['mminbh'], 'mmaxbh':self.parameters['mmaxbh'], 
-                                         'beta':self.parameters['beta'], 'alphans':self.parameters['alphans'],
-                                         'mminns':self.parameters['mminns'], 'mmaxns':self.parameters['mmaxns']}
-
+        # update mass prior parameters
+        self.mass_priors_param_dict = {name: self.parameters[name] for name in self.mass_prior_params.keys()}
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
-
 
         if self.posterior_samples_dictionary is not None:
             self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
