@@ -65,7 +65,7 @@
         "prior" : "Uniform",
         "label" : "$\\sigma_g$"
     },
-    "lambda_peak": {
+    "lambda_g": {
         "value": 0.03, 
         "description" : "Relative weighting between the powerlaw and gaussian component of the primary powerlaw-gaussian BH mass distribution.",
         "prior" : "Uniform",
