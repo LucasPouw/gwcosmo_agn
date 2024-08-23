@@ -10,11 +10,14 @@ import json
 import pickle
 import bilby
 import h5py
+import os
+import sys
 from itertools import product
 from tqdm import tqdm
 
 from gwcosmo.utilities.posterior_utilities import str2bool
 from gwcosmo.utilities.arguments import create_parser
+from gwcosmo.utilities.injections_utilities import default_ifar_value
 from gwcosmo.utilities.cosmology import *
 from gwcosmo.utilities.check_boundary import *
 from gwcosmo.injections import injections_at_detector
@@ -34,7 +37,29 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-parser = create_parser("--method", "--posterior_samples", "--posterior_samples_field", "--skymap", "--redshift_evolution", "--reweight_posterior_samples", "--sky_area", "--min_pixels",  "--outputfile", "--LOS_catalog", "--parameter_dict", "--plot", "--injections_path", "--mass_model", "--snr", "--gravity_model", '--sampler', "--nwalkers", "--npool", "--walks", "--nsteps", "--nlive", "--dlogz")
+parser = create_parser("--method",
+                       "--posterior_samples",
+                       "--redshift_evolution",
+                       "--reweight_posterior_samples",
+                       "--sky_area",
+                       "--min_pixels",
+                       "--min_samps_in_pixel",
+                       "--outputfile",
+                       "--LOS_catalog",
+                       "--parameter_dict",
+                       "--plot",
+                       "--injections_path",
+                       "--mass_model",
+                       "--snr",
+                       "--ifar",
+                       "--gravity_model",
+                       "--sampler",
+                       "--nwalkers",
+                       "--npool",
+                       "--walks",
+                       "--nsteps",
+                       "--nlive",
+                       "--dlogz")
 
 opts = parser.parse_args()
 
@@ -55,57 +80,82 @@ if opts.posterior_samples is not None:
         with open(str(opts.posterior_samples)) as json_file:
             posterior_samples_dictionary = json.load(json_file)
     else:
-        posterior_samples_dictionary = {}
-        posterior_samples_dictionary['event'] = str(opts.posterior_samples)
+        err_str = """Missing posterior samples. Expecting a json file with format:\n
+        {
+           "GW150914_095045":
+              {
+	         "posterior_file_path" : "/path/to/GW150914.h5",
+	         "samples_field" : "C01:Mixed",
+	         "skymap_path" : "/path/to/GW150914_skymap.fits"
+              }
+        }
+        """
+        parser.error(err_str)
 else:
-    parser.error('Missing posterior samples')
-    
-if opts.skymap is not None:
-    if str(opts.skymap).endswith('.json'):
-        with open(str(opts.skymap)) as json_file:
-            skymaps_dictionary = json.load(json_file)
-    else:
-        skymaps_dictionary = {}
-        skymaps_dictionary['event'] = str(opts.skymap)
-else:
-    parser.error('Missing skymap')
-    
+    parser.error("Missing posterior samples")
+
+
+print("\nGW events parameters are:\n")
+missing_files = {}
+for evt_k, evt_v in posterior_samples_dictionary.items():
+    print(f"--- {evt_k}:---")
+    if "skymap_path" not in evt_v:
+        raise ValueError(f"GW event {evt_k} has not skymap. Exiting.")
+    if "posterior_file_path" not in evt_v:
+        raise ValueError(f"GW event {evt_k} has not PE samples. Exiting.")
+    for k, v in evt_v.items():
+        if "_path" not in k: # check if it is a key associated with a file path
+            print("           Paths check: skip key {}".format(k))
+            continue
+        if not (file_exists := os.path.exists(v)):
+            missing_files.setdefault(evt_k, {}).update({k: v})
+        add_txt = "DOES NOT EXIST!" if not file_exists else "FILE OK"
+        print(f"           {k} -> {v}: {add_txt}")
+    print("\n")
+
+if missing_files:
+    print("PE or skymaps files are missing:")
+    for evt_k, evt_v in missing_files.items():
+        print(f"--- {evt_k}:---")
+        for k, v in evt_v.items():
+            print(f"      missing {k} -> {v}")
+    print("Exiting.")
+    sys.exit()
+
 if opts.parameter_dict is not None:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
 else:
     parser.error('Missing parameters file')
 
-if opts.posterior_samples_field is not None:
-    if str(opts.posterior_samples_field).endswith('.json'):
-        with open(str(opts.posterior_samples_field)) as json_file:
-            posterior_samples_field_dictionary = json.load(json_file)
-        for key in posterior_samples_dictionary.keys():
-            if key in posterior_samples_field_dictionary.keys():
-                pass
-            else:
-                posterior_samples_field_dictionary[key] = None 
-    else:
-        posterior_samples_field_dictionary = {}
-        posterior_samples_field_dictionary['event'] = str(opts.posterior_samples_field)
-else:
-    posterior_samples_field_dictionary = {}
-    for key in posterior_samples_dictionary.keys():
-        posterior_samples_field_dictionary[key] = None 
 
 try :
     injdata = h5py.File(opts.injections_path,'r')
 except OSError:
     injdata = h5py.File(opts.injections_path,'r', locking=False)
 
+if 'ifar' in injdata.keys():
+    ifar = np.array(injdata['ifar'])
+else:
+    ifar = default_ifar_value+0*np.array(injdata['m1d'])
+
+if opts.snr == None and opts.ifar != None:
+    opts.snr = 0
+elif opts.snr != None and opts.ifar == None:
+    opts.ifar = 0
+elif opts.snr == None and opts.ifar == None:
+    parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
+print("Analysis will be run with cuts on SNR: {} OR IFAR: {}".format(opts.snr,opts.ifar))
+print("For software injections, the IFAR is known: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
+
 injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     m2d=np.array(injdata['m2d']),
                                     dl=np.array(injdata['dl']),
                                     prior_vals=np.array(injdata['pini']),
                                     snr_det=np.array(injdata['snr']),
-                                    snr_cut=0,
-                                    ifar=np.inf+0*np.array(injdata['m1d']),
-                                    ifar_cut=0,
+                                    snr_cut=opts.snr,
+                                    ifar=ifar,
+                                    ifar_cut=opts.ifar,
                                     ntotal=np.array(injdata['ntotal']),
                                     Tobs=np.array(injdata['Tobs']))
 injdata.close()
@@ -161,8 +211,16 @@ min_pixels = int(opts.min_pixels)
 sky_area = float(opts.sky_area)
 
 me = gwcosmo.likelihood.dark_siren_likelihood.PixelatedGalaxyCatalogMultipleEventLikelihood(posterior_samples_dictionary, \
-                skymaps_dictionary, injections, LOS_catalog_path, ps_z, cosmo, mass_priors, min_pixels=min_pixels, sky_area=sky_area, \
-                posterior_samples_field=posterior_samples_field_dictionary, network_snr_threshold=opts.snr)
+                                                                                            injections,
+                                                                                            LOS_catalog_path,
+                                                                                            ps_z,
+                                                                                            cosmo,
+                                                                                            mass_priors,
+                                                                                            min_pixels=min_pixels,
+                                                                                            min_samps_in_pixel=opts.min_samps_in_pixel,
+                                                                                            sky_area=sky_area, \
+                                                                                            network_snr_threshold=opts.snr,
+                                                                                            ifar_cut=opts.ifar)
 
 for key in parameter_dict:
     if key not in me.parameters.keys():
@@ -194,9 +252,14 @@ if method == 'sampling':
                 raise ValueError(f"Unrecognised prior settings for parameter {key} (specify 'Uniform' or 'Gaussian'.")
         else:
             priors[key] = float(parameter_dict[key]['value'])
-
+              
     sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
-
+    print("Sampling method",sampling_method)
+    print("\nPriors used:")
+    for k in priors.keys():
+        print("\t{}: {}".format(k,priors[k]))
+    print("\n")
+    
     bilbyresult = bilby.run_sampler(
     likelihood=me,
     priors=priors,
@@ -261,7 +324,7 @@ elif method == 'gridded':
             me.parameters[name] = value[n]
             n += 1
         likelihood[indices[i]] = me.log_likelihood()
-
+        
     # rescale values of the log-likelihood before exponentiating
     likelihood -= np.nanmax(likelihood[likelihood < np.inf])
     likelihood = np.exp(likelihood)

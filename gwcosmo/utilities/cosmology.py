@@ -213,7 +213,6 @@ class standard_cosmology(object):
         """
         H_z = self.H0*h(z, self.Omega_m, self.w0, self.wa)
         dgw_z = self.dgw_z(z)
-
         return dgw_z/(1+z) + c*(1+z)/H_z * self.dgw_dL_ratio(z) + dgw_z * self.dgw_dL_ratio_dbyz(z)
 
     def volume_z(self, z):

@@ -42,6 +42,7 @@ gwcosmo_create_injections --tmp_to_stdout tmp_detected_events_1_2.00.p
 ```
 
 ### TYPICAL SITUATION: usage on a cluster with `dag/htcondor`, for O1-O2-O3-O4:
+You may need to install the `htcondor` python package with pip: `pip install htcondor`.<br>
 By default, injections are computed for O1-O2-O3-O4 with the following duty cycles and run durations:
 ```
 Using observation days: {'O1': 129, 'O2': 268, 'O3': 330, 'O4': 330}

@@ -14,7 +14,7 @@ from astropy import units as _u
 from scipy.special import logsumexp as _logsumexp
 
 
-__all__=['injections_at_detector','injections_at_source']
+__all__=['injections_at_detector']
 
 
 class Injections():
@@ -39,7 +39,7 @@ class Injections():
         snr_det: _np.arrray
             SNR of detected events (provide if file_injection is not provided)
         snr_cut: float
-            Set different to 0 if you wanto to apply a different SNR cut.
+            Set different to 0 if you want to apply a different SNR cut.
         ifar: _np.array
             IFAR of the detected events (IFAR = Inverse False Alarm Rate)
         ifar_cut: float
@@ -55,7 +55,6 @@ class Injections():
         """
         # Saves what you provided in the class
         self.condition_check = condition_check
-        self.snr_cut = snr_cut
         self.ntotal = 1.*ntotal # floating value to prevent an overflow when computing ntotal**2
         self.ntotal_original = 1.*ntotal # floating value
         self.dl_original = dl
@@ -64,54 +63,52 @@ class Injections():
         self.snr_original = snr_det
         self.ini_prior_original = prior_vals
         self.ifar = ifar
-        self.ifar_cut = ifar_cut
         self.Tobs = Tobs
         self.Nobs = Nobs # needed for the check on Neff >= 4*Nobs, the check will give True in the default case (Nobs==-1)
+        self.update_cut(snr_cut,ifar_cut)
 
-        idet=_np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
+    def get_selected_idx(self,snr_cut=0,ifar_cut=0):
 
-        self.idet=idet
-        self.m1det=m1d[idet]
-        self.m2det=m2d[idet]
-        self.dldet=dl[idet]
-        self.snrdet=self.snr_original[idet]
-        self.ini_prior=self.ini_prior_original[idet]
+        print('Selecting injections with SNR {:f} OR IFAR {:f} yr'.format(snr_cut,ifar_cut))
+        self.snr_cut = snr_cut
+        self.ifar_cut = ifar_cut
+        return _np.where((self.snr_original>self.snr_cut) | (self.ifar>self.ifar_cut))[0]
 
+    def set_selected_idx(self,idet):
+
+        self.idet = idet
+        self.m1det = self.m1d_original[self.idet]
+        self.m2det = self.m2d_original[self.idet]
+        self.dldet = self.dl_original[self.idet]
+        self.ini_prior = self.ini_prior_original[self.idet]
+        self.log_jacobian_det = self.log_origin_jacobian[self.idet]
+    
     def update_cut(self,snr_cut=0,ifar_cut=0,fraction=None):
-        print('Selecting injections with SNR {:f} and IFAR {:f} yr'.format(snr_cut,ifar_cut))
 
-        self.snr_cut=snr_cut
-        self.ifar_cut=ifar_cut
-        idet=_np.where((self.snr_original>snr_cut) & (self.ifar>self.ifar_cut))[0]
-
+        idet = self.get_selected_idx(snr_cut,ifar_cut)
+        
         #Sub-sample the selected injections in order to reduce the computational load
         if fraction is not None and (fraction > 0) and (fraction <= 1):
-            idet=_np.random.choice(idet,size=int(len(idet)*fraction),replace=False)
-            self.ntotal=int(self.ntotal_original*fraction)
+            idet = _np.random.choice(idet,size=int(len(idet)*fraction),replace=False)
+            self.ntotal = int(self.ntotal_original*fraction)
             print('Working with a total of {:d} injections'.format(len(idet)))
 
-        self.idet=idet
-        self.m1det=self.m1d_original[idet]
-        self.m2det=self.m2d_original[idet]
-        self.dldet=self.dl_original[idet]
-        self.snrdet=self.snr_original[idet]
-        self.ini_prior=self.ini_prior_original[idet]
-        self.log_jacobian_det=self.log_origin_jacobian[idet]
-
+        self.set_selected_idx(idet)
     
     def detector_frame_to_source_frame(self,cosmo,m1det,m2det,dldet):
         
         z_samples = cosmo.z_dgw(dldet)
-
-        ms1 = m1det/(1+z_samples)
-        ms2 = m2det/(1+z_samples)
+        den = 1+z_samples
+        ms1 = m1det/den
+        ms2 = m2det/den
 
         return ms1, ms2, z_samples
 
 
     def detector_to_source_jacobian(self,z,cosmo):
         
-        jacobian = _np.power(1+z,2)*cosmo.ddgw_dz(z)
+        zp1 = z+1
+        jacobian = zp1*zp1*cosmo.ddgw_dz(z)
 
         return jacobian
 
@@ -143,9 +140,10 @@ class Injections():
         log_jacobian_term = _np.log(_np.abs(self.detector_to_source_jacobian(self.z_samples, cosmo)))-self.log_jacobian_det
         self.log_weights_astro = log_numer-_np.log(self.ini_prior)-log_jacobian_term
         self.log_weights = self.log_weights_astro - _np.log(z_prior_norm)
-        # This is the Volume-Time in which we expect to detect. You can multiply it by R_0 Tobs to get the expected number of detections in Gpc^3 yr
+        # CAREFUL: VT_sens is not the number of expected events (detected) as z_prior is not normalized in gwcosmo
+        # to have Nexp, you have to divide VT_sens by z_prior_norm and multiply by the total number of mergers in the universe
         self.VT_sens=_np.exp(_logsumexp(self.log_weights_astro))/self.ntotal
-        # This is the fraction of events we expect to detect, a.k.a. the selection effect
+        # This is the fraction of events we expect to detect, Nexp/N, a.k.a. the selection effect
         self.VT_fraction=self.VT_sens/z_prior_norm
 
     def calculate_Neff(self):
@@ -159,16 +157,21 @@ class Injections():
         Neff = (mean**2)/var
         return Neff, (Neff >= 4*self.Nobs), var
 
-    def expected_number_detection(self,R0):
+    def expected_number_detection(self,R0,NtotMergers):
         """
-        This method will return the expected number of GW detection given the injection set. Tobs is automatically saved in the class creation
+        This method will return the expected number of GW detection given the injection set, population and rate models.
+        You must provide the rate of mergers at z=0 (R0 in Gpc-3 yr-1).
+        Ntotmergers 
 
         Parameters
         ----------
         R0 : float
-            Merger rate in comoving volume in Gpc-3yr-1
+            Merger rate in comoving volume in Gpc-3 yr-1
+        Ntotmergers : float
+            is the total number of mergers in the universe occuring during 1 year with a rate equals to 1 merger Gpc-3 yr-1 at z=0
+            the scaling by the actual R0 and the actual Tobs is done in the function
         """
-        return self.VT_sens*R0*self.Tobs
+        return self.VT_fraction*R0*self.Tobs*NtotMergers
 
     def gw_only_selection_effect(self):
         """
@@ -191,32 +194,3 @@ class injections_at_detector(Injections):
         
         self.log_origin_jacobian = _np.zeros(len(m1d))
         Injections.__init__(self,m1d,m2d,dl,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False)
-
-    
-class injections_at_source(Injections):
-    """
-    A class to handle a list of detected GW signals from simulations in source frame. This can be used to
-    evaluate selection effects or detection expectations under some priors
-    """
-
-    def __init__(self,cosmo_ref,m1s,m2s,z,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False):
-
-        self.cosmo_ref = cosmo_ref
-        self.z_original = z
-        self.m1s_original = m1s
-        self.m2s_original = m2s
-        
-        # Convert from source frame to detector frame and select injections according to SNR and IFAR
-        m1d, m2d, dl = self.source_frame_to_detector_frame(self.cosmo_ref,self.m1s_original,self.m2s_original,self.z_original)
-        self.log_origin_jacobian = _np.log(_np.abs(self.detector_to_source_jacobian(self.z_original,self.cosmo_ref)))
-        Injections.__init__(self,m1d,m2d,dl,prior_vals,snr_det,snr_cut,ifar,ifar_cut,ntotal,Tobs,condition_check=False)
-        
-        
-    def source_frame_to_detector_frame(self,cosmo,ms_1,ms_2,z_samples):
-        
-        dl = cosmo.dgw_z(self, z_samples)
-
-        md1 = ms_1*(1+z_samples)
-        md2 = ms_2*(1+z_samples)
-
-        return md1, md2, dl
