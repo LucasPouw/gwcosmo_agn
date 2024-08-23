@@ -429,7 +429,9 @@ class Create_injections(object):
                             'O2':{'H1':0.653,'L1':0.618,'V1':0.0777},
                             'O1':{'H1':0.646,'L1':0.574,'V1':-1}}
             print("No duty factors provided, using default values: {}".format(duty_factors))
-            
+
+        print("WARNING: the duty factors for O4a and O4b are currently hardcoded so that your values will be ignored.")
+
         # get proba of drawing O1, O2, O3, O4
         self.prob_of_run = {}#'O4':0,'O3':0,'O2':0,'O1':0}
         ptot = 0
@@ -468,7 +470,7 @@ class Create_injections(object):
                     continue
                 try:
                     # load strain data, these files have 2 columns: frequency - ASD
-                    if LVCrun == 'O4': # there can be several psds for O4, 'actual', 'avg', 'high', 'low' or 'MDC' sensitivities
+                    if LVCrun == 'O4': # there can be several psds for O4, 'actual', 'avg', 'high', 'low', 'O4b' sensitivities
                         if self.psd_opts == 'high' or self.psd_opts == 'low':
                             asd_file = asd_path+ifo+'_'+LVCrun+self.psd_opts+'_strain.txt'
                         elif self.psd_opts == 'actual':
@@ -499,6 +501,10 @@ class Create_injections(object):
                                 asd_file = asd_path+'LHO_1388988918.txt'
                             elif ifo == 'V1':
                                 raise ValueError("There is no data from Virgo in O4a. You should remove Virgo for the detectors. Exiting.")
+                        elif self.psd_opts == 'O4b':
+                            asd_file = asd_path+ifo+"_O4b_avg.txt"
+                        else:
+                            raise ValueError("No O4 sensitivity with name {}. You can choose among 'high', 'low', 'MDC', 'actual', 'avg',  'late', 'O4b'.")
                     else:
                         asd_file = asd_path+ifo+'_'+LVCrun+'_strain.txt'
 
@@ -512,7 +518,7 @@ class Create_injections(object):
                                                                                        psd_array=self.psd_dict[LVCrun][ifo]['psd'])
                     nfiles_ok += 1
                 except Exception as e:
-                    print('Problem in loading asd file for  {:},{:}. Setting up without it.'.format(LVCrun,ifo))
+                    print('Problem in loading asd file for  {:}, {:}. Setting up without it.'.format(LVCrun,ifo))
                     print(e)
 
         if nfiles_ok == 0:
@@ -636,6 +642,9 @@ class Create_injections(object):
                     dLmax_m1['O4'] = dLmax_m1['O4high']
                 elif self.psd_opts == 'late':
                     print("WARNING LATE case: Using 'O4high' sensitivity for the random draws")
+                    dLmax_m1['O4'] = dLmax_m1['O4high']
+                elif self.psd_opts == 'O4b':
+                    print("WARNING O4b case: Using 'O4high' sensitivity for the random draws")
                     dLmax_m1['O4'] = dLmax_m1['O4high']
                 else:
                     print("ERROR in psd_opts.")
@@ -1522,7 +1531,40 @@ class detector_config(object):
                 else:
                     ifos = []
 
-            else:
+            elif isrun == 'O4b': # https://gwosc.org/detector_status/O4b/
+                # I'm using the values as of 20240728200000 CEST = 20240728180000 UTC
+                p1 = 0.154 # 1-fold
+                p2 = 0.365 # 2-fold
+                p3 = 0.379 # 3-fold
+                pH = 0.518 # H1 uptime
+                pL = 0.742 # L1 uptime
+                pV = 0.760 # V1 uptime
+                # we need the probas for 2-fold 'HL', 'HV', 'LV' and the probas for 1-fold 'H', 'L', 'V'
+                # have to fix 2 values as the system is degenerated, for instance we fix the 1-fold pH1 and pL1
+                pH1 = 0.03
+                pL1 = 0.05
+                res = np.array([pL-2*p3-p2-pL1-pH1+pH,p2-pL+p3+pL1,p2+p3-pH+pH1,p1-pH1-pL1]) # compute the probas [pHL,pHV,pLV,pV1]
+                pV1 = res[3]
+                p_pairs = res[0:3]/np.sum(res[0:3]) # normalized probas for 2-fold [pHL,pHV,pLV]
+                p_single = np.array([pH1,pL1,pV1])/p1 # normalized probas for 1-fold [H,L,V]
+                lucky = np.random.rand()
+                aifos = ['H1','L1','V1']
+                pairs = [0,1,2]
+                lucky = np.random.rand()
+                if lucky < p3: # 3 ifos online
+                    ifos = aifos
+                elif (lucky >= p3) & (lucky < p3+p2): # 2 ifos online
+                    pair = np.random.choice(pairs,size=1,replace=False,p=p_pairs)
+                    if pair == 0: ifos = ['H1','L1']
+                    elif pair == 1: ifos = ['H1','V1']
+                    else: ifos = ['L1','V1']
+                elif (lucky >= p3+p2) & (lucky < p3+p2+p1):
+                    ifos = list(np.random.choice(aifos,size=1,replace=False,p=np.array(p_single)))
+                    ifos[0] = str(ifos[0]) # cast to built-in 'str' instead of numpy.str to avoid a crash with bilby.gw.detector.InterferometerList(dets)
+                else:
+                    ifos = []
+                    
+            else: # 'O4a'
                 # we refine the random draw of H1, L1 using 1-fold and 2-fold uptimes, see https://gwosc.org/detector_status/O4a/
                 # warning: on this web page, the probabilities don't add-up to 1: 53.4 + 29.7 + 16.6 = 99.7%
                 # Derek Davis on mattermost DetCharTools 20230325: the missing 0.3% should be considered as 0 ifo

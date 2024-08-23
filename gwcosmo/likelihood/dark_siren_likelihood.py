@@ -91,16 +91,39 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             else:
                 posterior_samples_dictionary[key][pu.PE_min_pixels] = int(posterior_samples_dictionary[key][pu.PE_min_pixels])
 
-            print(key,posterior_samples_dictionary[key][pu.PE_min_pixels])
+            print("Event {}: requested min_pixels = {}".format(key,posterior_samples_dictionary[key][pu.PE_min_pixels]))
 
             skymap = gwcosmo.likelihood.skymap.skymap(samples.skymap_path)
+            print("Got GW event skymap with nside: {}".format(skymap.nside))
+
             low_res_skyprob = hp.pixelfunc.ud_grade(skymap.prob, nside, order_in='NESTED', order_out='NESTED')
             low_res_skyprob = low_res_skyprob/np.sum(low_res_skyprob)
-
+            
+            # compute the sky area covered by the GW event and find an estimate of the min_pixels value to help the user
+            skyprob = low_res_skyprob
+            if skymap.nside > 4*nside:
+                # when the GW skymap has a much higher resolution than the LOS skymap, degrade it but not too much, use new_nside = 4*LOS_nside
+                # to get a quite precise estimation of the GW area on the sky and avoid at the same time to work on the full resolution skymap that may take some time
+                skyprob = hp.pixelfunc.ud_grade(skymap.prob, 4*nside, order_in='NESTED', order_out='NESTED')
+                skyprob = skyprob/np.sum(skyprob)
+            
+            gw_probs = np.sort(skyprob)[::-1] # sort with decreasing order
+            csp = np.cumsum(gw_probs)
+            dd = np.abs(csp-sky_area)
+            npix_area = np.where(dd == np.min(dd))[0] # number of pixels needed to cover the GW's sky_area
+            sky_area_square_rad = npix_area[0]*4*np.pi/len(skyprob)
+            sky_area_square_deg = sky_area_square_rad*(180/np.pi)**2            
+            n_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
+            print("Sky aera with proba closest to {}: {} square degrees, corresponding to {} pixels at LOS file resolution (nside: {}).".format(sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
+            print("A reasonable value for min_pixels is around {} (mayber smaller), depending on the exact GW skymap.".format(n_pixels_at_LOS_resolution))
+            n_pixels_warning = 15
+            if n_pixels_at_LOS_resolution < n_pixels_warning:
+                print("Warning: the GW sky area corresponds to less than {} pixels at the LOS resolution (nside:{}). You could use a higher resolution LOS if available.".format(n_pixels_warning,nside))
+            
             pixelated_samples = make_pixel_px_function(samples, skymap, npixels=posterior_samples_dictionary[key][pu.PE_min_pixels], thresh=sky_area)
             nside_low_res = pixelated_samples.nside
             if nside_low_res > nside:
-                raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels for event {key}.')
+                raise ValueError(f'Low resolution nside {nside_low_res} is higher than high resolution nside {nside}. Try decreasing min_pixels for event {key}, or use a higher resolution LOS if available.')
 
             # identify which samples will be used to compute p(x|z,H0) for each pixel
             pixel_indices = pixelated_samples.indices
@@ -211,7 +234,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                                                                                          samples.mass_1[samp_ind[pixel_index]],
                                                                                          samples.mass_2[samp_ind[pixel_index]])
             PEprior = samples.pe_priors[samp_ind[pixel_index]]
-            kde,norm = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
+            kde, norm, status = self.reweight_samps.marginalized_redshift_reweight(z_samps,m1_samps,m2_samps,PEprior)
 
             if norm != 0: # px_zOmegaH0 is initialized to 0
                 zmin_temp = np.min(z_samps)*0.5
@@ -225,6 +248,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 px_zOmegaparam_interp = interp1d(z_array_temp,kde(z_array_temp),kind='cubic')
                 mask = (zmin_temp < self.z_array) & (self.z_array < zmax_temp)
                 px_zOmegaparam[i,mask] = px_zOmegaparam_interp(self.z_array[mask]) * norm
+
+            else: # get information on the GW event and pixel that gave norm == 0
+                if status == False: # norm is 0 and status = False ie KDE not reliable
+                    print("KDE problem was for GW id {} and pixel {} with cosmo params: {}".format(event_name,pixel_index,self.cosmo_param_dict))
 
         # make p(s|z) have the same shape as p(x|z,Omega,param) and p(z|Omega,s)
         ps_z_array = np.tile(self.zrates(self.z_array),(len(pixel_indices),1))
