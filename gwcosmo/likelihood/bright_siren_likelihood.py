@@ -11,6 +11,10 @@ import astropy.constants as const
 import bilby
 import gwcosmo
 import numpy as np
+from scipy.integrate import simpson, quad
+from scipy.interpolate import interp1d
+from gwcosmo.utilities.cosmology import standard_cosmology
+from gwcosmo.utilities.mass_prior_utilities import extract_parameters_from_instance
 from gwcosmo.likelihood.posterior_samples import *
 from gwcosmo.likelihood.skymap import *
 from gwcosmo.utilities.cosmology import standard_cosmology
@@ -64,36 +68,40 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         ifar_cut : float
         """
 
-        super().__init__(
-            parameters={
-                "H0": None,
-                "Xi0": None,
-                "n": None,
-                "gamma": None,
-                "Madau_k": None,
-                "Madau_zp": None,
-                "alpha": None,
-                "delta_m": None,
-                "mu_g": None,
-                "sigma_g": None,
-                "lambda_peak": None,
-                "alpha_1": None,
-                "alpha_2": None,
-                "b": None,
-                "mminbh": None,
-                "mmaxbh": None,
-                "beta": None,
-                "alphans": None,
-                "mminns": None,
-                "mmaxns": None,
-                "D": None,
-                "logRc": None,
-                "nD": None,
-                "cM": None,
-            }
-        )
 
-        # mass distribution
+        mass_prior_params = extract_parameters_from_instance(mass_priors)
+        
+        for param_name in mass_prior_params:
+            mass_prior_params[param_name] = None
+
+        super().__init__(parameters={'H0': None,
+                                     'Xi0': None,
+                                     'n': None,
+                                     'gamma':None,
+                                     'Madau_k':None,
+                                     'Madau_zp':None,
+                                     'D':None,
+                                     'logRc':None,
+                                     'nD':None,
+                                     'cM':None,
+                                     **mass_prior_params}) 
+
+
+        # em couterpart information
+        self.counterpart_dictionary = counterpart_dictionary
+        # redshift evolution model
+        self.zrates = zrates
+        self.mass_prior_params = mass_prior_params
+
+        #selection effect
+        self.injections = injections
+        self.injections.update_cut(snr_cut=network_snr_threshold)
+        try:
+            self.injections.Nobs = len(list(posterior_samples_dictionary.keys())) # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
+        except:
+            self.injections.Nobs = len(list(skymap_dictionary.keys()))
+        
+        #mass distribution
         self.mass_priors = mass_priors
 
         # cosmology
@@ -336,45 +344,39 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
     def log_likelihood(self):
 
-        self.cosmo_param_dict = {
-            par: self.parameters[par] for par in ["H0", "Xi0", "n", "D", "logRc", "nD", "cM"]
-        }
+        # update cosmo parameters
+
+        self.cosmo_param_dict = {'H0': self.parameters['H0'],
+                                 'Xi0': self.parameters['Xi0'],
+                                 'n': self.parameters['n'],
+                                 'D': self.parameters['D'],
+                                 'logRc': self.parameters['logRc'],
+                                 'nD': self.parameters['nD'],
+                                 'cM': self.parameters['cM']}
+
         self.cosmo.update_parameters(self.cosmo_param_dict)
 
-        self.zrates.gamma = self.parameters["gamma"]
-        self.zrates.k = self.parameters["Madau_k"]
-        self.zrates.zp = self.parameters["Madau_zp"]
+        # update redshift evo parameters
+        self.zrates.gamma = self.parameters['gamma']
+        self.zrates.k = self.parameters['Madau_k']
+        self.zrates.zp = self.parameters['Madau_zp']
 
-        self.mass_priors_param_dict = {
-            par: self.parameters[par]
-            for par in [
-                "alpha",
-                "delta_m",
-                "mu_g",
-                "sigma_g",
-                "lambda_peak",
-                "alpha_1",
-                "alpha_2",
-                "b",
-                "mminbh",
-                "mmaxbh",
-                "beta",
-                "alphans",
-                "mminns",
-                "mmaxns",
-            ]
-        }
+        # update mass prior parameters
+        self.mass_priors_param_dict = {name: self.parameters[name] for name in self.mass_prior_params.keys()}
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
 
-        # This is only needed by posterior samples mode. The reweight_posterior_samples class
-        # initialization is just a reference assignation of self.cosmo and self.mass_prior: since
-        # self.cosmo and self.mass_priors remains the same during all the likelihood computation, we
-        # can create the self.reweight_samps object at the beginning once and for all. For clarity
-        # reasons, we create it here every time just to reflect the change of cosmology and mass
-        # prior contents.
-        self.reweight_samps = reweight_posterior_samples(self.cosmo, self.mass_priors)
-
-        return self.log_combined_event_likelihood()
+        if self.posterior_samples_dictionary is not None:
+            # This is only needed by posterior samples mode. The reweight_posterior_samples class
+            # initialization is just a reference assignation of self.cosmo and self.mass_prior: since
+            # self.cosmo and self.mass_priors remains the same during all the likelihood computation, we
+            # can create the self.reweight_samps object at the beginning once and for all. For clarity
+            # reasons, we create it here every time just to reflect the change of cosmology and mass
+            # prior contents.
+            self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
+            return self.log_combined_event_likelihood()
+            
+        elif self.posterior_samples_dictionary is None and self.skymap_dictionary is not None :
+            return self.log_combined_event_likelihood()	
 
     def __call__(self):
         return np.exp(self.log_likelihood())

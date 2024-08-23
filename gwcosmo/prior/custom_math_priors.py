@@ -3,6 +3,7 @@ This module collects analytical and numerical probability density functions.
 '''
 
 import numpy as _np
+import json as _json
 from scipy.stats import truncnorm as _truncnorm
 import copy as _copy
 from scipy.interpolate import interp1d as _interp1d
@@ -78,7 +79,7 @@ def get_gaussian_norm(mu,sigma,min,max):
     Parameters
     ----------
     mu: float
-        mean of the gaussian
+        mu of the gaussian
     sigma: float
         standard deviation of the gaussian
     min_pl: float
@@ -481,7 +482,7 @@ class PowerLawGaussian_math(object):
         upper cutoff
     lambda_g: float
         fraction of prob coming from gaussian peak
-    mean_g: float
+    mu_g: float
         mean for the gaussian
     sigma_g: float
         standard deviation for the gaussian
@@ -491,7 +492,7 @@ class PowerLawGaussian_math(object):
         maximim for the gaussian component
     """
 
-    def __init__(self,alpha,min_pl,max_pl,lambda_g,mean_g,sigma_g,min_g,max_g):
+    def __init__(self,alpha,min_pl,max_pl,lambda_g,mu_g,sigma_g,min_g,max_g):
 
         self.minimum = _np.min([min_pl,min_g])
         self.maximum = _np.max([max_pl,max_g])
@@ -499,7 +500,7 @@ class PowerLawGaussian_math(object):
         self.lambda_g=lambda_g
 
         self.pl= PowerLaw_math(alpha,min_pl,max_pl)
-        self.gg = Truncated_Gaussian_math(mean_g,sigma_g,min_g,max_g)
+        self.gg = Truncated_Gaussian_math(mu_g,sigma_g,min_g,max_g)
 
 
     def prob(self,x):
@@ -588,25 +589,25 @@ class PowerLawDoubleGaussian_math(object):
     max_pl: float
         upper cutoff
     lambda_g: float
-        fraction of prob coming in any gaussian peak
+        fraction of prob coming in both gaussian peaks
     lambda_g_low: float
         fraction of prob in lower gaussian peak
-    mean_g_low: float
-        mean for the gaussian
+    mu_g_low: float
+        mean for the lower gaussian peak
     sigma_g_low: float
-        standard deviation for the gaussian# Define the PDF as in Eq. 37 on on the tex document
-    mean_g_high: float
-        mean for the gaussian
+        standard deviation for the gaussian # Define the PDF as in Eq. 37 on on the tex document
+    mu_g_high: float
+        mean for the higher gaussian peak
     sigma_g_high: float
-        standard deviation for the gaussian
+        standard deviation for the lower gaussian peak
     min_g: float
         minimum for the gaussian components
     max_g: float
-        maximim for the gaussian components
+        maximum for the gaussian components
     """
 
-    def __init__(self,alpha,min_pl,max_pl,lambda_g, lambda_g_low,
-    mean_g_low,sigma_g_low,mean_g_high,sigma_g_high,min_g,max_g):
+    def __init__(self,alpha,min_pl,max_pl,lambda_g,lambda_g_low,
+    mu_g_low,sigma_g_low,mu_g_high,sigma_g_high,min_g,max_g):
 
         self.minimum = _np.min([min_pl,min_g])
         self.maximum = _np.max([max_pl,max_g])
@@ -615,8 +616,8 @@ class PowerLawDoubleGaussian_math(object):
         self.lambda_g_low = lambda_g_low
 
         self.pl= PowerLaw_math(alpha,min_pl,max_pl)
-        self.gg_low = Truncated_Gaussian_math(mean_g_low,sigma_g_low,min_g,max_g)
-        self.gg_high = Truncated_Gaussian_math(mean_g_high,sigma_g_high,min_g,max_g)
+        self.gg_low = Truncated_Gaussian_math(mu_g_low,sigma_g_low,min_g,max_g)
+        self.gg_high = Truncated_Gaussian_math(mu_g_high,sigma_g_high,min_g,max_g)
 
     def prob(self,x):
         """

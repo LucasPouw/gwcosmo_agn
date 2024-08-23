@@ -5,14 +5,18 @@ Multi-parameter likelihood computation module for GW event with unique EM counte
 Tathagata Ghosh
 """
 
-import json
-from itertools import product
-
 import bilby
 import gwcosmo
 import h5py
 import matplotlib
 import numpy as np
+import json
+from itertools import product
+from gwcosmo.utilities.posterior_utilities import str2bool
+from gwcosmo.utilities.arguments import create_parser
+from gwcosmo.utilities.mass_prior_utilities import *
+from gwcosmo.utilities.host_galaxy_merger_relations import RedshiftEvolutionConstant, RedshiftEvolutionPowerLaw, RedshiftEvolutionMadau
+import astropy.constants as const
 from gwcosmo.injections import injections_at_detector
 from gwcosmo.prior import priors
 from gwcosmo.utilities import host_galaxy_merger_relations
@@ -81,10 +85,21 @@ else:  # a json file is required
     """
     parser.error(err_str)
 
+mass_model = str(opts.mass_model)
+mass_priors = mass_model_selector(mass_model, parser)
+print(f'Using the {mass_model} mass model')
+
 # parameter(s) file
 if opts.parameter_dict:
     with open(str(opts.parameter_dict)) as json_file:
         parameter_dict = json.load(json_file)
+    if opts.posterior_samples is None and opts.skymap is not None :
+        keys = extract_parameters_from_instance(mass_priors)
+        mass_parameters = list(keys)
+        for key in mass_parameters :
+            if key in parameter_dict.keys() :
+                if isinstance(parameter_dict[key]['value'], list):
+                    parser.error(f"Mass parameter({key}) cannot be inferred while using GW skymap.")
 else:
     parser.error("Missing parameters file")
 
@@ -103,7 +118,7 @@ if not opts.snr and not opts.ifar:
 opts.snr = opts.snr or 0.0
 opts.ifar = opts.ifar or 0.0
 print(f"Analysis will be run with cuts on SNR: {opts.snr} OR IFAR: {opts.ifar}")
-print("For software injections, the IFAR is known: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
+print("For software injections, the IFAR is known: their SNR should be set to -1. For semianalytical injections, the SNR is know and the IFAR should be set to -1.")
 
 
 injections = injections_at_detector(
@@ -214,8 +229,11 @@ if method == "sampling":
         else:
             priors[key] = float(parameter_dict[key]["value"])
 
-    sampling_method = "acceptance-walk"  # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
+    # Check prior constraints for the mass distribution, does nothing if not required 
+    priors = me.mass_priors.sampling_constraint(priors)
 
+    sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see         https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
+    
     bilbyresult = bilby.run_sampler(
         likelihood=me,
         priors=priors,
@@ -284,13 +302,18 @@ elif method == "gridded":
     for items in product(*parameter_grid_indices.values()):
         indices.append(items)
 
-    print(f"Computing the likelihood on a grid over {names}")
+    print(f'Computing the likelihood on a grid over {names}')
+    
+    # Constraint check, raises value error if priors not allowed by a constraint 
+    constraint_grid = np.zeros(shape)
+    me.mass_priors.grid_constraint(constraint_grid, values, parameter_grid, fixed_params)
+
     for i, value in enumerate(tqdm(values)):
         n = 0
         for name in names:
             me.parameters[name] = value[n]
             n += 1
-        likelihood[indices[i]] = me.log_likelihood()
+        likelihood[indices[i]] = constraint_grid[indices[i]] if constraint_grid[indices[i]] == -np.inf else me.log_likelihood()
 
     # rescale values of the log-likelihood before exponentiating
     likelihood -= np.nanmax(likelihood)  # np.nanmin(likelihood[likelihood != -np.inf])
