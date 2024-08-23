@@ -429,7 +429,9 @@ class Create_injections(object):
                             'O2':{'H1':0.653,'L1':0.618,'V1':0.0777},
                             'O1':{'H1':0.646,'L1':0.574,'V1':-1}}
             print("No duty factors provided, using default values: {}".format(duty_factors))
-            
+
+        print("WARNING: the duty factors for O4a and O4b are currently hardcoded so that your values will be ignored.")
+
         # get proba of drawing O1, O2, O3, O4
         self.prob_of_run = {}#'O4':0,'O3':0,'O2':0,'O1':0}
         ptot = 0
@@ -514,7 +516,7 @@ class Create_injections(object):
                                                                                        psd_array=self.psd_dict[LVCrun][ifo]['psd'])
                     nfiles_ok += 1
                 except Exception as e:
-                    print('Problem in loading asd file for  {:},{:}. Setting up without it.'.format(LVCrun,ifo))
+                    print('Problem in loading asd file for  {:}, {:}. Setting up without it.'.format(LVCrun,ifo))
                     print(e)
 
         if nfiles_ok == 0:
