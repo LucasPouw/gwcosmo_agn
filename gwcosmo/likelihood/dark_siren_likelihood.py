@@ -57,7 +57,18 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         for param_name in mass_prior_params:
             mass_prior_params[param_name] = None
 
-        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None,  'Xi0':None, 'n':None, 'D':None, 'logRc':None, 'nD':None, 'cM':None, **mass_prior_params })
+        super().__init__(parameters={
+            'H0': None,
+            'gamma':None,
+            'Madau_k':None,
+            'Madau_zp':None,
+            'Xi0':None,
+            'n':None,
+            'D':None,
+            'logRc':None,
+            'nD':None,
+            'cM':None,
+            **mass_prior_params })
         
         
         self.zrates = zrates
@@ -305,6 +316,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         return num-den
 
     def log_likelihood(self):
+
+        # update cosmo parameters
+        self.cosmo_param_dict = {par: self.parameters[par] for par in ["H0", "Xi0", "n", "D", "logRc", "nD", "cM"]}
+        self.cosmo.update_parameters(self.cosmo_param_dict)
         
         # update redshift evo parameters
         self.zrates.gamma = self.parameters['gamma']
@@ -314,11 +329,6 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         # update mass prior parameters
         self.mass_priors_param_dict = {name: self.parameters[name] for name in self.mass_prior_params.keys()}
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
-
-
-        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
-
-        self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
 
