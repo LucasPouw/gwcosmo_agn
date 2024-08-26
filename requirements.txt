@@ -1,7 +1,7 @@
 astropy
 bilby
 h5py
-healpy
+healpy == 1.17.3
 lalsuite
 ligo-gracedb
 ligo-segments
@@ -13,6 +13,7 @@ numpy>=1.19,<=1.23.5
 pandas
 pesummary
 progressbar
-scipy<1.14.0
+scipy == 1.13.1
 seaborn
 tqdm
+nessai == 0.12.0

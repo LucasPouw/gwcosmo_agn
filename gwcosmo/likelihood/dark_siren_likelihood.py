@@ -10,6 +10,7 @@ from scipy.integrate import simpson, quad
 from scipy.interpolate import interp1d
 from gwcosmo.utilities.zprior_utilities import get_zprior_full_sky, get_zprior
 from gwcosmo.likelihood.posterior_samples import *
+from gwcosmo.utilities.mass_prior_utilities import extract_parameters_from_instance
 import gwcosmo
 from .skymap import ra_dec_from_ipix,ipix_from_ra_dec
 import healpy as hp
@@ -22,6 +23,7 @@ import sys
 import copy
 from lal import C_SI
 import gwcosmo.utilities.posterior_utilities as pu # get the PE samples keys
+import inspect
 
 class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     """
@@ -47,15 +49,30 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             GW samples
         skymap : gwcosmo.likelihood.skymap.skymap object
             provides p(x|Omega) and skymap properties
-        LOS_prior :
+        LOS_prior : object 
         """
-        super().__init__(parameters={'H0': None, 'gamma':None, 'Madau_k':None, 'Madau_zp':None, 'alpha':None,
-                                     'delta_m':None, 'mu_g':None, 'sigma_g':None, 'lambda_peak':None,
-                                     'alpha_1':None, 'alpha_2':None, 'b':None, 'mminbh':None, 'mmaxbh':None,
-                                     'alphans':None, 'mminns':None, 'mmaxns':None, 'beta':None, 'Xi0':None, 'n':None,
-                                     'D':None, 'logRc':None, 'nD':None, 'cM':None})
 
+        mass_prior_params = extract_parameters_from_instance(mass_priors)
+        
+        for param_name in mass_prior_params:
+            mass_prior_params[param_name] = None
+
+        super().__init__(parameters={
+            'H0': None,
+            'gamma':None,
+            'Madau_k':None,
+            'Madau_zp':None,
+            'Xi0':None,
+            'n':None,
+            'D':None,
+            'logRc':None,
+            'nD':None,
+            'cM':None,
+            **mass_prior_params })
+        
+        
         self.zrates = zrates
+        self.mass_prior_params = mass_prior_params
 
         #TODO make min_pixels an optional dictionary
         LOS_catalog = h5py.File(LOS_catalog_path, 'r')
@@ -145,7 +162,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
                 hi_res_pixel_indices = np.arange(hp.pixelfunc.nside2npix(nside))[np.where(ipix==pixel_index)[0]]
                 # load pixels, weight by GW sky area, and combine
                 for j, hi_res_index in enumerate(hi_res_pixel_indices):
-                	zprior_times_pxOmega[i,:] +=  get_zprior(LOS_catalog, hi_res_index)*low_res_skyprob[hi_res_index]
+                    zprior_times_pxOmega[i,:] +=  get_zprior(LOS_catalog, hi_res_index)*low_res_skyprob[hi_res_index]
             print(f"Identified {len(pixel_indices)*no_sub_pix_per_pixel} pixels in the galaxy catalogue which correspond to {key}'s {sky_area*100}% sky area")
             self.zprior_times_pxOmega_dict[key] = zprior_times_pxOmega
             self.pixel_indices_dictionary[key] = pixel_indices
@@ -300,23 +317,18 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
 
     def log_likelihood(self):
 
+        # update cosmo parameters
+        self.cosmo_param_dict = {par: self.parameters[par] for par in ["H0", "Xi0", "n", "D", "logRc", "nD", "cM"]}
+        self.cosmo.update_parameters(self.cosmo_param_dict)
+        
+        # update redshift evo parameters
         self.zrates.gamma = self.parameters['gamma']
         self.zrates.k = self.parameters['Madau_k']
         self.zrates.zp = self.parameters['Madau_zp']
-
-        self.mass_priors_param_dict = {'alpha':self.parameters['alpha'], 'delta_m':self.parameters['delta_m'],
-                                         'mu_g':self.parameters['mu_g'], 'sigma_g':self.parameters['sigma_g'],
-                                         'lambda_peak':self.parameters['lambda_peak'],
-                                         'alpha_1':self.parameters['alpha_1'],
-                                         'alpha_2':self.parameters['alpha_2'], 'b':self.parameters['b'],
-                                         'mminbh':self.parameters['mminbh'], 'mmaxbh':self.parameters['mmaxbh'],
-                                         'beta':self.parameters['beta'], 'alphans':self.parameters['alphans'],
-                                         'mminns':self.parameters['mminns'], 'mmaxns':self.parameters['mmaxns']}
-
+        
+        # update mass prior parameters
+        self.mass_priors_param_dict = {name: self.parameters[name] for name in self.mass_prior_params.keys()}
         self.mass_priors.update_parameters(self.mass_priors_param_dict)
-
-        self.cosmo_param_dict = {'H0': self.parameters['H0'], 'Xi0': self.parameters['Xi0'], 'n': self.parameters['n'], 'D': self.parameters['D'], 'logRc': self.parameters['logRc'], 'nD': self.parameters['nD'], 'cM': self.parameters['cM']}
-        self.cosmo.update_parameters(self.cosmo_param_dict)
 
         self.reweight_samps = reweight_posterior_samples(self.cosmo,self.mass_priors)
 

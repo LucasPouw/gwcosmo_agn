@@ -127,7 +127,7 @@ def create_parser(*config):
         "--injections_path": argument(None, default=None,type=str,
             help="Path to the injetions file."),
         "--mass_model": argument(None, default=None,type=str,
-            help="Mass model. Choose from 'BBH-powerlaw', 'BBH-broken-powerlaw', 'BBH-powerlaw-gaussian', 'NSBH-powerlaw', 'NSBH-broken-powerlaw', 'NSBH-powerlaw-gaussian' or 'BNS'."),
+            help="Mass model. Choose from 'BBH-powerlaw', 'BBH-broken-powerlaw', 'BBH-powerlaw-gaussian', 'BBH-multi-peak-gaussian', 'NSBH-powerlaw', 'NSBH-broken-powerlaw', 'NSBH-powerlaw-gaussian','NSBH-multi-peak-gaussian' or 'BNS'."),
         "--run": argument(None, default=1, type=int,
             help="The number of the run."),
         "--detectors": argument(None, default='HLV', type=str,
