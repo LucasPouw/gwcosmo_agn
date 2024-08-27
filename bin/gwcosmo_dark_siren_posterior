@@ -146,7 +146,7 @@ elif opts.snr != None and opts.ifar == None:
 elif opts.snr == None and opts.ifar == None:
     parser.error("You must specify threshold values for SNR and/or IFAR for the analysis.")
 print("Analysis will be run with cuts on SNR: {} OR IFAR: {}".format(opts.snr,opts.ifar))
-print("For software injections, the IFAR is known: their SNR should be set to -1. Fort semianalytical injections, the SNR is know and the IFAR should be set to -1.")
+print("For software injections, the IFAR is known: their SNR should be set to -1. Fort semianalytical injections, the SNR is known and the IFAR should be set to -1.")
 
 injections = injections_at_detector(m1d=np.array(injdata['m1d']),
                                     m2d=np.array(injdata['m2d']),
