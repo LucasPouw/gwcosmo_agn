@@ -448,7 +448,8 @@ class load_posterior_samples(object):
                         if k in pdicts.keys():
                             print("\t {}:{}".format(k,pdicts[k]))
                     self.posterior_samples[pu.PE_sampling_vars] = {}
-                    if len(self.posterior_samples[pu.PE_approximants_available]) == 1: # if type is MultiAnalysis but there's a single waveform
+                    if (self.posterior_samples[pu.PE_analysis_type] == pu.PE_multi_analysis) and \
+                       (len(self.posterior_samples[pu.PE_approximants_available]) == 1): # if type is MultiAnalysis but there's a single waveform
                         self.field = self.posterior_samples[pu.PE_approximants_available][0]
 
                     self.posterior_samples[pu.PE_sampling_vars][self.field] = self.pe_priors_object.sampling_vars
