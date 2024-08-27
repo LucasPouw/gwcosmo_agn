@@ -387,8 +387,14 @@ class load_posterior_samples(object):
             self.distance = data['luminosity_distance']
             self.ra = data['ra']
             self.dec = data['dec']
-            self.mass_1 = data['mass_1']
-            self.mass_2 = data['mass_2']
+            try:
+                self.mass_1 = data['mass_1']
+            except:
+                raise ValueError("No key 'mass_1' in sampling variables: {}. Use a posterior file with det-frame masses.".format(data.keys()))
+            try:                
+                self.mass_2 = data['mass_2']
+            except:
+                raise ValueError("No key 'mass_1' in sampling variables: {}. Use a posterior file with det-frame masses.".format(data.keys()))
             self.nsamples = len(self.distance)
 
         show_keys = ['mass_1','mass_2','chirp_mass','mass_ratio','luminosity_distance']
