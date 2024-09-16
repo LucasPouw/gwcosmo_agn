@@ -409,8 +409,9 @@ class load_posterior_samples(object):
                 #print(pdicts)
                 non_empty_dicts_keys = []
                 if subdict: # this is the multianalysis case, {'C01:Mixed':{}, 'C01:other':{}...}
-                    print("Multianalysis case.")
+                    print("Multianalysis case: {}.".format(pdicts.keys()))
                     for k in pdicts.keys():
+                        #print(k,len(pdicts[k]),pdicts[k])
                         if len(pdicts[k]) == 0: # this case should not happen, just in case
                             print("Empty dict")
                         else:
@@ -435,12 +436,15 @@ class load_posterior_samples(object):
                     else:
                         print("WARNING!!!!!!!!! Several prior dicts are available.")
                         print("Required sample field: {}".format(self.field))
-                        print("Available keys: {}".format(non_empty_dicts_keys.keys()))
-                        for field in non_empty_dicts_keys.keys():
-                            record_priors = analytic_PE_priors(pdicts[self.field])
-                            self.posterior_samples[pu.PE_sampling_vars] = {}
+                        print("Available keys: {}".format(non_empty_dicts_keys))
+                        for field in non_empty_dicts_keys:
+                            record_priors = analytic_PE_priors(pdicts[field])
+                            if not (pu.PE_sampling_vars in self.posterior_samples): # first time we record analytical dict
+                                self.posterior_samples[pu.PE_sampling_vars] = {}
                             self.posterior_samples[pu.PE_sampling_vars][field] = record_priors.sampling_vars
-                        if self.field in non_empty_dicts_keys.keys():
+                            #print(field)
+                            #print("record samp vars for {} => {}".format(field,self.posterior_samples[pu.PE_sampling_vars].keys()))
+                        if self.field in non_empty_dicts_keys:
                             print("Found analytic prior dict with same field name: {}, using this one for the analysis".format(self.field))
                             self.pe_priors_object = analytic_PE_priors(pdicts[self.field])
                         else:
