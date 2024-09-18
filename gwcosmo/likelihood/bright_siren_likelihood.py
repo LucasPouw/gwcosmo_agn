@@ -87,20 +87,6 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
                                      **mass_prior_params}) 
 
 
-        # em couterpart information
-        self.counterpart_dictionary = counterpart_dictionary
-        # redshift evolution model
-        self.zrates = zrates
-        self.mass_prior_params = mass_prior_params
-
-        #selection effect
-        self.injections = injections
-        self.injections.update_cut(snr_cut=network_snr_threshold)
-        try:
-            self.injections.Nobs = len(list(posterior_samples_dictionary.keys())) # it's the number of GW events entering the analysis, used for the check Neff >= 4Nobs inside the injection class
-        except:
-            self.injections.Nobs = len(list(skymap_dictionary.keys()))
-        
         #mass distribution
         self.mass_priors = mass_priors
 
