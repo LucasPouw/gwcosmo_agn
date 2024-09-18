@@ -99,7 +99,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
         # Event information
         self.events = {}
-
+        self.posterior_samples_dictionary  = posterior_samples_dictionary
         for event_name, meta in posterior_samples_dictionary.items():
             if not str2bool(meta.get("use_event", "True")):
                 print(f"Event '{event_name}' not used in the analysis")
@@ -302,7 +302,7 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
         self.injections.update_VT(self.cosmo, self.mass_priors, z_prior, z_prior_norm)
         Neff, Neff_is_ok, var = self.injections.calculate_Neff()
         if Neff_is_ok:  # Neff >= 4*Nobs
-            log_den = np.log(injections.gw_only_selection_effect())
+            log_den = np.log(self.injections.gw_only_selection_effect())
         else:
             print(
                 f"Not enough Neff ({Neff}) compared to Nobs ({self.injections.Nobs}) "
