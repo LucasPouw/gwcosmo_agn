@@ -89,7 +89,8 @@ class MultipleEventLikelihoodEM(bilby.Likelihood):
 
         #mass distribution
         self.mass_priors = mass_priors
-
+        self.mass_prior_params = mass_prior_params
+        
         # cosmology
         self.cosmo = cosmo
 
