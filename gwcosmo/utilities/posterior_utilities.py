@@ -70,4 +70,5 @@ PE_could_read_with_pesummary = "could_read_with_pesummary"
 PE_user_defined_PE = "user_defined_PE_priors"
 PE_existing_PE_kinds = ["m1d_m2d_uniform_dL_square_PE_priors",
                         "chirp_det_frame_q_uniform_dL_square_PE_priors",
+                        "chirp_det_frame_q_uniform_dL_LogUniform_PE_priors",
                         "m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors"]
