@@ -84,6 +84,25 @@ class chirp_det_frame_q_uniform_dL_square_PE_priors(object):
         mc = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
         return dL**2 * mc/m1d**2
 
+class chirp_det_frame_q_uniform_dL_LogUniform_PE_priors(object):
+    """
+    This class returns the PE priors for the case of a uniform joint probability for (Mc_det_frame,q) and \propto 1/dL for the luminosity distance (LogUniform, i.e. uniform in log)
+    """
+    def __init__(self):
+
+        self.name = "chirp_det_ratio:uniform --- dL:LogUniform"
+
+    def get_prior_m1d_m2d_dL(self,m1d,m2d,dL):
+        """
+        This function returns something proportional to p(m1d,m2d,dL)
+        """
+        # p(m1d,m2d,dL) = p(Mc,q,dL) * | det Jacobian[(Mc,q,dL) -> (m1d,m2d,dL)] |
+        # p(m1d,m2d,dL) = p(Mc,q) * | det Jacobian[(Mc,q) -> (m1d,m2d)] | * p(dL)
+        # p(m1d,m2d,dL) = p(Mc,q) * Mc/m1d^2 / dL
+        # p(m1d,m2d,dL) \propto Mc/m1d^2 / dL
+        mc = (m1d*m2d)**(3./5)/(m1d+m2d)**(1./5) # chirp mass det frame
+        return (mc/m1d**2)/dL
+
 class m1d_m2d_uniform_dL_uniform_merger_rate_in_source_comoving_frame_PE_priors(object):
     """
     This class returns the PE priors for the case of a uniform joint probability for (m1_det_frame,m2_det_frame) and
