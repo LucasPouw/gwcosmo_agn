@@ -69,10 +69,12 @@ class Injections():
 
     def get_selected_idx(self,snr_cut=0,ifar_cut=0):
 
-        print('Selecting injections with SNR {:f} OR IFAR {:f} yr'.format(snr_cut,ifar_cut))
         self.snr_cut = snr_cut
         self.ifar_cut = ifar_cut
-        return _np.where((self.snr_original>self.snr_cut) | (self.ifar>self.ifar_cut))[0]
+        idet = _np.where((self.snr_original>self.snr_cut) | (self.ifar>self.ifar_cut))[0]
+        print('Selecting {} injections (over {}) with SNR {:f} OR IFAR {:f} yr'.format(len(idet),len(self.m1d_original),snr_cut,ifar_cut))
+        return idet
+        
 
     def set_selected_idx(self,idet):
 
