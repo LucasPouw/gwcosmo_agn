@@ -242,7 +242,7 @@ if method == 'sampling':
     priors = me.mass_priors.sampling_constraint(priors)
               
     sampling_method = "acceptance-walk" # can be "rwalk", "act-walk" (the default). "acceptance-walk" is faster (as of 20230717), see https://lscsoft.docs.ligo.org/bilby/dynesty-guide.html
-    print("Sampling method",sampling_method)
+
     print("\nPriors used:")
     for k in priors.keys():
         print("\t{}: {}".format(k,priors[k]))
