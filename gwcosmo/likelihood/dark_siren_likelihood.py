@@ -131,8 +131,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             sky_area_square_rad = npix_area[0]*4*np.pi/len(skyprob)
             sky_area_square_deg = sky_area_square_rad*(180/np.pi)**2            
             n_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
-            print("Sky area with proba closest to {}: {} square degrees, corresponding to {} pixels at LOS file resolution (nside: {}).".format(sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
-            print("A reasonable value for min_pixels is around {} (mayber smaller), depending on the exact GW skymap.".format(n_pixels_at_LOS_resolution))
+            print("{}: Sky area with proba closest to {}: {0:.2f} square degrees, corresponding to {0:.2f} pixels at LOS file resolution (nside: {}).".format(key,sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
+            print("A reasonable value for min_pixels is around {0:.2f} (mayber smaller), depending on the exact GW skymap.".format(n_pixels_at_LOS_resolution))
             n_pixels_warning = 15
             if n_pixels_at_LOS_resolution < n_pixels_warning:
                 print("Warning: the GW sky area corresponds to less than {} pixels at the LOS resolution (nside:{}). You could use a higher resolution LOS if available.".format(n_pixels_warning,nside))
