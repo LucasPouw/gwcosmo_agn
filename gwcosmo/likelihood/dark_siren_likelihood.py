@@ -102,7 +102,10 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             if samples.skip_me:
                 print("Skip event {} as requested by the user.".format(key))
                 continue
-
+            # check average dL for this event
+            avg_dL = np.mean(samples.distance)
+            std_dL = np.std(samples.distance)
+            
             if not pu.PE_min_pixels in posterior_samples_dictionary[key]: # search for the "min_pixels" key
                 posterior_samples_dictionary[key][pu.PE_min_pixels] = min_pixels # add key and use the global value for min_pixels if not specific to the current GW event
             else:
@@ -131,7 +134,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             sky_area_square_rad = npix_area[0]*4*np.pi/len(skyprob)
             sky_area_square_deg = sky_area_square_rad*(180/np.pi)**2            
             n_pixels_at_LOS_resolution = 12*nside**2*sky_area_square_rad/(4*np.pi)
-            print("{}: Sky area with proba closest to {}: {0:.2f} square degrees, corresponding to {0:.2f} pixels at LOS file resolution (nside: {}).".format(key,sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
+            print("{}: avg(dL): {:.2f} Mpc, std(dL): {:.2f} Mpc. Sky area with proba closest to {}: {:.2f} sq. deg., corresponding to {:.2f} pixels at LOS file resolution (nside: {}).".format(key,avg_dL,std_dL,sky_area,sky_area_square_deg,n_pixels_at_LOS_resolution,nside))
             print("A reasonable value for min_pixels is around {0:.2f} (mayber smaller), depending on the exact GW skymap.".format(n_pixels_at_LOS_resolution))
             n_pixels_warning = 15
             if n_pixels_at_LOS_resolution < n_pixels_warning:
