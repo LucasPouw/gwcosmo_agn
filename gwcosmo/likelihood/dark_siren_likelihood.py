@@ -25,6 +25,8 @@ from lal import C_SI
 import gwcosmo.utilities.posterior_utilities as pu # get the PE samples keys
 import inspect
 
+light_speed_in_km_per_sec = C_SI/1000.
+
 class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
     """
     Class for preparing and carrying out the computation of the likelihood on
@@ -190,9 +192,11 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         print("Analysing {} GW events...".format(len(self.keys)))
 
 
-    def MergersPerYearPerGpc3_z(self,z,H0):
+    def MergersPerYearPerGpc3_z_UniformComoving(self,z,H0):
 
         """
+        This function computes the differential number of mergers at a redshift z
+        assuming a uniform in comoving volume distribution of galaxies.
         number density of mergers per redshift bin per time bin (detector frame):
         dN/(d t_det dz) = dN/(dVc dts) x dVc/dz / (1+z)
         dN/(dVc dts) is R0 x  Madau
@@ -202,30 +206,53 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         2) zrates is Madau/(1+z)
         the result is in Gpc^{-3} yr^{-1}
         """
-        light_speed_in_km_per_sec = C_SI/1000.
         return self.zrates(z)*self.cosmo.p_z(z)*4*np.pi*(light_speed_in_km_per_sec/H0)**3/1e9
 
 
-    def NtotMergers(self,H0,R0=1,Tobs=1):
+    def NtotMergers_UniformComoving(self,H0,R0=1,Tobs=1):
 
         """
-        Compute the true number of mergers occurring during time Tobs with a rate R0 at z=0, given H0, between z=0 and z = cosmo.zmax (=10 by default)
+        Compute the true number of mergers occurring during time Tobs with a rate R0 at z=0, given H0,
+        between z=cosmo.zmin (=1e-6 by default) and z = cosmo.zmax (=10 by default)
+        the galaxies are assumed to be distributed uniformly in comoving volume
         default: return the number of mergers in the universe during 1 year with R0=1 (1 merger per Gpc3 per yr)
         """
 
-        return R0*Tobs*quad(self.MergersPerYearPerGpc3_z,self.cosmo.zmin,self.cosmo.zmax,args=(H0))[0]
+        return R0*Tobs*quad(self.MergersPerYearPerGpc3_z_UniformComoving,
+                            self.cosmo.zmin,
+                            self.cosmo.zmax,args=(H0))[0]
 
+    def NtotMergers_LOS(self,H0,R0=1,Tobs=1):
+        
+        """
+        Compute the true number of mergers occurring during time Tobs with a rate R0 at z=0, given H0,
+        between z=cosmo.zmin (=1e-6 by default) and z = cosmo.zmax (=10 by default)
+        the galaxies are assumed to be distributed following the LOS used in the analysis
+        default: return the number of mergers in the universe during 1 year with R0=1 (1 merger per Gpc3 per yr)
+        """
 
-    def Get_Nmergers_Nexp(self,H0):
+        # the input LOS is not normalized. We normalize it by requiring that the high-z part
+        # must coincide with a uniform in comoving distribution, for insance in the range z [3;cosmo.zmax (=10)]
+        z_uniform_min = 3
+        wz = np.where( (self.z_array>=z_uniform_min) & (self.z_array<=self.cosmo.zmax))[0]
+        uniform_Vc = self.cosmo.p_z(self.z_array)*4*np.pi*(light_speed_in_km_per_sec/H0)**3/1e9 # per Gpc per year
+        # compute the scaling factor
+        scaling_LOS_to_uniform_comoving = simpson(uniform_Vc[wz],x=self.z_array[wz])/simpson(self.zprior_full_sky[wz],x=self.z_array[wz])
+        nmergers_LOS = simpson(scaling_LOS_to_uniform_comoving*self.zprior_full_sky*self.zrates(self.z_array),x=self.z_array)
+        nmergers_uniform = simpson(uniform_Vc*self.zrates(self.z_array),x=self.z_array)
+        return  scaling_LOS_to_uniform_comoving, nmergers_LOS, nmergers_uniform
+    
+    def Get_Nmergers_Nexp_UniformComoving(self,H0):
 
-        values = self.zprior_full_sky*self.zrates(self.z_array)
+        uniform_Vc = self.cosmo.p_z(self.z_array)*4*np.pi*(light_speed_in_km_per_sec/H0)**3/1e9 # per Gpc per year
+        values = uniform_Vc*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
         z_prior_norm = np.sum((values[:-1]+values[1:])*(dz)/2)
         # no need for deepcopy (mattermost bilby.help channel, 20240619), Colm Talbot wrote:
         # "Each thread has it's own copy of the likelihood object, so there's no need for copying."
         # injections = copy.deepcopy(self.injections)
-        Nmergers = self.NtotMergers(H0,R0=1,Tobs=1)
+        Nmergers = self.NtotMergers_UniformComoving(H0,R0=1,Tobs=1)
         cosmo = copy.deepcopy(self.cosmo)
         cosmo.H0 = H0
         self.injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
@@ -238,6 +265,30 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
             print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
 
         return Nexp, Nmergers
+
+    def Get_Nmergers_Nexp_LOS(self,H0):
+
+        """
+        Computes the expected number of mergers using the actual LOS
+        For this we need to properly normalize the LOS (which is provided with an unknown normalization)
+        """
+        scale_LOS_to_uniform, Nmergers_LOS, Nmergers_uniform = self.NtotMergers_LOS(H0)
+        values = scale_LOS_to_uniform*self.zprior_full_sky*self.zrates(self.z_array) # normalized LOS
+        z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
+        dz = np.diff(self.z_array)
+        z_prior_norm = np.sum((values[:-1]+values[1:])*(dz)/2)
+        cosmo = copy.deepcopy(self.cosmo)
+        cosmo.H0 = H0
+        self.injections.update_VT(cosmo,self.mass_priors,z_prior,z_prior_norm)
+        Nexp_LOS = self.injections.VT_sens*Nmergers_LOS/z_prior_norm # for R0=1 and Tobs=1
+
+        Neff, Neff_is_ok, var = self.injections.calculate_Neff()
+        if not Neff_is_ok: # Neff >= 4*Nobs
+            print("Not enough Neff ({}) compared to Nobs ({}) for current mass-model {}, z-model {}, zprior_norm {}"
+                  .format(Neff,self.injections.Nobs,self.mass_priors,z_prior,z_prior_norm))
+            print("mass prior dict: {}, cosmo_prior_dict: {}".format(self.mass_priors_param_dict,self.cosmo_param_dict))
+
+        return Nexp_LOS, Nmergers_LOS
 
 
     def log_likelihood_numerator_single_event(self,event_name):
