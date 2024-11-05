@@ -240,7 +240,7 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
         scaling_LOS_to_uniform_comoving = simpson(uniform_Vc[wz],x=self.z_array[wz])/simpson(self.zprior_full_sky[wz],x=self.z_array[wz])
         nmergers_LOS = simpson(scaling_LOS_to_uniform_comoving*self.zprior_full_sky*self.zrates(self.z_array),x=self.z_array)
         nmergers_uniform = simpson(uniform_Vc*self.zrates(self.z_array),x=self.z_array)
-        return  scaling_LOS_to_uniform_comoving, nmergers_LOS, nmergers_uniform
+        return  scaling_LOS_to_uniform_comoving, R0*Tobs*nmergers_LOS, R0*Tobs*nmergers_uniform
     
     def Get_Nmergers_Nexp_UniformComoving(self,H0):
 
@@ -334,6 +334,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
 
     def log_likelihood_denominator_single_event(self):
 
+        # uniform_Vc = self.cosmo.p_z(self.z_array)#*4*np.pi*(light_speed_in_km_per_sec/self.cosmo.H0)**3/1e9
+        # values = uniform_Vc*self.zrates(self.z_array)
         values = self.zprior_full_sky*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
