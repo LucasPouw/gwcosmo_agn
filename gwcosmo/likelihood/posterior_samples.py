@@ -695,7 +695,7 @@ def get_dL_prior(dl_prior):
     first = True
     fc = thestr.find(cosmostr)
     if fc == -1: # it's not a prior using an astropy object, no need to go further
-        print("\tdL prior is not an astropy object, no special treatment.")
+        print("\tdL prior is not an astropy object, no special treatment: dl_prior is {}.".format(dl_prior))
         return eval(dl_prior),None
 
     for ic, c in enumerate(thestr[fc+len(cosmostr):]):
