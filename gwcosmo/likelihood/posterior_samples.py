@@ -6,6 +6,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from astropy import units as u
 from astropy.cosmology import FlatLambdaCDM
+from astropy.cosmology import LambdaCDM
 import bilby
 import h5py
 from gwcosmo.likelihood.skymap import ra_dec_from_ipix
@@ -710,7 +711,7 @@ def get_dL_prior(dl_prior):
         if c == '\'' or c == '\"': # check if the astropy object is using an alias for cosmology, such as 'Planck15'
             #print("found quote! {},{}".format(ic,c))
             fc2 = thestr[fc+len(cosmostr)+ic+1:].find(c) # find the closing ' or "
-            keep = thestr[fc+len(cosmostr)+ic:fc+len(cosmostr)+fc2+2]
+            keep = thestr[fc+len(cosmostr)+ic:fc+len(cosmostr)+ic+fc2+2]
             break
     cmod = copy.deepcopy(keep)
     cmod = cmod.replace(" km / (Mpc s)","")
