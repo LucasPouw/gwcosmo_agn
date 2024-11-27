@@ -696,7 +696,7 @@ def get_dL_prior(dl_prior):
     first = True
     fc = thestr.find(cosmostr)
     if fc == -1: # it's not a prior using an astropy object, no need to go further
-        print("\tdL prior is not an astropy object, no special treatment.")
+        print("\tdL prior is not an astropy object, no special treatment: dl_prior is {}.".format(dl_prior))
         return eval(dl_prior),None
 
     for ic, c in enumerate(thestr[fc+len(cosmostr):]):
@@ -779,7 +779,8 @@ class reweight_posterior_samples(object):
         if norm != 0:
             try:
                 kde = gaussian_kde(data, weights=weights)
-            except:
+            except Exception as e:
+                print("Exception:",e)
                 anomalies = np.where((weights <= 0) | np.isinf(weights)) [0]
                 print("KDE problem! {} values of the weights (over {}) are 0 or infinity. Create a default KDE with norm=0"
                       .format(len(anomalies),len(weights)))
