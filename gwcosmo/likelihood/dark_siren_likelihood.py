@@ -334,8 +334,8 @@ class PixelatedGalaxyCatalogMultipleEventLikelihood(bilby.Likelihood):
 
     def log_likelihood_denominator_single_event(self):
 
-        # uniform_Vc = self.cosmo.p_z(self.z_array)#*4*np.pi*(light_speed_in_km_per_sec/self.cosmo.H0)**3/1e9
-        # values = uniform_Vc*self.zrates(self.z_array)
+        #uniform_Vc = self.cosmo.p_z(self.z_array)#*4*np.pi*(light_speed_in_km_per_sec/self.cosmo.H0)**3/1e9
+        #values = uniform_Vc*self.zrates(self.z_array)
         values = self.zprior_full_sky*self.zrates(self.z_array)
         z_prior = interp1d(self.z_array,values,bounds_error=False,fill_value=(0,values[-1]))
         dz = np.diff(self.z_array)
