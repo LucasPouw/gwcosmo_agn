@@ -502,7 +502,7 @@ class load_posterior_samples(object):
         cosmo_reweight = re.findall('_cosmo.h',posterior_file)
         if len(cosmo_reweight) > 0:
             if self.pe_priors_object == None:
-                raise ValueError("Seems like you are using a cosmologically-reweighted samples file. Be careful as the PE prior dict could indicated a p(dL) \propto dL^2 and this is NOT what was used to get the dL samples. You may want to set a PE prior.")
+                raise ValueError("Seems like you are using a cosmologically-reweighted samples file. Be careful as the PE prior dict could indicate a p(dL) \propto dL^2 and this is NOT what was used to get the dL samples. You may want to set a PE prior.")
             else:
                 print("WARNING: seems like you are using a cosmologically-reweighted samples files, check carefully the PE prior used to get the samples.")
 
