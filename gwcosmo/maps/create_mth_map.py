@@ -9,6 +9,7 @@ Freija Beirnaert
 import numpy as np
 import healpy as hp
 import sys
+from tqdm import tqdm
 
 import gwcosmo
 
@@ -57,7 +58,7 @@ def create_mth_map(outfile, catalog, band, nside, min_gal, pixel_index):
     if pixel_index == None:
         ipix = np.arange(0, npix, 1) # full sky
 
-    for pix in ipix:
+    for pix in tqdm(ipix):
         subcatalog = full_catalog.select_pixel(nside, pix, nested=True)
         mth = subcatalog.magnitude_thresh(band,min_gals=int(min_gal))
         m[pix] = mth

@@ -1,4 +1,3 @@
-import gwcosmo
 import numpy as np
 import astropy
 import astropy.constants as constants
@@ -9,8 +8,15 @@ import pickle
 import h5py
 import healpy as hp
 
+import argparse
 
-GLADE = Table.read("GLADE+_reduced.txt",format='ascii')
+parser = argparse.ArgumentParser(description='Make GLADE+.txt ascii file into .HDF5')
+parser.add_argument('--txt_path',type=str, required=True, help='Path to ascii format GLADE+.txt including input file name')
+parser.add_argument('--hdf5_path',type=str, required=True, help='Path to cleaned GLADE+.hdf5 including output file name')
+parser.add_argument('--agn',type=str, default=False, help='Set to True if you want to make an AGN catalog.')
+args = parser.parse_args()
+
+GLADE = Table.read(args.txt_path, format='ascii')
 print("GLADE has a total of "+str(len(GLADE))+" objects.")
 
 # remove galaxies with no reported redshift
@@ -27,10 +33,15 @@ GLADE.remove_rows(no_clusters)
 del no_clusters
 
 no_QSOs = GLADE['col3'] == 'Q'
-GLADE.remove_rows(no_QSOs)
-del no_QSOs
 
-print("Removed Quasars and clusters: GLADE has "+str(len(GLADE))+" galaxies.")
+if args.agn:
+    GLADE.remove_rows(~no_QSOs)
+    print("Kept only Quasars: GLADE has "+str(len(GLADE))+" galaxies.")
+else:
+    GLADE.remove_rows(no_QSOs)
+    print("Removed Quasars and clusters: GLADE has "+str(len(GLADE))+" galaxies.")
+
+del no_QSOs
 
 # Make sure redshifts are positive
 mask = GLADE['col9'].astype('float64') < 0
@@ -130,9 +141,6 @@ B[B==0] = np.nan
 K[K==0] = np.nan
 W1[W1==0] = np.nan
 
-import h5py
-import healpy as hp
-
 # Save GLADE catalog
 bands=['B', 'K','W1']
 nGal = len(z)
@@ -151,7 +159,7 @@ ra_max = np.pi*2.0
 dec_min = -np.pi/2.0
 dec_max = np.pi/2.0 
 
-with h5py.File("glade+.hdf5", "w") as f:
+with h5py.File(args.hdf5_path, "w") as f:
     f.create_dataset("ra", data=ra)
     f.create_dataset("dec", data=dec)
     f.create_dataset("z", data=z)

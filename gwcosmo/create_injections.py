@@ -14,7 +14,7 @@ import os
 import logging
 from gwcosmo.injections import injections_at_detector, injections_at_source
 from bilby.gw import utils as gwutils
-import multiprocess as mp
+import multiprocessing as mp
 import sys
 import time
 import copy
