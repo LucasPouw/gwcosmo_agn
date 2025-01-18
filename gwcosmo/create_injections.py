@@ -236,7 +236,7 @@ class Create_injections(object):
                 else:
                     print("Tmp file {} skipped".format(tmp_to_dict))
             else:
-                print("Could not open file {}. Exiting.".format(list_to_dict))
+                print("Could not open file {}. Exiting.".format(tmp_to_dict))
             sys.exit()
 
         if tmpfile_to_dict != None:
@@ -617,7 +617,7 @@ class Create_injections(object):
         Define the priors in the source frame
         '''
         
-        if priors == None:
+        if self.priors == None:
             prior_dict = bl.gw.prior.BBHPriorDict()
             prior_dict.pop('mass_1')
             prior_dict.pop('mass_2')
